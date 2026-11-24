@@ -78,6 +78,8 @@ let yaw=0,pitch=0,verticalVelocity=0,grounded=true;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
 let flashlight,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
+let audioMasterGain=null,tvPanner=null,tvHumGain=null,tvHumOscillators=[],footstepBuffer=null;
+let footstepTimer=0,footstepIndex=0,tvStaticTexture=null,tvStaticCanvas=null,tvStaticTimer=0;
 const keys = Object.create(null);
 const staticInteractables = [];
 const nearbyInteractables = [];
@@ -378,7 +380,8 @@ function createWorld() {
   // A little TV and counter detail in the corner of the store.
   const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
   const tv=addBox(scene,[.85,.63,.19],[3.72,2.1,-20.1],new THREE.MeshStandardMaterial({color:0x030605,roughness:.2,metalness:.2}));
-  const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),new THREE.MeshBasicMaterial({map:createStaticTexture()}));
+  tvStaticTexture=createStaticTexture();tvStaticCanvas=tvStaticTexture.image;
+  const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),new THREE.MeshBasicMaterial({map:tvStaticTexture}));
   tvScreen.position.set(3.72,2.1,-19.995); tvScreen.rotation.y=Math.PI/2; scene.add(tvScreen);
 
   flashlight=new THREE.SpotLight(0xe2e8c9,0,13,Math.PI/6,.55,1.25);
@@ -394,12 +397,31 @@ function createWorld() {
 function createStaticTexture() {
   const c=document.createElement("canvas"); c.width=128; c.height=96;
   const ctx=c.getContext("2d");
-  for(let i=0;i<1500;i++){
-    ctx.fillStyle=Math.random()>.5?"rgba(230,240,222,.55)":"rgba(0,0,0,.65)";
-    ctx.fillRect(Math.random()*128,Math.random()*96,1+Math.random()*4,1);
+  for(let i=0;i<900;i++){
+    ctx.fillStyle=Math.random()>.5?"rgba(230,240,222,.48)":"rgba(0,0,0,.62)";
+    ctx.fillRect(Math.random()*128,Math.random()*96,1+Math.random()*3,1);
   }
   ctx.fillStyle="rgba(230,240,222,.45)"; ctx.font="8px monospace"; ctx.fillText("NO SIGNAL",37,84);
-  const t=new THREE.CanvasTexture(c); return t;
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function updateStaticTexture() {
+  if(!tvStaticCanvas||!tvStaticTexture)return;
+  const ctx=tvStaticCanvas.getContext("2d");
+  ctx.fillStyle="#08100b";ctx.fillRect(0,0,128,96);
+  const drift=Math.floor(elapsedTime*37)%96;
+  for(let i=0;i<42;i++){
+    const y=(i*17+drift)%96;
+    ctx.fillStyle=i%5===0?"rgba(224,237,219,.22)":"rgba(150,170,145,.10)";
+    ctx.fillRect(0,y,128,Math.random()<.12?2:1);
+  }
+  for(let i=0;i<150;i++){
+    const shade=Math.random()>.5?230:8;
+    ctx.fillStyle=shade>100?"rgba(224,237,219,.42)":"rgba(0,0,0,.7)";
+    ctx.fillRect(Math.random()*128,Math.random()*96,1+Math.random()*2,1);
+  }
+  ctx.fillStyle="rgba(230,240,222,.62)";ctx.font="8px monospace";
+  ctx.fillText("NO SIGNAL",37+(Math.random()>.88?1:0),84);
+  tvStaticTexture.needsUpdate=true;
 }
 
 function createAnomalies() {
@@ -665,6 +687,7 @@ function updateLook() {
 
 function openFilm(movie,index) {
   if(!movie)return;
+  playInteractionSound("tape");
   $("film-panel").hidden=false;$("film-back").hidden=true;$("film-art").classList.remove("flipped");
   const poster=posterCanvas(movie,Math.max(0,movieCatalogue.indexOf(movie)));
   $("film-art").innerHTML="";
@@ -700,6 +723,7 @@ function flipFilm() {
 
 function investigateAnomaly(target) {
   if(!target || target.userData.found) return;
+  playInteractionSound("anomaly");
   target.userData.found=true; target.visible=false; foundAnomalies++;
   $("anomaly-count").textContent=String(foundAnomalies).padStart(2,"0")+" / 38";
   if(foundAnomalies===38) showToast("ALL 38 ANOMALIES FOUND. THE STORE REMEMBERS.");
@@ -798,32 +822,97 @@ function renderMovieList(query) {
   appendMovieRows();
 }
 
+function initializeAudioScene(AudioCtx){
+  audioContext=new AudioCtx();
+  audioMasterGain=audioContext.createGain();audioMasterGain.gain.value=.72;audioMasterGain.connect(audioContext.destination);
+
+  const osc=audioContext.createOscillator();osc.type="sine";osc.frequency.value=50;
+  const filter=audioContext.createBiquadFilter();filter.type="lowpass";filter.frequency.value=150;
+  audioGain=audioContext.createGain();audioGain.gain.value=.020;
+  osc.connect(filter);filter.connect(audioGain);audioGain.connect(audioMasterGain);osc.start();
+  const hum=audioContext.createOscillator();hum.type="sine";hum.frequency.value=100;hum.connect(audioGain);hum.start();
+
+  const noiseBuffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate);
+  const noiseData=noiseBuffer.getChannelData(0);
+  for(let i=0;i<noiseData.length;i++)noiseData[i]=(Math.random()*2-1)*.45;
+  ambientNoiseSource=audioContext.createBufferSource();ambientNoiseSource.buffer=noiseBuffer;ambientNoiseSource.loop=true;
+  const hissFilter=audioContext.createBiquadFilter();hissFilter.type="bandpass";hissFilter.frequency.value=1250;hissFilter.Q.value=.32;
+  ambientNoiseGain=audioContext.createGain();ambientNoiseGain.gain.value=.003;
+  ambientNoiseSource.connect(hissFilter);hissFilter.connect(ambientNoiseGain);ambientNoiseGain.connect(audioMasterGain);ambientNoiseSource.start();
+
+  // Low-volume electrical buzz anchored to the TV in the back corner of the shop.
+  tvPanner=audioContext.createPanner();tvPanner.panningModel="HRTF";tvPanner.distanceModel="inverse";
+  tvPanner.refDistance=2.5;tvPanner.maxDistance=32;tvPanner.rolloffFactor=.7;
+  if(tvPanner.positionX){tvPanner.positionX.value=3.72;tvPanner.positionY.value=2.1;tvPanner.positionZ.value=-20;}
+  else tvPanner.setPosition(3.72,2.1,-20);
+  tvHumGain=audioContext.createGain();tvHumGain.gain.value=.0018;tvHumGain.connect(tvPanner);tvPanner.connect(audioMasterGain);
+  for(const [frequency,gain] of [[60,1],[120,.34]]){
+    const tvOsc=audioContext.createOscillator();tvOsc.type="sine";tvOsc.frequency.value=frequency;
+    const level=audioContext.createGain();level.gain.value=gain;
+    tvOsc.connect(level);level.connect(tvHumGain);tvOsc.start();tvHumOscillators.push(tvOsc);
+  }
+
+  const stepLength=Math.floor(audioContext.sampleRate*.12);
+  footstepBuffer=audioContext.createBuffer(1,stepLength,audioContext.sampleRate);
+  const stepData=footstepBuffer.getChannelData(0);
+  for(let i=0;i<stepLength;i++){
+    const fade=1-i/stepLength;
+    stepData[i]=(Math.random()*2-1)*fade*fade;
+  }
+}
+function syncAudioListener(){
+  if(!audioContext||audioContext.state!=="running")return;
+  const listener=audioContext.listener;
+  if(listener.positionX){
+    listener.positionX.value=player.position.x;listener.positionY.value=player.position.y+1.55;listener.positionZ.value=player.position.z;
+    listener.forwardX.value=-Math.sin(yaw);listener.forwardY.value=0;listener.forwardZ.value=-Math.cos(yaw);
+    listener.upX.value=0;listener.upY.value=1;listener.upZ.value=0;
+  }else{
+    listener.setPosition(player.position.x,player.position.y+1.55,player.position.z);
+    listener.setOrientation(-Math.sin(yaw),0,-Math.cos(yaw),0,1,0);
+  }
+}
+function playFootstep(){
+  if(!audioContext||!footstepBuffer||!audioMasterGain)return;
+  const now=audioContext.currentTime;
+  const source=audioContext.createBufferSource();source.buffer=footstepBuffer;
+  const low=audioContext.createBiquadFilter();low.type="lowpass";low.frequency.value=running?620:440;
+  const gain=audioContext.createGain();gain.gain.setValueAtTime(.0001,now);
+  gain.gain.linearRampToValueAtTime(running?.035:.022,now+.012);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+.12);
+  const pan=audioContext.createStereoPanner();pan.pan.value=footstepIndex++%2===0?-.17:.17;
+  source.connect(low);low.connect(gain);gain.connect(pan);pan.connect(audioMasterGain);
+  source.start(now);source.stop(now+.13);
+}
+function playInteractionSound(kind){
+  if(!audioContext||audioContext.state!=="running"||!audioMasterGain)return;
+  const now=audioContext.currentTime;
+  const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
+  const isAnomaly=kind==="anomaly";
+  oscillator.type=isAnomaly?"triangle":"sine";
+  oscillator.frequency.setValueAtTime(isAnomaly?340:185,now);
+  oscillator.frequency.exponentialRampToValueAtTime(isAnomaly?92:72,now+(isAnomaly?.22:.11));
+  gain.gain.setValueAtTime(.0001,now);
+  gain.gain.linearRampToValueAtTime(isAnomaly?.014:.009,now+.008);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+(isAnomaly?.24:.13));
+  oscillator.connect(gain);gain.connect(audioMasterGain);
+  oscillator.start(now);oscillator.stop(now+(isAnomaly?.25:.14));
+}
 function toggleAudio() {
   const enabled=$("sound-toggle").getAttribute("aria-pressed")!=="true";
   $("sound-toggle").setAttribute("aria-pressed",String(enabled));
   if(enabled){
     try{
       const AudioCtx=window.AudioContext||window.webkitAudioContext;
-      if(!AudioCtx){showToast("AMBIENCE UNAVAILABLE IN THIS BROWSER");return;}
-      if(!audioContext){
-        audioContext=new AudioCtx();
-        const osc=audioContext.createOscillator();osc.type="sine";osc.frequency.value=50;
-        const filter=audioContext.createBiquadFilter();filter.type="lowpass";filter.frequency.value=150;
-        audioGain=audioContext.createGain();audioGain.gain.value=.020;
-        osc.connect(filter);filter.connect(audioGain);audioGain.connect(audioContext.destination);osc.start();
-        const hum=audioContext.createOscillator();hum.type="sine";hum.frequency.value=100;hum.connect(audioGain);hum.start();
-        const noiseBuffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate);
-        const noiseData=noiseBuffer.getChannelData(0);
-        for(let i=0;i<noiseData.length;i++)noiseData[i]=(Math.random()*2-1)*.45;
-        ambientNoiseSource=audioContext.createBufferSource();ambientNoiseSource.buffer=noiseBuffer;ambientNoiseSource.loop=true;
-        const hissFilter=audioContext.createBiquadFilter();hissFilter.type="bandpass";hissFilter.frequency.value=1250;hissFilter.Q.value=.32;
-        ambientNoiseGain=audioContext.createGain();ambientNoiseGain.gain.value=.003;
-        ambientNoiseSource.connect(hissFilter);hissFilter.connect(ambientNoiseGain);ambientNoiseGain.connect(audioContext.destination);ambientNoiseSource.start();
-      } else audioContext.resume();
+      if(!AudioCtx){$("sound-toggle").setAttribute("aria-pressed","false");showToast("AMBIENCE UNAVAILABLE IN THIS BROWSER");return;}
+      if(!audioContext)initializeAudioScene(AudioCtx);
+      else audioContext.resume();
+      syncAudioListener();
       showToast("STORE AMBIENCE ON");
-    } catch(e){showToast("AMBIENCE UNAVAILABLE");}
-  } else {
-    if(audioContext) audioContext.suspend();
+    }catch(e){$("sound-toggle").setAttribute("aria-pressed","false");console.warn(e);showToast("AMBIENCE UNAVAILABLE");}
+  }else{
+    footstepTimer=0;
+    if(audioContext)audioContext.suspend();
     showToast("STORE AMBIENCE OFF");
   }
 }
@@ -852,6 +941,12 @@ function updateUI(delta) {
   if(nearest)$("aisle-name").textContent=AISLE_LABELS[((nearest.userData.aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length];
   const speed=Math.sqrt(player.velocity.x*player.velocity.x+player.velocity.z*player.velocity.z);
   $("speed-readout").textContent=running&&speed>.7?"RUN":"SP";
+  if(audioContext?.state==="running"&&started&&!paused&&grounded&&speed>.48){
+    footstepTimer+=delta;
+    const interval=running?.31:crouching?.64:.47;
+    if(footstepTimer>=interval){footstepTimer-=interval;playFootstep();}
+  }else footstepTimer=0;
+  syncAudioListener();
   if(flashlightOn){
     flashlightBattery=Math.max(0,flashlightBattery-delta*.95);
     if(flashlightBattery<=0){setFlashlight(false);showToast("FLASHLIGHT BATTERY DEPLETED");}
@@ -885,6 +980,10 @@ function animate() {
     }
     anomalyObjects.forEach((a,i)=>{if(a.visible)a.rotation.y+=delta*(.18+(i%4)*.04);});
     updateUI(delta);
+    if(started&&!paused){
+      tvStaticTimer+=delta;
+      if(tvStaticTimer>=.17){tvStaticTimer=0;updateStaticTexture();}
+    }
     if(bokehPass?.enabled){
       let desiredFocus=8;
       if(selectedTarget?.userData.kind==="movie"){
