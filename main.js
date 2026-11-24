@@ -143,16 +143,6 @@ function posterCanvas(movie, index, onArtworkLoaded=null) {
   return canvas;
 }
 
-function getMovieTexture(movie, index) {
-  const textureKey=(movie.title||"")+"|"+(movie.year||0);
-  if(textureCache.has(textureKey))return textureCache.get(textureKey);
-  const texture=new THREE.CanvasTexture(posterCanvas(movie,index));
-  texture.colorSpace=THREE.SRGBColorSpace;
-  texture.anisotropy=renderer?renderer.capabilities.getMaxAnisotropy():4;
-  textureCache.set(textureKey,texture);
-  return texture;
-}
-
 function addBox(parent, size, position, material, rotation) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0],size[1],size[2]),material);
   mesh.position.set(position[0],position[1],position[2]);
@@ -189,14 +179,6 @@ function spineCanvas(movie,index) {
   ctx.fillStyle="rgba(245,239,220,.7)";ctx.font="18px monospace";ctx.fillText(String(movie.year||"—"),132,482);
   ctx.fillStyle="#090c09";ctx.fillRect(0,0,256,12);ctx.fillRect(0,500,256,12);
   return canvas;
-}
-function getSpineTexture(movie,index) {
-  const key="spine|"+(movie.title||"")+"|"+(movie.year||0);
-  if(textureCache.has(key))return textureCache.get(key);
-  const texture=new THREE.CanvasTexture(spineCanvas(movie,index));
-  texture.colorSpace=THREE.SRGBColorSpace;
-  texture.anisotropy=renderer?renderer.capabilities.getMaxAnisotropy():4;
-  textureCache.set(key,texture);return texture;
 }
 function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex, spineMode=false) {
   const root=new THREE.Group();
@@ -621,7 +603,6 @@ function openFilm(movie,index) {
 function flipFilm() {
   const art=$("film-art");
   art.classList.toggle("flipped");
-  const isBack=art.classList.contains("flipped");
   $("film-back").hidden=true;
   $("film-info").style.display="flex";
 }
@@ -809,8 +790,11 @@ function refreshGenreFilter(){
   if(genres.includes(current))select.value=current;
 }
 function saveImportedMovies(){
-  try{localStorage.setItem("midnightvideo.letterboxd",JSON.stringify(movieCatalogue));$("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" titles stored in this browser.";}
-  catch(e){$("tmdb-status").textContent="Archive too large for local storage. Keep the CSV export to reimport it.";}
+  try{
+    const compact=movieCatalogue.map(m=>({title:m.title,year:m.year||0,letterboxdUrl:m.letterboxdUrl||""}));
+    localStorage.setItem("midnightvideo.letterboxd",JSON.stringify(compact));
+    $("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" titles stored in this browser.";
+  }catch(e){$("tmdb-status").textContent="Archive too large for browser storage. Keep the original CSV export to reimport it.";}
 }
 function refreshTapeCatalogue(){
   if(!movieCatalogue.length)return;
