@@ -77,6 +77,8 @@ const keys = Object.create(null);
 const interactables = [];
 const animatedCases = [];
 const sideSections = [];
+const aislePairs=[];
+let nextAislePair=5,previousAislePair=-1;
 const AISLE_LABELS = ["THRILLER","HORROR","SCI-FI","CRIME","DRAMA","CULT CLASSICS","ACTION","NO HOPE","MYSTERY","ANIMATION"];
 const anomalyObjects = [];
 const raycaster = new THREE.Raycaster();
@@ -324,8 +326,10 @@ function createWorld() {
   caseGeometry=new THREE.BoxGeometry(.292,.52,.105);
   spineCaseGeometry=new THREE.BoxGeometry(.105,.52,.105);
   for(let i=0;i<5;i++){
-    createShelfModule(-1,-16+i*8,i,i);
-    createShelfModule(1,-16+i*8,i+5,i);
+    const z=-16+i*8;
+    const left=createShelfModule(-1,z,i*2,i);
+    const right=createShelfModule(1,z,i*2+1,i);
+    aislePairs.push({z,left,right,index:i});
   }
   // Fluorescent tubes are streamed too, keeping the aisle lit without a visible end.
   for(let i=0;i<13;i++){
@@ -501,7 +505,6 @@ function updateCamera() {
 }
 
 function updateMovement(delta) {
-  const touchDevice=window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   if(!started || paused) return;
   const speed=running?6.6:3.35;
   let axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
@@ -548,10 +551,23 @@ function refreshAisleSign(section) {
   label.material.map=map;label.material.needsUpdate=true;
 }
 function updateWorldStreaming() {
-  for(const section of sideSections){
-    const delta=section.position.z-player.position.z;
-    if(delta>24){section.position.z-=40;section.userData.streamIndex+=10;section.userData.aisleIndex+=5;assignSectionCatalogue(section);refreshAisleSign(section);}
-    else if(delta < -24){section.position.z+=40;section.userData.streamIndex-=10;section.userData.aisleIndex-=5;assignSectionCatalogue(section);refreshAisleSign(section);}
+  for(const pair of aislePairs){
+    const delta=pair.z-player.position.z;
+    if(delta>24){
+      pair.z-=40;pair.left.position.z=pair.z;pair.right.position.z=pair.z;
+      pair.index=nextAislePair++;
+      pair.left.userData.streamIndex=pair.index*2;pair.right.userData.streamIndex=pair.index*2+1;
+      pair.left.userData.aisleIndex=pair.index;pair.right.userData.aisleIndex=pair.index;
+      assignSectionCatalogue(pair.left);assignSectionCatalogue(pair.right);
+      refreshAisleSign(pair.left);refreshAisleSign(pair.right);
+    }else if(delta < -24){
+      pair.z+=40;pair.left.position.z=pair.z;pair.right.position.z=pair.z;
+      pair.index=previousAislePair--;
+      pair.left.userData.streamIndex=pair.index*2;pair.right.userData.streamIndex=pair.index*2+1;
+      pair.left.userData.aisleIndex=pair.index;pair.right.userData.aisleIndex=pair.index;
+      assignSectionCatalogue(pair.left);assignSectionCatalogue(pair.right);
+      refreshAisleSign(pair.left);refreshAisleSign(pair.right);
+    }
   }
   for(const fixture of streamedFixtures){
     const delta=fixture.position.z-player.position.z;
