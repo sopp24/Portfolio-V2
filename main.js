@@ -231,7 +231,7 @@ function spineCanvas(movie,index) {
   const title=(movie.title||"UNTITLED").toUpperCase();
   ctx.font="bold "+(title.length>22?20:25)+"px Arial";ctx.fillText(title,0,0,470);ctx.restore();
   ctx.fillStyle="rgba(8,12,9,.52)";ctx.fillRect(25,440,219,34);
-  let barcodeSeed=(index*7919+String(movie.title||\"\").length*31)>>>0;
+  let barcodeSeed=(index*7919+String(movie.title||"").length*31)>>>0;
   for(let x=34;x<224;){
     barcodeSeed=(barcodeSeed*1664525+1013904223)>>>0;
     const width=1+(barcodeSeed%4);
