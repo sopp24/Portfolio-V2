@@ -223,11 +223,22 @@ function spineCanvas(movie,index) {
   ctx.fillStyle=palette[0];ctx.fillRect(0,0,256,512);
   ctx.fillStyle="rgba(0,0,0,.32)";ctx.fillRect(0,0,256,512);
   ctx.fillStyle=palette[1];ctx.fillRect(12,18,8,476);
-  ctx.fillStyle="rgba(245,239,220,.84)";ctx.textAlign="center";
+  ctx.fillStyle="rgba(8,12,9,.48)";ctx.fillRect(25,18,219,30);
+  ctx.fillStyle="rgba(245,239,220,.76)";ctx.font="bold 13px monospace";ctx.textAlign="center";
+  ctx.fillText("MIDNIGHT VIDEO",134,37);
+  ctx.fillStyle="rgba(245,239,220,.84)";
   ctx.save();ctx.translate(135,256);ctx.rotate(-Math.PI/2);
   const title=(movie.title||"UNTITLED").toUpperCase();
   ctx.font="bold "+(title.length>22?20:25)+"px Arial";ctx.fillText(title,0,0,470);ctx.restore();
-  ctx.fillStyle="rgba(245,239,220,.7)";ctx.font="18px monospace";ctx.fillText(String(movie.year||"—"),132,482);
+  ctx.fillStyle="rgba(8,12,9,.52)";ctx.fillRect(25,440,219,34);
+  let barcodeSeed=(index*7919+movie.title.length*31)>>>0;
+  for(let x=34;x<224;){
+    barcodeSeed=(barcodeSeed*1664525+1013904223)>>>0;
+    const width=1+(barcodeSeed%4);
+    ctx.fillStyle=barcodeSeed&1?"rgba(245,239,220,.78)":"rgba(245,239,220,.42)";
+    ctx.fillRect(x,445,width,20);x+=width+1+(barcodeSeed%3);
+  }
+  ctx.fillStyle="rgba(245,239,220,.7)";ctx.font="18px monospace";ctx.fillText(String(movie.year||"—"),132,493);
   ctx.fillStyle="#090c09";ctx.fillRect(0,0,256,12);ctx.fillRect(0,500,256,12);
   return canvas;
 }
