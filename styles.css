@@ -275,7 +275,7 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
 }
 .mobile-pad button { touch-action:none; }
 @media (max-width:760px) {
-  .hud-bottom { bottom:max(124px,calc(env(safe-area-inset-bottom) + 124px)); }
+  .hud-bottom { bottom:max(142px,calc(env(safe-area-inset-bottom) + 142px)); }
   .mobile-controls { bottom:max(14px,env(safe-area-inset-bottom)); }
   .battery { left:auto; right:18px; top:58px; bottom:auto; }
   .survival-counter { left:18px; right:auto; top:58px; bottom:auto; }
