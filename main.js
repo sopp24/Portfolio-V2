@@ -81,7 +81,7 @@ let cameraBobOffset=0,cameraRollOffset=0,gaitPhase=0;
 const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||false;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
-let flashlight,tvGlow=null,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
+let flashlight,tvGlow=null,tvScreenMesh=null,tvScreenMaterial=null,tvPowered=true,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
 let audioMasterGain=null,tvPanner=null,tvHumGain=null,tvHumOscillators=[],footstepBuffer=null;
 let footstepTimer=0,footstepIndex=0,tvStaticTexture=null,tvStaticCanvas=null,tvStaticTimer=0;
 const keys = Object.create(null);
@@ -498,8 +498,11 @@ function createWorld() {
   const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
   const tv=addBox(scene,[.85,.63,.19],[3.72,2.1,-20.1],new THREE.MeshStandardMaterial({color:0x030605,roughness:.2,metalness:.2}));
   tvStaticTexture=createStaticTexture();tvStaticCanvas=tvStaticTexture.image;
-  const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),new THREE.MeshBasicMaterial({map:tvStaticTexture}));
-  tvScreen.position.set(3.72,2.1,-19.995); tvScreen.rotation.y=Math.PI/2; scene.add(tvScreen);
+  tvScreenMaterial=new THREE.MeshBasicMaterial({map:tvStaticTexture});
+  tvScreenMesh=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),tvScreenMaterial);
+  tvScreenMesh.position.set(3.72,2.1,-19.995); tvScreenMesh.rotation.y=Math.PI/2;
+  tvScreenMesh.userData.root=tvScreenMesh;tvScreenMesh.userData.kind="tv";
+  staticInteractables.push(tvScreenMesh);scene.add(tvScreenMesh);
   tvGlow=new THREE.PointLight(0x9bbf9a,.08,8,2);
   tvGlow.position.set(3.7,2.05,-19.72);scene.add(tvGlow);
 
@@ -523,6 +526,18 @@ function createStaticTexture() {
   ctx.fillStyle="rgba(230,240,222,.45)"; ctx.font="8px monospace"; ctx.fillText("NO SIGNAL",37,84);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
+function toggleCRT() {
+  tvPowered=!tvPowered;
+  if(tvScreenMaterial){
+    tvScreenMaterial.map=tvPowered?tvStaticTexture:null;
+    tvScreenMaterial.color.setHex(tvPowered?0xffffff:0x030504);
+    tvScreenMaterial.needsUpdate=true;
+  }
+  if(!tvPowered&&tvGlow)tvGlow.intensity=0;
+  playInteractionSound("focus");
+  showToast(tvPowered?"THE CRT CLICKS ON. NO SIGNAL.":"THE CRT GOES DARK.");
+}
+
 function updateStaticTexture() {
   if(!tvStaticCanvas||!tvStaticTexture)return;
   const ctx=tvStaticCanvas.getContext("2d");
@@ -812,7 +827,8 @@ function updateLook() {
     $("crosshair").classList.toggle("active",!!next);
     $("interaction-hint").hidden=!next;
     $("look-hint").style.opacity=next?"0":"0.9";
-    $("interaction-hint").lastElementChild.textContent=next&&next.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":"EXAMINE TAPE";
+    const hintLabel=next?.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":next?.userData.kind==="tv"?"TOGGLE CRT":"EXAMINE TAPE";
+    $("interaction-hint").lastElementChild.textContent=hintLabel;
     if(next&&next.userData.kind==="movie"){
       next.userData.pullTarget=.46;
       activeTapeAnimations.add(next);
@@ -872,6 +888,7 @@ function interact() {
   if(!selectedTarget) return;
   if(selectedTarget.userData.kind==="anomaly") investigateAnomaly(selectedTarget);
   else if(selectedTarget.userData.kind==="movie") openFilm(selectedTarget.userData.movie,selectedTarget.userData.catalogueIndex);
+  else if(selectedTarget.userData.kind==="tv") toggleCRT();
 }
 
 function interactFromXR() {
@@ -894,7 +911,7 @@ function interactFromXR() {
     interact();
     return;
   }
-  showToast("AIM AT A TAPE OR AN ANOMALY");
+  showToast("AIM AT A TAPE, CRT OR AN ANOMALY");
 }
 
 function setSurvival(enabled) {
@@ -1154,12 +1171,12 @@ function animate() {
       const proximity=1-THREE.MathUtils.clamp((tvDistance-1.2)/6.8,0,1);
       const staticPulse=.92+.08*Math.sin(elapsedTime*17.5)+.035*Math.sin(elapsedTime*43.1);
       const rareFlicker=Math.sin(elapsedTime*6.7)> .997?.55:1;
-      tvGlow.intensity=(.035+proximity*.82)*staticPulse*rareFlicker;
+      tvGlow.intensity=tvPowered?(.035+proximity*.82)*staticPulse*rareFlicker:0;
     }
     updateUI(delta);
     if(started&&!paused&&!isInterfacePanelOpen()){
       tvStaticTimer+=delta;
-      if(tvStaticTimer>=.17){tvStaticTimer=0;updateStaticTexture();}
+      if(tvPowered&&tvStaticTimer>=.17){tvStaticTimer=0;updateStaticTexture();}
     }
     if(bokehPass?.enabled){
       let desiredFocus=8;
