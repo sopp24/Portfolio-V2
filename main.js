@@ -65,6 +65,8 @@ let bokehFocus = 8;
 const focusCameraPosition = new THREE.Vector3();
 const focusTargetPosition = new THREE.Vector3();
 const focusCameraDirection = new THREE.Vector3();
+let shelfTicketGeometry=null,shelfTicketMaterial=null;
+const fluorescentLights=[];
 let floorSurface, ceilingSurface;
 const endlessWalls = [];
 const streamedFixtures = [];
@@ -245,6 +247,10 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
   levels.forEach((y,level)=>{
     addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
     addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
+    if(shelfTicketGeometry&&shelfTicketMaterial){
+      const ticket=new THREE.Mesh(shelfTicketGeometry,shelfTicketMaterial);
+      ticket.position.set(0,y+.12,.492);ticket.renderOrder=1;parent.add(ticket);
+    }
     for(let i=0;i<22;i++){
       const slot=segmentNumber*88+level*22+i;
       const movieIndex=((slot%movieCatalogue.length)+movieCatalogue.length)%movieCatalogue.length;
@@ -330,6 +336,21 @@ function createWorld() {
   endlessWalls.push(leftWall,rightWall);
 
   shelfMaterial=new THREE.MeshStandardMaterial({color:0x333a36,roughness:.68,metalness:.45});
+  const ticketCanvas=document.createElement("canvas");ticketCanvas.width=2048;ticketCanvas.height=32;
+  const ticketCtx=ticketCanvas.getContext("2d");
+  ticketCtx.fillStyle="#384039";ticketCtx.fillRect(0,0,2048,32);
+  ticketCtx.fillStyle="rgba(8,12,9,.35)";ticketCtx.fillRect(0,0,2048,3);ticketCtx.fillRect(0,29,2048,3);
+  ticketCtx.strokeStyle="rgba(221,226,207,.42)";ticketCtx.lineWidth=1;ticketCtx.strokeRect(2,2,2044,28);
+  ticketCtx.fillStyle="#d9d9c4";ticketCtx.font="bold 14px monospace";ticketCtx.textBaseline="middle";
+  for(let x=18;x<2048;x+=512){
+    ticketCtx.fillText("RENTAL COPY",x,16);
+    ticketCtx.fillStyle="#b6bda7";ticketCtx.font="12px monospace";ticketCtx.fillText("RETURN BY MIDNIGHT",x+126,16);
+    ticketCtx.fillStyle="#d9d9c4";ticketCtx.font="bold 14px monospace";ticketCtx.fillText("$0.99 / 3 NIGHTS",x+330,16);
+    ticketCtx.strokeStyle="rgba(221,226,207,.38)";ticketCtx.beginPath();ticketCtx.moveTo(x+488,7);ticketCtx.lineTo(x+488,25);ticketCtx.stroke();
+  }
+  const ticketTexture=new THREE.CanvasTexture(ticketCanvas);ticketTexture.colorSpace=THREE.SRGBColorSpace;ticketTexture.anisotropy=2;
+  shelfTicketGeometry=new THREE.PlaneGeometry(8.05,.085);
+  shelfTicketMaterial=new THREE.MeshBasicMaterial({map:ticketTexture,side:THREE.DoubleSide,depthWrite:false});
   const pegCanvas=document.createElement("canvas");pegCanvas.width=512;pegCanvas.height=512;
   const pg=pegCanvas.getContext("2d");pg.fillStyle="#222b26";pg.fillRect(0,0,512,512);
   for(let y=9;y<512;y+=18)for(let x=9;x<512;x+=18){pg.fillStyle="#101713";pg.beginPath();pg.arc(x,y,2.25,0,Math.PI*2);pg.fill();pg.fillStyle="rgba(116,132,116,.12)";pg.beginPath();pg.arc(x-1,y-1,1.2,0,Math.PI*2);pg.fill();}
@@ -368,6 +389,7 @@ function createWorld() {
     const glow=new THREE.Mesh(fixtureGlowGeometry,fixtureGlowMaterial);
     glow.rotation.x=-Math.PI/2;glow.position.set(0,4.885,0);fixtureGroup.add(glow);
     const light=new THREE.PointLight(0xd1dec4,7.5,11,2);light.position.set(0,4.88,0);fixtureGroup.add(light);
+    fluorescentLights.push({light,baseIntensity:7.5,phase:i*1.73});
     scene.add(fixtureGroup);streamedFixtures.push(fixtureGroup);
   }
   const backSign=createPosterSign("OPEN 24 HOURS. ALWAYS.",4.5,.55,"#d4e0c4");
@@ -461,6 +483,9 @@ function createAnomalies() {
     group.position.set((seeded(i,2)-.5)*6.2,.48+(i%4)*.92,.60);
     group.rotation.y=(seeded(i,5)-.5)*.6;group.visible=false;
     group.userData.kind="anomaly";group.userData.found=false;group.userData.index=i;
+    group.userData.baseY=group.position.y;group.userData.floatPhase=seeded(i,11)*Math.PI*2;
+    group.userData.floatSpeed=.72+(i%5)*.11;group.userData.floatAmount=.018+(i%3)*.009;
+    group.userData.baseRotationX=group.rotation.x;
     const section=sideSections[i%sideSections.length];section.add(group);
     anomalyObjects.push(group);section.userData.hitTargets.push(target);target.userData.root=group;
   }
@@ -978,7 +1003,18 @@ function animate() {
         if(targetPull===0)activeTapeAnimations.delete(tape);
       }
     }
-    anomalyObjects.forEach((a,i)=>{if(a.visible)a.rotation.y+=delta*(.18+(i%4)*.04);});
+    anomalyObjects.forEach((a,i)=>{
+      if(!a.visible)return;
+      const phase=elapsedTime*a.userData.floatSpeed+a.userData.floatPhase;
+      a.position.y=a.userData.baseY+Math.sin(phase)*a.userData.floatAmount;
+      a.rotation.y+=delta*(.18+(i%4)*.04);
+      a.rotation.x=a.userData.baseRotationX+Math.sin(phase*.63)*.018;
+    });
+    for(const fitting of fluorescentLights){
+      const pulse=Math.sin(elapsedTime*1.37+fitting.phase)*.018+Math.sin(elapsedTime*.29+fitting.phase*1.8)*.009;
+      const rareDip=Math.sin(elapsedTime*.43+fitting.phase*2.1)>.999?-.12:0;
+      fitting.light.intensity=fitting.baseIntensity*(1+pulse+rareDip);
+    }
     updateUI(delta);
     if(started&&!paused){
       tvStaticTimer+=delta;
