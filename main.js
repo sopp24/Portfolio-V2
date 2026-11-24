@@ -69,8 +69,8 @@ let libraryDisplayed = 0;
 let initialized = false, started = false, paused = false, isLocked = false;
 let movieCatalogue = MOVIES.slice();
 let tmdbToken = localStorage.getItem("midnightvideo.tmdbToken") || "";
-let pointerLookX = 0, pointerLookY = 0, pointerBaseYaw = -Math.PI/2;
-let yaw = -Math.PI / 2, pitch = 0, verticalVelocity = 0, grounded = true;
+let pointerLookX = 0, pointerLookY = 0, pointerBaseYaw = 0;
+let yaw = 0, pitch = 0, verticalVelocity = 0, grounded = true;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
 let flashlight, ambientAudio = null, audioContext = null, audioGain = null;
@@ -225,11 +225,11 @@ function assignSectionCatalogue(section) {
     if(cover){cover.material.map=root.userData.spineMode?getSpineTexture(movie,index):getMovieTexture(movie,index);cover.material.needsUpdate=true;}
   });
 }
-function createShelfModule(side, centerZ, segmentNumber) {
+function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumber%10) {
   const parent=new THREE.Group();
   parent.position.set(side*4.45,0,centerZ);
   parent.rotation.y=side===-1?Math.PI/2:-Math.PI/2;
-  parent.userData.streamIndex=segmentNumber;parent.userData.side=side;parent.userData.caseRoots=[];
+  parent.userData.streamIndex=segmentNumber;parent.userData.side=side;parent.userData.aisleIndex=aisleIndex;parent.userData.caseRoots=[];
   addBox(parent,[8.15,4.3,.12],[0,2.2,-.48],pegboardMaterial);
   const levels=[.52,1.46,2.40,3.34];
   levels.forEach((y,level)=>{
@@ -246,7 +246,7 @@ function createShelfModule(side, centerZ, segmentNumber) {
   });
   for(let i=0;i<7;i++)addBox(parent,[.08,4.3,.16],[-3.95+i*1.31,2.2,-.38],metalMaterial);
   for(let i=0;i<11;i++)addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
-  const label=createPosterSign(AISLE_LABELS[segmentNumber%AISLE_LABELS.length],2.2,.36,segmentNumber%4===3?"#c77c62":"#d7dfc1");
+  const label=createPosterSign(AISLE_LABELS[((aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length],2.2,.36,aisleIndex%4===3?"#c77c62":"#d7dfc1");
   label.position.set(0,4.48,-.35);parent.add(label);
   sideSections.push(parent);scene.add(parent);return parent;
 }
@@ -307,16 +307,16 @@ function createWorld() {
     fctx.fillStyle="rgba(0,0,0,"+(Math.random()*.13)+")";
     fctx.fillRect(Math.random()*512,Math.random()*512,1+Math.random()*5,1+Math.random()*4);
   }
-  const floorTex=new THREE.CanvasTexture(floorCanvas); floorTex.wrapS=floorTex.wrapT=THREE.RepeatWrapping; floorTex.repeat.set(3,16); floorTex.colorSpace=THREE.SRGBColorSpace;
+  const floorTex=new THREE.CanvasTexture(floorCanvas); floorTex.wrapS=floorTex.wrapT=THREE.RepeatWrapping; floorTex.repeat.set(3,710); floorTex.colorSpace=THREE.SRGBColorSpace;
   const floorMat=new THREE.MeshStandardMaterial({map:floorTex,roughness:.94,metalness:.03});
   floorSurface=new THREE.Mesh(new THREE.PlaneGeometry(11,4000),floorMat);
-  floorSurface.rotation.x=-Math.PI/2;floorSurface.position.set(0,-.055,player.position.z-1950);floorSurface.receiveShadow=true;scene.add(floorSurface);
+  floorSurface.rotation.x=-Math.PI/2;floorSurface.position.set(0,-.055,player.position.z);floorSurface.receiveShadow=true;scene.add(floorSurface);
   const ceilingMat=new THREE.MeshStandardMaterial({color:0x141a16,roughness:.95});
   ceilingSurface=new THREE.Mesh(new THREE.PlaneGeometry(11,4000),ceilingMat);
-  ceilingSurface.rotation.x=Math.PI/2;ceilingSurface.position.set(0,5.15,player.position.z-1950);scene.add(ceilingSurface);
+  ceilingSurface.rotation.x=Math.PI/2;ceilingSurface.position.set(0,5.15,player.position.z);scene.add(ceilingSurface);
   wallMaterial=new THREE.MeshStandardMaterial({color:0x151c17,roughness:.96});
-  const leftWall=addBox(scene,[.18,5.2,4000],[-5.3,2.55,player.position.z-1950],wallMaterial);
-  const rightWall=addBox(scene,[.18,5.2,4000],[5.3,2.55,player.position.z-1950],wallMaterial);
+  const leftWall=addBox(scene,[.18,5.2,4000],[-5.3,2.55,player.position.z],wallMaterial);
+  const rightWall=addBox(scene,[.18,5.2,4000],[5.3,2.55,player.position.z],wallMaterial);
   endlessWalls.push(leftWall,rightWall);
 
   shelfMaterial=new THREE.MeshStandardMaterial({color:0x333a36,roughness:.68,metalness:.45});
@@ -331,8 +331,8 @@ function createWorld() {
   caseGeometry=new THREE.BoxGeometry(.292,.52,.105);
   spineCaseGeometry=new THREE.BoxGeometry(.105,.52,.105);
   for(let i=0;i<5;i++){
-    createShelfModule(-1,-16+i*8,i);
-    createShelfModule(1,-16+i*8,i+5);
+    createShelfModule(-1,-16+i*8,i,i);
+    createShelfModule(1,-16+i*8,i+5,i);
   }
   // Fluorescent tubes are streamed too, keeping the aisle lit without a visible end.
   for(let i=0;i<13;i++){
@@ -492,7 +492,7 @@ function enterStore() {
   if(!initialized || started) return;
   started=true;paused=false;boot.classList.add("leaving");
   hud.classList.add("visible");hud.setAttribute("aria-hidden","false");
-  $("look-hint").style.opacity=".9";clock.start();
+  $("look-hint").style.opacity=".9";$("hud-bottom").hidden=false;clock.start();
 }
 
 function updateCamera() {
@@ -508,8 +508,19 @@ function updateMovement(delta) {
   const touchDevice=window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   if(!started || paused) return;
   const speed=running?6.6:3.35;
-  const axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
-  const axisZ=(keys.KeyS?1:0)-(keys.KeyW?1:0);
+  let axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  let axisZ=(keys.KeyS?1:0)-(keys.KeyW?1:0);
+  if(renderer?.xr?.isPresenting){
+    const sources=renderer.xr.getSession()?.inputSources||[];
+    for(const source of sources){
+      const axes=source.gamepad?.axes||[];
+      const x=axes.length>2?axes[2]:axes[0],z=axes.length>3?axes[3]:axes[1];
+      if(Number.isFinite(x)&&Math.abs(x)>.12)axisX=x;
+      if(Number.isFinite(z)&&Math.abs(z)>.12)axisZ=z;
+      if(source.gamepad?.buttons?.[0]?.pressed&&grounded){verticalVelocity=5.2;grounded=false;}
+      if(source.gamepad?.buttons?.[1]?.pressed&&!flashlightOn)setFlashlight(true);
+    }
+  }
   tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));
   tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
   const desired=new THREE.Vector3();
@@ -534,17 +545,17 @@ function updateMovement(delta) {
 function updateWorldStreaming() {
   for(const section of sideSections){
     const delta=section.position.z-player.position.z;
-    if(delta>24){section.position.z-=40;section.userData.streamIndex+=10;assignSectionCatalogue(section);}
-    else if(delta < -24){section.position.z+=40;section.userData.streamIndex-=10;assignSectionCatalogue(section);}
+    if(delta>24){section.position.z-=40;section.userData.streamIndex+=10;section.userData.aisleIndex+=5;assignSectionCatalogue(section);}
+    else if(delta < -24){section.position.z+=40;section.userData.streamIndex-=10;section.userData.aisleIndex-=5;assignSectionCatalogue(section);}
   }
   for(const fixture of streamedFixtures){
     const delta=fixture.position.z-player.position.z;
     if(delta>27)fixture.position.z-=78;
     else if(delta < -27)fixture.position.z+=78;
   }
-  if(floorSurface)floorSurface.position.z=player.position.z-1950;
-  if(ceilingSurface)ceilingSurface.position.z=player.position.z-1950;
-  endlessWalls.forEach(wall=>wall.position.z=player.position.z-1950);
+  if(floorSurface)floorSurface.position.z=player.position.z;
+  if(ceilingSurface)ceilingSurface.position.z=player.position.z;
+  endlessWalls.forEach(wall=>wall.position.z=player.position.z);
 }
 
 
@@ -574,7 +585,15 @@ function openFilm(movie,index) {
   $("film-panel").hidden=false;$("film-back").hidden=true;$("film-art").classList.remove("flipped");
   const poster=posterCanvas(movie,Math.max(0,movieCatalogue.indexOf(movie)));
   $("film-art").innerHTML="";
-  const img=document.createElement("img");img.src=movie.posterUrl||poster.toDataURL("image/png");img.alt=movie.title+" VHS cover";$("film-art").appendChild(img);
+  const img=document.createElement("img");img.src=movie.posterUrl||poster.toDataURL("image/png");img.alt=movie.title+" VHS cover";img.className="film-art-front";
+  const backFace=document.createElement("div");backFace.className="film-art-back";
+  const backHeader=document.createElement("span");backHeader.className="tape-back-header";backHeader.textContent="MIDNIGHT VIDEO / RENTAL COPY";
+  const backTitle=document.createElement("strong");backTitle.textContent=movie.title.toUpperCase()+" · "+(movie.year||"—");
+  const backSynopsis=document.createElement("p");backSynopsis.textContent=movie.synopsis||"PLEASE ASK THE CLERK FOR MORE INFORMATION.";
+  const backDirector=document.createElement("small");backDirector.textContent="DIRECTED BY "+(movie.director||"UNKNOWN");
+  const backBarcode=document.createElement("span");backBarcode.className="tape-barcode";backBarcode.textContent="||| || |||| | ||| || ||||";
+  backFace.append(backHeader,backTitle,backSynopsis,backDirector,backBarcode);
+  $("film-art").append(img,backFace);
   $("film-title").textContent=movie.title.toUpperCase();
   $("film-year").textContent=String(movie.year||"—");$("film-genre").textContent=(movie.genre||"FEATURE PRESENTATION").toUpperCase();
   $("film-runtime").textContent=movie.runtime||"— MIN";$("film-rating").textContent=movie.rating||"NR";
@@ -591,8 +610,8 @@ function flipFilm() {
   const art=$("film-art");
   art.classList.toggle("flipped");
   const isBack=art.classList.contains("flipped");
-  $("film-back").hidden=!isBack;
-  $("film-info").style.display=isBack?"none":"flex";
+  $("film-back").hidden=true;
+  $("film-info").style.display="flex";
 }
 
 function investigateAnomaly(target) {
@@ -712,6 +731,9 @@ function formatTime(seconds) {
 function updateUI(delta) {
   if(started && !paused) elapsedTime+=delta;
   $("clock-readout").textContent=formatTime(elapsedTime);
+  let nearest=null,nearestDistance=Infinity;
+  for(const section of sideSections){const distance=Math.abs(section.position.z-player.position.z);if(distance<nearestDistance){nearest=section;nearestDistance=distance;}}
+  if(nearest)$("aisle-name").textContent=AISLE_LABELS[((nearest.userData.aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length];
   const speed=Math.sqrt(player.velocity.x*player.velocity.x+player.velocity.z*player.velocity.z);
   $("speed-readout").textContent=running&&speed>.7?"RUN":"SP";
   if(flashlightOn){
@@ -923,6 +945,6 @@ async function init() {
 
 // Quiet studio-mark loading screen, as in the reference.
 progress.style.width="12%";
-const bootMessages=["REWINDING TAPES","STOCKING SHELVES","ADJUSTING TRACKING","CLEANING THE HEADS","WARMING UP THE TUBES","SWITCHING ON THE NEON"];
+const bootMessages=["REWINDING TAPES","STOCKING SHELVES","ADJUSTING TRACKING","CLEANING THE HEADS","SORTING THE RETURNS","DUSTING THE COVERS","WARMING UP THE TUBES","CHECKING LATE FEES","SWITCHING ON THE NEON","MOPPING AISLE 7","DEGAUSSING THE SCREENS","COUNTING THE TILL","STAMPING THE DUE DATES","PATCHING SNAPPED TAPE","RELABELING THE SPINES","PEELING OFF PRICE TAGS","RESTOCKING THE POPCORN","SETTING THE VCR CLOCK","UNTANGLING THE CABLES","REPLACING THE FLUORESCENTS","FIXING THE FLICKERING SIGN","FINDING THE REMOTE","RESHELVING HORROR","WAKING THE NIGHT SHIFT","LOCKING THE BACK ROOM"];
 let bootMessageIndex=0;setInterval(()=>{if($("boot-status"))$("boot-status").textContent=bootMessages[bootMessageIndex++%bootMessages.length];},520);
 setTimeout(()=>{progress.style.width="38%";},180);setTimeout(()=>{progress.style.width="64%";},420);init();
