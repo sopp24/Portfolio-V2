@@ -1,38 +1,57 @@
 # Midnight Video — Portfolio V2
 
-A browser-based, procedural reconstruction of the Midnight Video VHS store, built as a full-screen Three.js / WebGL2 experience.
+A clean-room, browser-based recreation of the Midnight Video experience using Three.js, WebGL2, GLSL post-processing and WebXR. The geometry, generated covers and interface code in this repository are original; the site owner's private Letterboxd archive, API credentials, and original proprietary artwork are not included.
 
-## Run
+## Run and publish
 
-Open `index.html` from a static web server, or publish the repository with GitHub Pages. Three.js and its post-processing modules are loaded from jsDelivr.
+Serve `index.html` from a static web host. GitHub Pages works with the repository root. Three.js and post-processing modules are loaded from jsDelivr.
 
-## Desktop controls
+## Controls
 
-- WASD — walk
-- Mouse — look around
-- Shift — run
-- Space — jump
-- C — crouch
-- F — flashlight
-- E — inspect a VHS / investigate an anomaly
-- M — movie index
-- R — Survival Mode
-- Escape — pause / close a panel
+| Input | Action |
+|---|---|
+| WASD | Walk |
+| Mouse | Look / aim |
+| Mouse wheel | Walk forward / backward |
+| Shift | Run |
+| Space | Jump |
+| C | Crouch |
+| F | Flashlight |
+| E / click | Take or inspect a tape |
+| M | Movie index |
+| R | Survival Mode |
+| V | WebXR VR session |
+| H / ? | Help |
+| Esc | Pause / close panel |
 
-## Included
+Touch devices have a movement pad, run and examine controls. WebXR requires a compatible headset, browser and secure HTTPS origin.
 
-- Procedurally built video-store environment with long VHS shelving, fluorescent lighting, signage, a CRT screen, fog, bloom, grain, scanlines and subtle lens distortion.
-- First-person movement, mouse look, pointer lock, keyboard and touch controls.
-- Interactive VHS cases with generated cover art and film details.
-- Searchable movie index.
-- Optional Survival Mode with 38 hidden anomalies.
-- Flashlight with battery management, sound ambience toggle and WebXR entry attempt.
+## Recreated systems
 
-All 3D geometry and cover artwork in this reconstruction are generated at runtime. The film catalogue is a curated sample used to populate the procedural store; it is not the original Letterboxd / TMDB archive.
+- Endless aisle streaming: shelves, aisle categories, ceiling fluorescents, floor and side walls are recycled as the player walks in either direction.
+- Mixed face-out movie covers and readable VHS spines, with individual reusable GPU textures to limit memory growth as the catalogue streams.
+- Tapes slide out of the shelf when targeted, then open an inspection panel with a reversible front/back sleeve, synopsis, year, director, cast and catalogue information.
+- Searchable, filterable, sortable and paginated film index.
+- Letterboxd CSV import, duplicate removal, browser-side archive persistence and on-demand TMDB metadata/poster enrichment.
+- Survival Mode with 38 varied anomalies placed in the aisles.
+- First-person movement, jump, run, crouch, flashlight/battery, store ambience, CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support.
+- Responsive desktop and touch layouts.
 
+## Load the original-sized personal archive
 
-## Letterboxd archive and TMDB
+The reference is publicly described as using roughly 10,000 films from the creator's personal Letterboxd history and watchlist, with film metadata and artwork supplied through TMDB. That private source export and its API credentials are not publicly distributed.
 
-The reference experience is publicly described as a streamed Three.js / WebGL2 VHS store using a private Letterboxd archive and TMDB artwork/metadata. The creator's personal export and proprietary original assets are not public, so they are not bundled here.
+To populate this repository with your own full collection:
 
-Open the Movie Index with `M`, select **IMPORT CSV**, and import your own Letterboxd export files (for example `watched.csv` and `watchlist.csv`). Titles are deduplicated by name and year and stored locally. Add a TMDB API Read Access Token to load posters, genres, runtime, director, cast and synopsis as individual tapes are inspected. Metadata is fetched on demand to avoid thousands of requests at startup.
+1. Export your Letterboxd data and open the Movie Index in the experience with `M`.
+2. Choose **IMPORT CSV** and select your Letterboxd `watched.csv`, `watchlist.csv`, or other export files. The importer deduplicates by title and release year.
+3. To load original movie artwork and metadata, provide your own TMDB API Read Access Token in the index panel. Lookups happen when a tape is inspected rather than firing thousands of requests on page load.
+
+The default built-in sample catalogue is a small demo, not the creator's 10,000-film dataset. A personal CSV is required to reproduce that data layer faithfully.
+
+## Project files
+
+- `index.html` — full-screen experience and overlay panels
+- `styles.css` — interface, responsive behaviour and VHS sleeve styling
+- `main.js` — Three.js scene, controls, tape catalogue, imports and interactions
+- `Dirtyline 36daysoftype 2022.*` — original repository font assets retained
