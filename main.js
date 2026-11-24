@@ -405,7 +405,8 @@ function showToast(message) {
 }
 
 function requestLock() {
-  if(!renderer||paused) return;
+  const touchDevice=window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  if(!renderer||paused||touchDevice) return;
   if(renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
 }
 
