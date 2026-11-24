@@ -36,6 +36,8 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Searchable, filterable, sortable and paginated film index.
 - Letterboxd CSV import, duplicate removal, browser-side archive persistence, progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected.
 - Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store.
+- Full pause behaviour for the film/library panels, including frozen movement, look interaction, in-game clock and flashlight battery; movement keys and touch controls are cleared on focus loss or when the interface closes.
+- Recycled shelf sections reset any extracted cassette to its correct seated position and clear stale selection state before receiving the next catalogue segment.
 - Survival Mode with 38 varied anomalies placed in the aisles.
 - Dynamic desktop depth of field that follows the cassette under inspection, eased VHS extraction with a subtle tilt, and a short inspection-panel entrance transition; depth of field is skipped on touch devices for smoother rendering.
 - First-person movement, jump, run, crouch and flashlight/battery; opt-in layered store ambience with a spatial TV hum, speed-sensitive footsteps and subtle tape/anomaly interaction sounds.
