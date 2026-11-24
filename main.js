@@ -894,7 +894,7 @@ function refreshTapeCatalogue(){
   sideSections.forEach(assignSectionCatalogue);
 }
 function scheduleImportedMoviesSave(){
-  if(posterPersistTimer)clearTimeout(posterPersistTimer);
+  if(posterPersistTimer)return;
   posterPersistTimer=setTimeout(()=>{posterPersistTimer=0;saveImportedMovies();},900);
 }
 function queueVisiblePosters(){
@@ -914,12 +914,15 @@ function queueVisiblePosters(){
   }
   pumpPosterQueue();
 }
+function isMovieOnNearbyShelf(movie){
+  return sideSections.some(section=>Math.abs(section.position.z-player.position.z)<=9.5&&(section.userData.caseRoots||[]).some(root=>!root.userData.spineMode&&root.userData.movie===movie));
+}
 function pumpPosterQueue(){
   if(posterQueuePaused||!tmdbToken)return;
   while(posterQueueActive<2&&posterQueue.length){
     const job=posterQueue.shift(),movie=job.movie;
     if(!movie||job.token!==tmdbToken){if(movie)movie.posterQueued=false;continue;}
-    if(movie.posterUrl||movie.posterLookupDone||movie.posterLoading){movie.posterQueued=false;continue;}
+    if(movie.posterUrl||movie.posterLookupDone||movie.posterLoading||!isMovieOnNearbyShelf(movie)){movie.posterQueued=false;continue;}
     posterQueueActive++;
     loadTMDBPoster(movie,job.token).finally(()=>{
       posterQueueActive--;
@@ -1003,7 +1006,7 @@ async function enrichMovieWithTMDB(movie){
       const results=(await response.json()).results||[];if(!results.length)throw new Error("No title match");
       const match=results.find(r=>!movie.year||!r.release_date||Number(r.release_date.slice(0,4))===Number(movie.year))||results[0];
       movieId=match.id;movie.tmdbId=movieId;
-      if(match.poster_path&&!movie.posterUrl)movie.posterUrl="https://image.tmdb.org/t/p/w500"+match.poster_path;
+      if(match.poster_path&&!movie.posterUrl){movie.posterUrl="https://image.tmdb.org/t/p/w500"+match.poster_path;refreshTapeCatalogue();}
     }
     const details=await fetch("https://api.themoviedb.org/3/movie/"+movieId+"?append_to_response=credits",{headers});
     if(!details.ok)throw new Error("TMDB details failed: "+details.status);
