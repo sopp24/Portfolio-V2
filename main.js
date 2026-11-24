@@ -64,6 +64,7 @@ let scene, camera, renderer, composer, crtPass, bokehPass, clock, playerRig, xrC
 let bokehFocus = 8;
 const focusCameraPosition = new THREE.Vector3();
 const focusTargetPosition = new THREE.Vector3();
+const focusCameraDirection = new THREE.Vector3();
 let floorSurface, ceilingSurface;
 const endlessWalls = [];
 const streamedFixtures = [];
@@ -888,11 +889,13 @@ function animate() {
       let desiredFocus=8;
       if(selectedTarget?.userData.kind==="movie"){
         camera.getWorldPosition(focusCameraPosition);
+        camera.getWorldDirection(focusCameraDirection);
         selectedTarget.getWorldPosition(focusTargetPosition);
-        desiredFocus=THREE.MathUtils.clamp(focusCameraPosition.distanceTo(focusTargetPosition),2.4,16);
+        focusTargetPosition.sub(focusCameraPosition);
+        desiredFocus=THREE.MathUtils.clamp(focusTargetPosition.dot(focusCameraDirection),2.4,16);
       }
       bokehFocus=THREE.MathUtils.damp(bokehFocus,desiredFocus,4.5,delta);
-      const focusUniform=bokehPass.materialBokeh?.uniforms?.focus;
+      const focusUniform=bokehPass.uniforms?.focus;
       if(focusUniform)focusUniform.value=bokehFocus;
     }
     if(crtPass)crtPass.uniforms.time.value=elapsedTime;
