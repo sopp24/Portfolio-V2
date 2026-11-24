@@ -4,6 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { BokehPass } from "three/addons/postprocessing/BokehPass.js";
 
 /* Midnight Video — an original, procedural reconstruction of the endless VHS store. */
 
@@ -59,15 +60,20 @@ const PALETTES = [
   ["#596c68","#b96f50","#dfd1b4"],["#473d6b","#bd7b55","#e2d7c3"]
 ];
 
-let scene, camera, renderer, composer, crtPass, clock;
+let scene, camera, renderer, composer, crtPass, bokehPass, clock;
 let initialized = false, started = false, paused = false, isLocked = false;
+let movieCatalogue = MOVIES.slice();
+let tmdbToken = localStorage.getItem("midnightvideo.tmdbToken") || "";
+let pointerLookX = 0, pointerLookY = 0, pointerBaseYaw = -Math.PI/2;
 let yaw = -Math.PI / 2, pitch = 0, verticalVelocity = 0, grounded = true;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
 let flashlight, ambientAudio = null, audioContext = null, audioGain = null;
 const keys = Object.create(null);
 const interactables = [];
+const animatedCases = [];
 const sideSections = [];
+const AISLE_LABELS = ["THRILLER","HORROR","SCI-FI","CRIME","DRAMA","CULT CLASSICS","ACTION","NO HOPE","MYSTERY","ANIMATION"];
 const anomalyObjects = [];
 const textureCache = new Map();
 const raycaster = new THREE.Raycaster();
@@ -125,15 +131,21 @@ function posterCanvas(movie, index) {
   ctx.fillStyle = "#f5ead0"; ctx.fillRect(22,50,3,65);
   ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(31,50,1,70);
   ctx.fillStyle = "rgba(10,10,10,.22)"; ctx.fillRect(0,0,10,384);
+  if(movie.posterUrl){
+    const image=new Image();image.crossOrigin="anonymous";
+    image.onload=()=>{ctx.clearRect(0,0,256,384);const scale=Math.max(256/image.width,384/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,(256-w)/2,(384-h)/2,w,h);const cached=textureCache.get((movie.title||"")+"|"+(movie.year||0));if(cached)cached.needsUpdate=true;};
+    image.src=movie.posterUrl;
+  }
   return canvas;
 }
 
 function getMovieTexture(movie, index) {
-  if (textureCache.has(movie.title)) return textureCache.get(movie.title);
-  const texture = new THREE.CanvasTexture(posterCanvas(movie,index));
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
-  textureCache.set(movie.title,texture);
+  const textureKey=(movie.title||"")+"|"+(movie.year||0);
+  if(textureCache.has(textureKey))return textureCache.get(textureKey);
+  const texture=new THREE.CanvasTexture(posterCanvas(movie,index));
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=renderer?renderer.capabilities.getMaxAnisotropy():4;
+  textureCache.set(textureKey,texture);
   return texture;
 }
 
@@ -160,22 +172,14 @@ function createPosterSign(text, width, height, color) {
 }
 
 function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex) {
-  const root = new THREE.Group();
-  root.position.set(position[0],position[1],position[2]);
-  root.rotation.y = rotationY;
-  root.userData.kind = "movie";
-  root.userData.movie = movie;
-  root.userData.catalogueIndex = catalogueIndex;
-  const body = new THREE.Mesh(caseGeometry,caseMaterial);
-  root.add(body);
-  const cover = new THREE.Mesh(new THREE.PlaneGeometry(.425,.665),new THREE.MeshBasicMaterial({map:getMovieTexture(movie,movieIndex),side:THREE.DoubleSide}));
-  cover.position.set(0,0,.062);
-  root.add(cover);
-  body.userData.root = root;
-  cover.userData.root = root;
-  interactables.push(body,cover);
-  parent.add(root);
-  return root;
+  const root=new THREE.Group();
+  root.position.set(position[0],position[1],position[2]);root.rotation.y=rotationY;
+  root.userData.kind="movie";root.userData.movie=movie;root.userData.catalogueIndex=catalogueIndex;
+  root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;animatedCases.push(root);
+  const body=new THREE.Mesh(caseGeometry,caseMaterial);root.add(body);
+  const cover=new THREE.Mesh(new THREE.PlaneGeometry(.274,.475),new THREE.MeshBasicMaterial({map:getMovieTexture(movie,movieIndex),side:THREE.DoubleSide}));
+  cover.position.set(0,0,.052);root.add(cover);
+  body.userData.root=root;cover.userData.root=root;interactables.push(body,cover);parent.add(root);return root;
 }
 
 let caseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial;
@@ -185,15 +189,15 @@ function createShelfModule(side, centerZ, segmentNumber) {
   parent.position.set(side * 4.45,0,centerZ);
   parent.rotation.y = side === -1 ? Math.PI/2 : -Math.PI/2;
   const back = addBox(parent,[8.15,4.3,.12],[0,2.2,-.48],pegboardMaterial);
-  const levels = [.55,1.48,2.41,3.34];
+  const levels = [.52,1.46,2.40,3.34];
   levels.forEach((y,level)=>{
     addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
     addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
-    const count = 9;
+    const count = 22;
     for(let i=0;i<count;i++){
-      const movieIndex = (segmentNumber*13 + level*17 + i*3 + (side===1?7:0)) % MOVIES.length;
-      const movie = MOVIES[movieIndex];
-      const x = (i-(count-1)/2)*.82;
+      const movieIndex=(segmentNumber*37+level*101+i*3+(side===1?7:0))%movieCatalogue.length;
+      const movie=movieCatalogue[movieIndex];
+      const x=(i-(count-1)/2)*.36;
       addCase(parent,[x,y+.43,.18],0,movie,movieIndex,segmentNumber*100+level*20+i);
     }
   });
@@ -203,7 +207,7 @@ function createShelfModule(side, centerZ, segmentNumber) {
   for(let i=0;i<11;i++){
     addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
   }
-  const label = createPosterSign(segmentNumber%2===0?"NEW ARRIVALS":"STAFF PICKS",2.2,.36,"#d7dfc1");
+  const label = createPosterSign(AISLE_LABELS[segmentNumber%AISLE_LABELS.length],2.2,.36,segmentNumber%4===3?"#c77c62":"#d7dfc1");
   label.position.set(0,4.48,-.35); parent.add(label);
   sideSections.push(parent);
   scene.add(parent);
@@ -219,9 +223,9 @@ function createEndWall() {
     addBox(wall,[17.5,.11,1.1],[0,y,0],shelfMaterial);
     addBox(wall,[17.45,.05,.05],[0,y+.07,.49],metalMaterial);
     for(let i=0;i<28;i++){
-      const movieIndex=(i*5+level*9+6)%MOVIES.length;
+      const movieIndex=(i*5+level*9+6)%movieCatalogue.length;
       const x=(i-13.5)*.62;
-      addCase(wall,[x,y+.43,.18],0,MOVIES[movieIndex],movieIndex,500+level*30+i);
+      addCase(wall,[x,y+.43,.18],0,movieCatalogue[movieIndex],movieIndex,500+level*30+i);
     }
   }
   const sign=createPosterSign("MEMBERSHIP REQUIRED",3.2,.8,"#d5d7c8");
@@ -282,11 +286,15 @@ function createWorld() {
   const backWall=addBox(scene,[10.5,5.2,.18],[0,2.55,42],wallMaterial);
 
   shelfMaterial=new THREE.MeshStandardMaterial({color:0x333a36,roughness:.68,metalness:.45});
-  pegboardMaterial=new THREE.MeshStandardMaterial({color:0x222b26,roughness:.9});
+  const pegCanvas=document.createElement("canvas");pegCanvas.width=512;pegCanvas.height=512;
+  const pg=pegCanvas.getContext("2d");pg.fillStyle="#222b26";pg.fillRect(0,0,512,512);
+  for(let y=9;y<512;y+=18)for(let x=9;x<512;x+=18){pg.fillStyle="#101713";pg.beginPath();pg.arc(x,y,2.25,0,Math.PI*2);pg.fill();pg.fillStyle="rgba(116,132,116,.12)";pg.beginPath();pg.arc(x-1,y-1,1.2,0,Math.PI*2);pg.fill();}
+  const pegTex=new THREE.CanvasTexture(pegCanvas);pegTex.wrapS=pegTex.wrapT=THREE.RepeatWrapping;pegTex.repeat.set(3,2);
+  pegboardMaterial=new THREE.MeshStandardMaterial({map:pegTex,color:0xffffff,roughness:.9});
   metalMaterial=new THREE.MeshStandardMaterial({color:0x59625b,roughness:.45,metalness:.7});
   pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
   caseMaterial=new THREE.MeshStandardMaterial({color:0x161a18,roughness:.64,metalness:.08});
-  caseGeometry=new THREE.BoxGeometry(.455,.69,.135);
+  caseGeometry=new THREE.BoxGeometry(.292,.52,.105);
 
   for(let i=0;i<5;i++){
     createShelfModule(-1,-16+i*8,i);
@@ -307,7 +315,9 @@ function createWorld() {
   const backSign=createPosterSign("OPEN 24 HOURS. ALWAYS.",4.5,.55,"#d4e0c4");
   backSign.position.set(0,4.55,-12); backSign.rotation.y=0; scene.add(backSign);
   const aisleSign=createPosterSign("THRILLER  /  SCI-FI",3.2,.45,"#d4e0c4");
-  aisleSign.position.set(0,4.48,10); aisleSign.rotation.y=Math.PI; scene.add(aisleSign);
+  aisleSign.position.set(0,4.48,10);aisleSign.rotation.y=Math.PI;scene.add(aisleSign);
+  const noHopeSign=createPosterSign("NO HOPE",1.8,.42,"#d48a78");noHopeSign.position.set(-4.9,4.18,-20);noHopeSign.rotation.y=Math.PI/2;scene.add(noHopeSign);
+  const staffSign=createPosterSign("STAFF ONLY",1.55,.34,"#c7cbb8");staffSign.position.set(4.9,4.2,-28);staffSign.rotation.y=-Math.PI/2;scene.add(staffSign);
 
   // A little TV and counter detail in the corner of the store.
   const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
@@ -383,6 +393,8 @@ const CRTShader = {
 function createPostprocessing() {
   composer=new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene,camera));
+  bokehPass=new BokehPass(scene,camera,{focus:8,aperture:0.000018,maxblur:0.007,width:window.innerWidth,height:window.innerHeight});
+  composer.addPass(bokehPass);
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth,window.innerHeight),.36,.55,.76));
   crtPass=new ShaderPass(CRTShader);
   crtPass.uniforms.resolution.value.set(window.innerWidth*renderer.getPixelRatio(),window.innerHeight*renderer.getPixelRatio());
@@ -412,7 +424,7 @@ function requestLock() {
 
 function onPointerLockChange() {
   isLocked=document.pointerLockElement===renderer.domElement;
-  if(started && !isLocked && !$("film-panel").hidden && !$("library-panel").hidden) return;
+  if(started && !isLocked && (!$("film-panel").hidden || !$("library-panel").hidden)) return;
   if(started && !isLocked && $("film-panel").hidden && $("library-panel").hidden){
     paused=true; $("pause-screen").hidden=false;
   } else if(isLocked){
@@ -422,13 +434,9 @@ function onPointerLockChange() {
 
 function enterStore() {
   if(!initialized || started) return;
-  started=true; paused=false;
-  boot.classList.add("leaving");
-  hud.classList.add("visible");
-  hud.setAttribute("aria-hidden","false");
-  $("look-hint").style.opacity=".9";
-  requestLock();
-  clock.start();
+  started=true;paused=false;boot.classList.add("leaving");
+  hud.classList.add("visible");hud.setAttribute("aria-hidden","false");
+  $("look-hint").style.opacity=".9";clock.start();
 }
 
 function updateCamera() {
@@ -438,7 +446,7 @@ function updateCamera() {
 
 function updateMovement(delta) {
   const touchDevice=window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  if(!started || paused || (!isLocked && !touchDevice)) return;
+  if(!started || paused) return;
   const speed=running?6.6:3.35;
   const axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const axisZ=(keys.KeyS?1:0)-(keys.KeyW?1:0);
@@ -473,46 +481,44 @@ function updateWorldStreaming() {
   }
 }
 
+
 function updateLook() {
   raycaster.setFromCamera(screenCenter,camera);
   const hits=raycaster.intersectObjects(interactables,false);
   let next=null;
   for(const hit of hits){
-    const root=hit.object.userData.root;
-    if(!root) continue;
-    if(root.userData.kind==="anomaly" && (!survivalMode || root.userData.found)) continue;
-    next=root; break;
+    const root=hit.object.userData.root;if(!root)continue;
+    if(root.userData.kind==="anomaly"&&(!survivalMode||root.userData.found))continue;
+    next=root;break;
   }
   if(selectedTarget!==next){
+    if(selectedTarget&&selectedTarget.userData.kind==="movie")selectedTarget.userData.pullTarget=0;
     selectedTarget=next;
     $("crosshair").classList.toggle("active",!!next);
     $("interaction-hint").hidden=!next;
     $("look-hint").style.opacity=next?"0":"0.9";
-    $("interaction-hint").lastElementChild.textContent=next && next.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":"EXAMINE TAPE";
+    $("interaction-hint").lastElementChild.textContent=next&&next.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":"EXAMINE TAPE";
+    if(next&&next.userData.kind==="movie")next.userData.pullTarget=.46;
   }
 }
 
+
 function openFilm(movie,index) {
-  if(!movie) return;
-  $("film-panel").hidden=false;
-  $("film-back").hidden=true;
-  $("film-art").classList.remove("flipped");
-  const poster=posterCanvas(movie,MOVIES.indexOf(movie)>=0?MOVIES.indexOf(movie):0);
+  if(!movie)return;
+  $("film-panel").hidden=false;$("film-back").hidden=true;$("film-art").classList.remove("flipped");
+  const poster=posterCanvas(movie,Math.max(0,movieCatalogue.indexOf(movie)));
   $("film-art").innerHTML="";
-  const img=document.createElement("img"); img.src=poster.toDataURL("image/png"); img.alt=movie.title+" VHS cover";
-  $("film-art").appendChild(img);
+  const img=document.createElement("img");img.src=movie.posterUrl||poster.toDataURL("image/png");img.alt=movie.title+" VHS cover";$("film-art").appendChild(img);
   $("film-title").textContent=movie.title.toUpperCase();
-  $("film-year").textContent=String(movie.year);
-  $("film-genre").textContent=movie.genre.toUpperCase();
-  $("film-runtime").textContent=movie.runtime;
-  $("film-rating").textContent=movie.rating;
-  $("film-director").textContent=movie.director;
-  $("film-cast").textContent=movie.cast;
-  $("film-synopsis").textContent=movie.synopsis;
-  $("film-back-title").textContent=movie.title.toUpperCase()+" / "+movie.year;
-  $("film-back-synopsis").textContent=movie.synopsis;
+  $("film-year").textContent=String(movie.year||"—");$("film-genre").textContent=(movie.genre||"FEATURE PRESENTATION").toUpperCase();
+  $("film-runtime").textContent=movie.runtime||"— MIN";$("film-rating").textContent=movie.rating||"NR";
+  $("film-director").textContent=movie.director||"";$("film-cast").textContent=movie.cast||"";
+  $("film-synopsis").textContent=movie.synopsis||"";
+  $("film-back-title").textContent=movie.title.toUpperCase()+" / "+(movie.year||"");
+  $("film-back-synopsis").textContent=movie.synopsis||"";
   $("film-catalogue-id").textContent="MV—"+String(index||Math.floor(Math.random()*9999)).padStart(4,"0");
   document.exitPointerLock?.();
+  if(tmdbToken)enrichMovieWithTMDB(movie).then(()=>{if(!$("film-panel").hidden&&$("film-title").textContent===movie.title.toUpperCase())renderFilmMetadata(movie);});
 }
 
 function flipFilm() {
@@ -564,26 +570,24 @@ function closePanels() {
   if(started) requestLock();
 }
 
+
 function renderMovieList(query) {
-  const list=$("movie-list"); list.innerHTML="";
-  const q=(query||"").trim().toLowerCase();
-  const results=MOVIES.filter(m=>!q || m.title.toLowerCase().includes(q) || m.director.toLowerCase().includes(q) || String(m.year).includes(q) || m.genre.toLowerCase().includes(q));
-  $("library-count").textContent=results.length+" TITLES / 10,000+ ARCHIVE";
+  const list=$("movie-list");list.innerHTML="";
+  const q=(query||"").trim().toLowerCase(),genre=$("genre-filter").value,sort=$("library-sort").value;
+  let results=movieCatalogue.filter(m=>(!q||m.title.toLowerCase().includes(q)||(m.director||"").toLowerCase().includes(q)||String(m.year||"").includes(q)||(m.genre||"").toLowerCase().includes(q))&&(!genre||(m.genre||"").toLowerCase().includes(genre.toLowerCase())));
+  results.sort((a,b)=>sort==="za"?b.title.localeCompare(a.title):sort==="year-desc"?(b.year||0)-(a.year||0):sort==="year-asc"?(a.year||0)-(b.year||0):a.title.localeCompare(b.title));
+  $("library-count").textContent=results.length+" / "+movieCatalogue.length+" TITLES";
   results.forEach((movie,i)=>{
-    const row=document.createElement("button"); row.className="movie-row"; row.type="button";
-    const img=document.createElement("img"); img.className="movie-mini"; img.alt=""; img.src=posterCanvas(movie,MOVIES.indexOf(movie)).toDataURL("image/jpeg",.68);
-    const name=document.createElement("span");
-    const title=document.createElement("strong"); title.textContent=movie.title;
-    const director=document.createElement("small"); director.textContent=movie.director;
-    name.append(title,director);
-    const year=document.createElement("span"); year.className="movie-date"; year.textContent=String(movie.year);
-    const genre=document.createElement("span"); genre.className="movie-genre"; genre.textContent=movie.genre.toUpperCase();
-    const arrow=document.createElement("span"); arrow.className="movie-arrow"; arrow.textContent="↗";
-    row.append(img,name,year,genre,arrow);
-    row.addEventListener("click",()=>{closePanels();openFilm(movie,3000+i);});
-    list.appendChild(row);
+    const row=document.createElement("button");row.className="movie-row";row.type="button";
+    const img=document.createElement("img");img.className="movie-mini";img.alt="";img.src=movie.posterUrl||posterCanvas(movie,movieCatalogue.indexOf(movie)).toDataURL("image/jpeg",.68);
+    const name=document.createElement("span"),title=document.createElement("strong"),director=document.createElement("small");
+    title.textContent=movie.title;director.textContent=movie.director||"Metadata pending";name.append(title,director);
+    const year=document.createElement("span");year.className="movie-date";year.textContent=String(movie.year||"—");
+    const genreLabel=document.createElement("span");genreLabel.className="movie-genre";genreLabel.textContent=(movie.genre||"UNKNOWN").toUpperCase();
+    const arrow=document.createElement("span");arrow.className="movie-arrow";arrow.textContent="↗";
+    row.append(img,name,year,genreLabel,arrow);row.addEventListener("click",()=>{closePanels();openFilm(movie,3000+i);});list.appendChild(row);
   });
-  if(results.length===0){const empty=document.createElement("p");empty.className="panel-eyebrow";empty.textContent="NO TAPES MATCH YOUR SEARCH.";list.appendChild(empty);}
+  if(!results.length){const empty=document.createElement("p");empty.className="panel-eyebrow";empty.textContent="NO TAPES MATCH YOUR SEARCH.";list.appendChild(empty);}
 }
 
 function toggleAudio() {
@@ -638,48 +642,146 @@ function updateUI(delta) {
   $("battery-value").textContent=Math.round(flashlightBattery)+"%";
 }
 
+
 function animate() {
   requestAnimationFrame(animate);
-  if(!initialized) return;
+  if(!initialized)return;
   const delta=Math.min(clock.getDelta(),.05);
-  if(started && !paused && (isLocked || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches))) updateMovement(delta);
-  else updateCamera();
-  if(started && !paused) updateLook();
+  if(started&&!paused)updateMovement(delta);else updateCamera();
+  if(started&&!paused)updateLook();
+  for(const tape of animatedCases){
+    if(!tape.parent)continue;
+    tape.userData.pull=THREE.MathUtils.damp(tape.userData.pull,tape.userData.pullTarget||0,7,delta);
+    tape.position.z=tape.userData.baseZ+tape.userData.pull;
+  }
   updateUI(delta);
-  if(crtPass) crtPass.uniforms.time.value=elapsedTime;
-  if(composer) composer.render(); else renderer.render(scene,camera);
+  if(crtPass)crtPass.uniforms.time.value=elapsedTime;
+  if(renderer.xr.isPresenting)renderer.render(scene,camera);
+  else if(composer)composer.render();
+  else renderer.render(scene,camera);
+}
+
+
+function csvRows(text){
+  const rows=[];let row=[],field="",quoted=false;
+  for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];
+    if(ch==='"'&&quoted&&next==='"'){field+='"';i++;}
+    else if(ch==='"'){quoted=!quoted;}
+    else if(ch===","&&!quoted){row.push(field);field="";}
+    else if((ch==="\n"||ch==="\r")&&!quoted){if(ch==="\r"&&next==="\n")i++;row.push(field);field="";if(row.some(v=>v.trim()))rows.push(row);row=[];}
+    else field+=ch;
+  }
+  if(field.length||row.length){row.push(field);if(row.some(v=>v.trim()))rows.push(row);}
+  if(!rows.length)return [];
+  const headers=rows.shift().map(h=>h.trim().toLowerCase());
+  return rows.map(values=>Object.fromEntries(headers.map((h,i)=>[h,(values[i]||"").trim()])));
+}
+function importedMovieFromRow(row){
+  const title=row.name||row.title||row["film name"]||row["movie title"];if(!title)return null;
+  const y=Number(row.year||row["release year"]||0);
+  return {title,year:Number.isFinite(y)&&y>0?y:0,genre:"Unknown",runtime:"— MIN",rating:"NR",director:"Metadata pending",cast:"Connect TMDB to load cast",synopsis:"Imported from Letterboxd. Connect a TMDB read access token to load original posters and film data.",letterboxdUrl:row["letterboxd uri"]||"",posterUrl:"",tmdbId:null};
+}
+function movieKey(movie){return (movie.title||"").trim().toLowerCase().replace(/\s+/g," ")+"|"+(movie.year||0);}
+function refreshGenreFilter(){
+  const select=$("genre-filter");if(!select)return;const current=select.value;
+  const genres=[...new Set(movieCatalogue.map(m=>m.genre||"Unknown"))].sort();
+  select.innerHTML='<option value="">ALL GENRES</option>'+genres.map(g=>'<option value="'+g.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">'+g.toUpperCase()+'</option>').join("");
+  if(genres.includes(current))select.value=current;
+}
+function saveImportedMovies(){
+  try{localStorage.setItem("midnightvideo.letterboxd",JSON.stringify(movieCatalogue));$("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" titles stored in this browser.";}
+  catch(e){$("tmdb-status").textContent="Archive too large for local storage. Keep the CSV export to reimport it.";}
+}
+function refreshTapeCatalogue(){
+  if(!movieCatalogue.length)return;
+  const roots=[...new Set(interactables.map(o=>o.userData.root).filter(r=>r&&r.userData.kind==="movie"))];
+  roots.forEach((root,i)=>{const id=(root.userData.catalogueIndex??i)%movieCatalogue.length,movie=movieCatalogue[id];root.userData.movie=movie;root.userData.catalogueIndex=id;const cover=root.children.find(child=>child.material&&child.material.map);if(cover){cover.material.map=getMovieTexture(movie,id);cover.material.needsUpdate=true;}});
+}
+function restoreImportedMovies(){
+  try{const saved=localStorage.getItem("midnightvideo.letterboxd");if(saved){const data=JSON.parse(saved);if(Array.isArray(data)&&data.length)movieCatalogue=data;}}
+  catch(e){console.warn("Could not restore the local Letterboxd archive.",e);}
+  refreshGenreFilter();refreshTapeCatalogue();$("tmdb-token").value=tmdbToken;
+}
+async function importLetterboxdFiles(event){
+  const files=[...(event.target.files||[])];if(!files.length)return;const imported=[];
+  try{
+    for(const file of files)csvRows(await file.text()).forEach(row=>{const item=importedMovieFromRow(row);if(item)imported.push(item);});
+    const merged=new Map(movieCatalogue.map(m=>[movieKey(m),m]));imported.forEach(item=>merged.set(movieKey(item),item));
+    movieCatalogue=[...merged.values()].sort((a,b)=>a.title.localeCompare(b.title));
+    saveImportedMovies();refreshGenreFilter();refreshTapeCatalogue();renderMovieList($("movie-search").value);
+    showToast(imported.length+" LETTERBOXD ROWS IMPORTED");$("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" unique films loaded. Metadata loads as tapes are inspected.";
+  }catch(error){console.error(error);$("tmdb-status").textContent="CSV unreadable. Use a Letterboxd data export.";}
+  finally{event.target.value="";}
+}
+function saveTMDBToken(){
+  tmdbToken=$("tmdb-token").value.trim();try{localStorage.setItem("midnightvideo.tmdbToken",tmdbToken);}catch(e){}
+  $("tmdb-status").textContent=tmdbToken?"TMDB connected. Posters and film data load when tapes are inspected.":"TMDB token cleared.";
+  showToast(tmdbToken?"TMDB CONNECTION SAVED":"TMDB CONNECTION CLEARED");
+}
+async function enrichMovieWithTMDB(movie){
+  if(!tmdbToken||movie.tmdbLoaded||movie.tmdbLoading)return;movie.tmdbLoading=true;
+  try{
+    const headers={Authorization:"Bearer "+tmdbToken,Accept:"application/json"},query=new URLSearchParams({query:movie.title,include_adult:"true"});
+    if(movie.year)query.set("year",String(movie.year));
+    const response=await fetch("https://api.themoviedb.org/3/search/movie?"+query,{headers});
+    if(!response.ok)throw new Error("TMDB search failed: "+response.status);
+    const results=(await response.json()).results||[];if(!results.length)throw new Error("No title match");
+    const match=results.find(r=>!movie.year||!r.release_date||Number(r.release_date.slice(0,4))===Number(movie.year))||results[0];
+    const details=await fetch("https://api.themoviedb.org/3/movie/"+match.id+"?append_to_response=credits",{headers});
+    if(!details.ok)throw new Error("TMDB details failed: "+details.status);
+    const d=await details.json();movie.tmdbId=d.id;movie.year=d.release_date?Number(d.release_date.slice(0,4)):movie.year;
+    movie.genre=(d.genres||[]).map(g=>g.name).join(" / ")||movie.genre;movie.runtime=d.runtime?d.runtime+" MIN":movie.runtime;
+    movie.synopsis=d.overview||movie.synopsis;movie.director=(d.credits?.crew||[]).find(p=>p.job==="Director")?.name||movie.director;
+    movie.cast=(d.credits?.cast||[]).slice(0,4).map(p=>p.name).join(" · ")||movie.cast;
+    movie.posterUrl=d.poster_path?"https://image.tmdb.org/t/p/w500"+d.poster_path:"";movie.tmdbLoaded=true;
+    saveImportedMovies();refreshGenreFilter();refreshTapeCatalogue();
+  }catch(error){console.warn("TMDB metadata:",error);$("tmdb-status").textContent="TMDB lookup failed for "+movie.title+". Check your token.";}
+  finally{movie.tmdbLoading=false;}
+}
+function renderFilmMetadata(movie){
+  $("film-year").textContent=String(movie.year||"—");$("film-genre").textContent=(movie.genre||"FEATURE PRESENTATION").toUpperCase();
+  $("film-runtime").textContent=movie.runtime||"— MIN";$("film-rating").textContent=movie.rating||"NR";
+  $("film-director").textContent=movie.director||"";$("film-cast").textContent=movie.cast||"";$("film-synopsis").textContent=movie.synopsis||"";
+  $("film-back-title").textContent=(movie.title||"").toUpperCase()+" / "+(movie.year||"");$("film-back-synopsis").textContent=movie.synopsis||"";
+  if(movie.posterUrl){const img=$("film-art").querySelector("img");if(img)img.src=movie.posterUrl;}
 }
 
 function bindEvents() {
-  enterButton.addEventListener("click",enterStore);
-  $("play-toggle").addEventListener("click",()=>{if(paused){paused=false;requestLock();}else if(isLocked){document.exitPointerLock?.();}else requestLock();});
+  if(enterButton) enterButton.addEventListener("click",enterStore);
+  $("play-toggle").addEventListener("click",()=>{toggleAudio();$("play-toggle").querySelector("span:last-child").textContent=$("sound-toggle").getAttribute("aria-pressed")==="true"?"PAUSE":"PLAY";});
   $("resume-store").addEventListener("click",()=>{paused=false;$("pause-screen").hidden=true;requestLock();});
   $("film-close").addEventListener("click",closePanels);
   $("library-close").addEventListener("click",closePanels);
   $("flip-film").addEventListener("click",flipFilm);
   $("flip-back").addEventListener("click",()=>{flipFilm();});
-  $("library-open").addEventListener("click",openLibrary);
   $("survival-toggle").addEventListener("click",()=>setSurvival(!survivalMode));
   $("vr-toggle").addEventListener("click",enterVR);
   $("sound-toggle").addEventListener("click",toggleAudio);
   $("movie-search").addEventListener("input",e=>renderMovieList(e.target.value));
+  $("genre-filter").addEventListener("change",()=>renderMovieList($("movie-search").value));
+  $("library-sort").addEventListener("change",()=>renderMovieList($("movie-search").value));
+  $("import-library").addEventListener("click",()=>$("library-file").click());
+  $("library-file").addEventListener("change",importLetterboxdFiles);
+  $("tmdb-token").value=tmdbToken;$("save-tmdb").addEventListener("click",saveTMDBToken);
+  $("help-toggle").addEventListener("click",()=>{const card=$("help-card");card.hidden=!card.hidden;$("help-toggle").setAttribute("aria-expanded",String(!card.hidden));});
   document.addEventListener("pointerlockchange",onPointerLockChange);
   document.addEventListener("mousemove",e=>{
-    if(!isLocked || paused || !$("film-panel").hidden || !$("library-panel").hidden) return;
-    yaw-=e.movementX*.00215; pitch-=e.movementY*.00215;
-    pitch=THREE.MathUtils.clamp(pitch,-1.22,1.22);
-    updateCamera();
+    if(paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
+    if(isLocked){yaw-=e.movementX*.00215;pitch-=e.movementY*.00215;}
+    else{pointerLookX=(e.clientX/window.innerWidth-.5)*2;pointerLookY=(e.clientY/window.innerHeight-.5)*2;yaw=pointerBaseYaw+pointerLookX*.56;pitch=pointerLookY*-.26;}
+    pitch=THREE.MathUtils.clamp(pitch,-1.22,1.22);updateCamera();
   });
   document.addEventListener("keydown",e=>{
     keys[e.code]=true;
     if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
     if(e.repeat) return;
-    if(e.code==="KeyE" && started && isLocked) interact();
+    if(e.code==="KeyE" && started) interact();
     if(e.code==="KeyF" && started) setFlashlight(!flashlightOn);
     if(e.code==="KeyC" && started){crouching=!crouching;showToast(crouching?"CROUCH":"STANDING");}
     if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=true;
     if(e.code==="KeyM" && started){if($("library-panel").hidden)openLibrary();else closePanels();}
     if(e.code==="KeyR" && started)setSurvival(!survivalMode);
+    if(e.code==="KeyV" && started)enterVR();
     if(e.code==="Escape" && !$("film-panel").hidden){closePanels();}
     if(e.code==="Enter" && paused){paused=false;requestLock();}
   });
@@ -687,9 +789,14 @@ function bindEvents() {
     keys[e.code]=false;
     if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=false;
   });
-  canvas.addEventListener("click",()=>{
-    if(started && !isLocked && $("film-panel").hidden && $("library-panel").hidden && !paused) requestLock();
-  });
+  canvas.addEventListener("click",()=>{if(started&&!paused&&$("film-panel").hidden&&$("library-panel").hidden)interact();});
+  canvas.addEventListener("wheel",e=>{
+    if(!started||paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
+    e.preventDefault();const step=THREE.MathUtils.clamp(Math.abs(e.deltaY)*.004,0,.9)*Math.sign(e.deltaY);
+    tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));player.position.addScaledVector(tempForward,step);
+    player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);player.position.z=THREE.MathUtils.clamp(player.position.z,-34,34);
+    updateWorldStreaming();updateCamera();
+  },{passive:false});
   // Mobile controls hold movement keys; touch-drag rotates the camera.
   document.querySelectorAll("[data-move]").forEach(button=>{
     const moveMap={forward:"KeyW",back:"KeyS",left:"KeyA",right:"KeyD"};
@@ -717,12 +824,8 @@ async function init() {
     if(!window.WebGL2RenderingContext) throw new Error("WebGL 2 is not available.");
     createWorld();
     bindEvents();
-    initialized=true;
-    progress.style.width="100%";
-    enterButton.disabled=false;
-    $("boot-kicker").textContent="THE STORE IS OPEN";
-    $("boot-copy").innerHTML="An endless video store on a night that never ends.<br>Take a look around. Stay as long as you like.";
-    animate();
+    initialized=true;progress.style.width="100%";$("boot-status").textContent="OPEN 24 HOURS. ALWAYS.";
+    restoreImportedMovies();animate();setTimeout(enterStore,650);
   } catch(error) {
     console.error(error);
     boot.hidden=true;
@@ -732,8 +835,8 @@ async function init() {
   }
 }
 
-// The first frame remains intentionally close to the reference: a quiet studio mark on black.
+// Quiet studio-mark loading screen, as in the reference.
 progress.style.width="12%";
-setTimeout(()=>{progress.style.width="38%";},180);
-setTimeout(()=>{progress.style.width="64%";},420);
-init();
+const bootMessages=["REWINDING TAPES","STOCKING SHELVES","ADJUSTING TRACKING","CLEANING THE HEADS","WARMING UP THE TUBES","SWITCHING ON THE NEON"];
+let bootMessageIndex=0;setInterval(()=>{if($("boot-status"))$("boot-status").textContent=bootMessages[bootMessageIndex++%bootMessages.length];},520);
+setTimeout(()=>{progress.style.width="38%";},180);setTimeout(()=>{progress.style.width="64%";},420);init();

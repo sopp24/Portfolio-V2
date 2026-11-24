@@ -186,3 +186,25 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+/* Reference refinements */
+.boot { gap:0; }
+.boot-brand { font-size:25px; }
+.boot-progress { margin:27px 0 0; height:2px; }
+.boot-status { margin:12px 0 0; color:rgba(235,239,228,.34); font:7px/1.4 var(--mono); letter-spacing:.2em; }
+.boot-error { position:absolute; bottom:28px; color:#d98c79; font:9px/1.5 var(--mono); }
+.hud-top-center,.rec-dot { display:none !important; }
+.help-toggle { position:absolute; z-index:7; right:17px; bottom:18px; width:24px; height:24px; border:1px solid rgba(234,239,226,.24); background:rgba(5,8,6,.3); color:rgba(235,240,225,.55); border-radius:50%; font:11px var(--mono); cursor:pointer; opacity:.20; transition:opacity .2s; }
+.help-toggle:hover { opacity:1; }
+.help-card { position:absolute; z-index:9; right:18px; bottom:50px; padding:12px 14px; background:rgba(5,8,6,.92); border:1px solid var(--line); backdrop-filter:blur(12px); min-width:190px; }
+.help-card div { display:flex; justify-content:space-between; gap:20px; padding:4px 0; color:var(--acid); font:8px var(--mono); }
+.help-card span { color:rgba(235,240,225,.52); }
+.library-tools { flex-wrap:wrap; gap:9px; }
+.library-select { height:29px; max-width:118px; padding:0 7px; border:1px solid rgba(234,239,226,.23); background:#0b100c; color:rgba(239,242,230,.7); font:8px var(--mono); letter-spacing:.06em; }
+.import-button { height:29px; padding:0 9px; border:1px solid rgba(215,227,188,.38); background:transparent; color:var(--acid); cursor:pointer; font:8px var(--mono); letter-spacing:.08em; white-space:nowrap; }
+.import-button:hover { background:rgba(215,227,188,.08); }
+.tmdb-connect { display:flex; align-items:end; gap:10px; padding:10px 0; border-bottom:1px solid rgba(235,240,225,.12); }
+.tmdb-connect label { display:flex; flex-direction:column; gap:5px; color:rgba(235,240,225,.42); font:7px var(--mono); letter-spacing:.1em; flex:1; }
+.tmdb-connect input { width:100%; border:0; border-bottom:1px solid rgba(235,240,225,.18); outline:0; background:transparent; padding:5px 0; color:var(--ink); font:9px var(--mono); user-select:text; }
+.tmdb-connect button { height:27px; border:1px solid rgba(215,227,188,.34); background:transparent; padding:0 10px; color:var(--acid); cursor:pointer; font:7px var(--mono); letter-spacing:.1em; }
+.tmdb-connect > span { color:rgba(235,240,225,.37); font:7px var(--mono); max-width:190px; line-height:1.4; }
+@media (max-width:760px) { .tmdb-connect{align-items:stretch;flex-wrap:wrap}.tmdb-connect>span{width:100%;max-width:none}.library-select{max-width:105px;flex:1}.import-button{margin-left:auto} }

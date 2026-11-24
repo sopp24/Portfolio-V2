@@ -23,16 +23,12 @@
     <div class="screen-grain" aria-hidden="true"></div>
     <div class="screen-vignette" aria-hidden="true"></div>
 
-    <section id="boot" class="boot" aria-label="Enter Midnight Video">
+    <section id="boot" class="boot" aria-label="Loading Midnight Video">
       <div class="boot-brand">cuchillo</div>
       <div class="boot-progress"><span id="boot-progress"></span></div>
-      <p class="boot-kicker">AN ENDLESS VHS STORE AT MIDNIGHT</p>
-      <div class="boot-title">MIDNIGHT<br><i>VIDEO</i></div>
-      <p class="boot-copy">Thousands of movies. An endless night.<br>And nowhere to go.</p>
-      <button id="enter-store" class="enter-button" disabled><span>ENTER THE STORE</span><b>↗</b></button>
-      <div class="boot-foot"><span>OPEN 24 HOURS. ALWAYS.</span><span>HEADPHONES RECOMMENDED</span></div>
+      <p id="boot-status" class="boot-status">REWINDING TAPES</p>
       <p id="boot-error" class="boot-error" hidden></p>
-    </section>
+    </section>    </section>
 
     <section id="hud" class="hud" aria-hidden="true">
       <div class="hud-top">
@@ -40,8 +36,7 @@
           <button id="play-toggle" class="hud-play"><span class="play-triangle">▶</span><span>PLAY</span></button>
           <div class="hud-station-meta"><span class="tiny-arrow">▸</span><span id="aisle-name">THRILLER</span></div>
         </div>
-        <div class="hud-top-center"><span class="rec-dot"></span><span>OPEN 24 HOURS</span></div>
-        <div class="hud-readout">
+          <div class="hud-readout">
           <span id="speed-readout">SP</span>
           <span id="clock-readout">00:00:00</span>
         </div>
@@ -51,23 +46,21 @@
       <div id="look-hint" class="look-hint">LOOK AROUND <span>↗</span></div>
       <div id="interaction-hint" class="interaction-hint" hidden><kbd>E</kbd><span>EXAMINE TAPE</span></div>
 
-      <div class="hud-bottom">
+      <div id="hud-bottom" class="hud-bottom" hidden>
         <div class="control-legend">
           <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>MOVE</span></div>
-          <div><kbd>SHIFT</kbd><span>RUN</span></div>
-          <div><kbd>SPACE</kbd><span>JUMP</span></div>
-          <div><kbd>C</kbd><span>CROUCH</span></div>
-          <div><kbd>F</kbd><span>FLASHLIGHT</span></div>
-          <div><kbd>E</kbd><span>EXAMINE</span></div>
+          <div><kbd>MOUSE</kbd><span>LOOK / SELECT</span></div><div><kbd>SCROLL</kbd><span>WALK</span></div>
+          <div><kbd>SHIFT</kbd><span>RUN</span></div><div><kbd>SPACE</kbd><span>JUMP</span></div>
+          <div><kbd>C</kbd><span>CROUCH</span></div><div><kbd>F</kbd><span>FLASHLIGHT</span></div>
+          <div><kbd>E</kbd><span>TAKE TAPE</span></div><div><kbd>M</kbd><span>INDEX</span></div><div><kbd>R</kbd><span>SURVIVAL</span></div>
         </div>
         <div class="hud-actions">
-          <button id="library-open" class="icon-button" aria-label="Open movie index" title="Movie index (M)">INDEX <span>↗</span></button>
-          <button id="survival-toggle" class="icon-button" aria-pressed="false" title="Toggle survival mode">SURVIVAL <span>38</span></button>
-          <button id="vr-toggle" class="icon-button" title="Enter virtual reality">VR <span>◉</span></button>
-          <button id="sound-toggle" class="icon-button" aria-pressed="false" title="Toggle ambience">SOUND <span>♪</span></button>
+          <button id="survival-toggle" class="icon-button" aria-pressed="false">SURVIVAL <span>38</span></button>
+          <button id="vr-toggle" class="icon-button">VR <span>◉</span></button>
+          <button id="sound-toggle" class="icon-button" aria-pressed="false">SOUND <span>♪</span></button>
         </div>
       </div>
-      <div class="battery" id="battery"><span>FLASHLIGHT</span><div><i id="battery-level"></i></div><b id="battery-value">100%</b></div>
+      <div class="battery"      <div class="battery" id="battery"><span>FLASHLIGHT</span><div><i id="battery-level"></i></div><b id="battery-value">100%</b></div>
       <div class="survival-counter" id="survival-counter" hidden><span>ANOMALIES</span><b id="anomaly-count">00 / 38</b></div>
     </section>
 
@@ -114,9 +107,18 @@
       <div class="library-heading"><h2>THE <i>INDEX</i></h2><span>SELECT A TAPE TO FIND IT IN THE STORE</span></div>
       <div class="library-tools">
         <label class="search-box"><span>⌕</span><input id="movie-search" type="search" placeholder="Search title, director, year…" autocomplete="off"></label>
-        <div id="library-count" class="library-count">10,000+ TITLES</div>
+        <select id="genre-filter" class="library-select" aria-label="Filter by genre"><option value="">ALL GENRES</option></select>
+        <select id="library-sort" class="library-select" aria-label="Sort titles"><option value="az">A—Z</option><option value="za">Z—A</option><option value="year-desc">NEWEST</option><option value="year-asc">OLDEST</option></select>
+        <div id="library-count" class="library-count">35 TITLES</div>
+        <button id="import-library" class="import-button" type="button">IMPORT CSV ↥</button>
+        <input id="library-file" type="file" accept=".csv,text/csv" multiple hidden>
       </div>
-      <div id="movie-list" class="movie-list"></div>
+      <div class="tmdb-connect">
+        <label>TMDB READ ACCESS TOKEN <input id="tmdb-token" type="password" placeholder="Optional — posters and full film metadata" autocomplete="off"></label>
+        <button id="save-tmdb" type="button">CONNECT ↗</button>
+        <span id="tmdb-status">Import your Letterboxd CSV to load your archive.</span>
+      </div>
+      <div id="movie-list"      <div id="movie-list" class="movie-list"></div>
       <div class="library-footer"><span>FROM A PERSONAL LETTERBOXD ARCHIVE</span><span>SCROLL TO EXPLORE ↓</span></div>
     </section>
 
@@ -129,6 +131,13 @@
     </section>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <button id="help-toggle" class="help-toggle" aria-expanded="false" title="Show controls">?</button>
+    <div id="help-card" class="help-card" hidden>
+      <div>W A S D <span>MOVE</span></div><div>MOUSE <span>LOOK / SELECT</span></div><div>SCROLL <span>WALK</span></div>
+      <div>SHIFT <span>RUN</span></div><div>SPACE <span>JUMP</span></div><div>C <span>CROUCH</span></div>
+      <div>F <span>FLASHLIGHT</span></div><div>E / CLICK <span>TAKE TAPE</span></div><div>M <span>MOVIE INDEX</span></div>
+      <div>R <span>SURVIVAL MODE</span></div><div>V <span>VR MODE</span></div><div>ESC <span>PAUSE</span></div>
+    </div>
     <div id="fallback" class="fallback" hidden>
       <div class="boot-brand">cuchillo</div>
       <h2>YOUR BROWSER<br>ISN'T READY.</h2>

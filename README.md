@@ -29,3 +29,10 @@ Open `index.html` from a static web server, or publish the repository with GitHu
 - Flashlight with battery management, sound ambience toggle and WebXR entry attempt.
 
 All 3D geometry and cover artwork in this reconstruction are generated at runtime. The film catalogue is a curated sample used to populate the procedural store; it is not the original Letterboxd / TMDB archive.
+
+
+## Letterboxd archive and TMDB
+
+The reference experience is publicly described as a streamed Three.js / WebGL2 VHS store using a private Letterboxd archive and TMDB artwork/metadata. The creator's personal export and proprietary original assets are not public, so they are not bundled here.
+
+Open the Movie Index with `M`, select **IMPORT CSV**, and import your own Letterboxd export files (for example `watched.csv` and `watchlist.csv`). Titles are deduplicated by name and year and stored locally. Add a TMDB API Read Access Token to load posters, genres, runtime, director, cast and synopsis as individual tapes are inspected. Metadata is fetched on demand to avoid thousands of requests at startup.
