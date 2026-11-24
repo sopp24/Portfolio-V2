@@ -43,7 +43,7 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Survival Mode with 38 varied anomalies placed in the aisles.
 - Dynamic desktop depth of field that follows the cassette under inspection, eased VHS extraction with a subtle tilt, and a short inspection-panel entrance transition; depth of field is skipped on touch devices for smoother rendering.
 - First-person movement, jump, run, crouch and flashlight/battery; opt-in layered store ambience with a spatial TV hum, speed-sensitive footsteps and subtle tape/anomaly interaction sounds.
-- Animated CRT static on the in-world television, plus CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support.
+- Animated CRT static on the in-world television, with a restrained green phosphor point-light that gently brightens as the player approaches and flickers in sync with the static; plus CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support.
 - Responsive desktop and touch layouts.
 
 ## Load the original-sized personal archive
