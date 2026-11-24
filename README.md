@@ -37,7 +37,8 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store.
 - Survival Mode with 38 varied anomalies placed in the aisles.
 - Dynamic desktop depth of field that follows the cassette under inspection, eased VHS extraction with a subtle tilt, and a short inspection-panel entrance transition; depth of field is skipped on touch devices for smoother rendering.
-- First-person movement, jump, run, crouch, flashlight/battery, store ambience, CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support.
+- First-person movement, jump, run, crouch and flashlight/battery; opt-in layered store ambience with a spatial TV hum, speed-sensitive footsteps and subtle tape/anomaly interaction sounds.
+- Animated CRT static on the in-world television, plus CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support.
 - Responsive desktop and touch layouts.
 
 ## Load the original-sized personal archive
