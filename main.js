@@ -493,6 +493,9 @@ function createWorld() {
   aisleSign.position.set(0,4.48,10);aisleSign.rotation.y=Math.PI;scene.add(aisleSign);
   const noHopeSign=createPosterSign("NO HOPE",1.8,.42,"#d48a78");noHopeSign.position.set(-4.9,4.18,-20);noHopeSign.rotation.y=Math.PI/2;scene.add(noHopeSign);
   const staffSign=createPosterSign("STAFF ONLY",1.55,.34,"#c7cbb8");staffSign.position.set(4.9,4.2,-28);staffSign.rotation.y=-Math.PI/2;scene.add(staffSign);
+  // A small rental-culture reminder is fixed to the customer-facing counter fascia.
+  const rewindSign=createPosterSign("REWIND  •  BE KIND",1.48,.25,"#d5dfbd");
+  rewindSign.position.set(3.75,.67,-19.435);rewindSign.rotation.y=0;scene.add(rewindSign);
 
   // A little TV and counter detail in the corner of the store.
   const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
