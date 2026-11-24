@@ -69,8 +69,8 @@ let libraryDisplayed = 0;
 let initialized = false, started = false, paused = false, isLocked = false;
 let movieCatalogue = MOVIES.slice();
 let tmdbToken = localStorage.getItem("midnightvideo.tmdbToken") || "";
-let pointerLookX = 0, pointerLookY = 0, pointerBaseYaw = 0;
-let yaw = 0, pitch = 0, verticalVelocity = 0, grounded = true;
+let pointerDragging=false,pointerDragMoved=false,pointerLastX=0,pointerLastY=0,suppressCanvasClick=false;
+let yaw=0,pitch=0,verticalVelocity=0,grounded=true;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
 let flashlight, ambientAudio = null, audioContext = null, audioGain = null;
@@ -186,7 +186,7 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   root.userData.kind="movie";root.userData.movie=movie;root.userData.catalogueIndex=catalogueIndex;
   root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;
   root.userData.spineMode=spineMode;root.userData.coverMesh=null;root.userData.tapeTexture=null;
-  root.userData.textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.posterUrl||"");
+  root.userData.textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.genre||"")+"|"+(movie.posterUrl||"");
   animatedCases.push(root);
   const body=new THREE.Mesh(spineMode?spineCaseGeometry:caseGeometry,caseMaterial);root.add(body);
   const faceWidth=spineMode?.095:.274;
@@ -210,7 +210,7 @@ function assignSectionCatalogue(section) {
     const slot=base+root.userData.slotOffset;
     const index=((slot%count)+count)%count;
     const movie=movieCatalogue[index];root.userData.movie=movie;root.userData.catalogueIndex=index;
-    const textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.posterUrl||"");
+    const textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.genre||"")+"|"+(movie.posterUrl||"");
     if(root.userData.textureKey===textureKey)return;
     const tapeTexture=root.userData.tapeTexture;
     if(tapeTexture){
@@ -241,7 +241,7 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
   for(let i=0;i<7;i++)addBox(parent,[.08,4.3,.16],[-3.95+i*1.31,2.2,-.38],metalMaterial);
   for(let i=0;i<11;i++)addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
   const label=createPosterSign(AISLE_LABELS[((aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length],2.2,.36,aisleIndex%4===3?"#c77c62":"#d7dfc1");
-  label.position.set(0,4.48,-.35);parent.add(label);
+  label.position.set(0,4.48,-.35);parent.add(label);parent.userData.aisleSign=label;
   sideSections.push(parent);scene.add(parent);return parent;
 }
 
@@ -536,11 +536,20 @@ function updateMovement(delta) {
   updateCamera();
 }
 
+function refreshAisleSign(section) {
+  const label=section.userData.aisleSign;
+  if(!label)return;
+  const index=((section.userData.aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length;
+  const next=createPosterSign(AISLE_LABELS[index],2.2,.36,index%4===3?"#c77c62":"#d7dfc1");
+  const map=next.material.map;next.material.map=null;next.material.dispose();next.geometry.dispose();
+  if(label.material.map)label.material.map.dispose();
+  label.material.map=map;label.material.needsUpdate=true;
+}
 function updateWorldStreaming() {
   for(const section of sideSections){
     const delta=section.position.z-player.position.z;
-    if(delta>24){section.position.z-=40;section.userData.streamIndex+=10;section.userData.aisleIndex+=5;assignSectionCatalogue(section);}
-    else if(delta < -24){section.position.z+=40;section.userData.streamIndex-=10;section.userData.aisleIndex-=5;assignSectionCatalogue(section);}
+    if(delta>24){section.position.z-=40;section.userData.streamIndex+=10;section.userData.aisleIndex+=5;assignSectionCatalogue(section);refreshAisleSign(section);}
+    else if(delta < -24){section.position.z+=40;section.userData.streamIndex-=10;section.userData.aisleIndex-=5;assignSectionCatalogue(section);refreshAisleSign(section);}
   }
   for(const fixture of streamedFixtures){
     const delta=fixture.position.z-player.position.z;
@@ -869,10 +878,27 @@ function bindEvents() {
   $("tmdb-token").value=tmdbToken;$("save-tmdb").addEventListener("click",saveTMDBToken);
   $("help-toggle").addEventListener("click",()=>{const card=$("help-card");card.hidden=!card.hidden;$("help-toggle").setAttribute("aria-expanded",String(!card.hidden));});
   document.addEventListener("pointerlockchange",onPointerLockChange);
+  canvas.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="touch"||e.button!==0||!started||paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
+    pointerDragging=true;pointerDragMoved=false;pointerLastX=e.clientX;pointerLastY=e.clientY;
+    canvas.setPointerCapture?.(e.pointerId);
+  });
+  const stopPointerDrag=e=>{
+    if(!pointerDragging)return;
+    pointerDragging=false;
+    if(pointerDragMoved)suppressCanvasClick=true;
+  };
+  canvas.addEventListener("pointerup",stopPointerDrag);
+  canvas.addEventListener("pointercancel",stopPointerDrag);
   document.addEventListener("mousemove",e=>{
     if(paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
     if(isLocked){yaw-=e.movementX*.00215;pitch-=e.movementY*.00215;}
-    else{pointerLookX=(e.clientX/window.innerWidth-.5)*2;pointerLookY=(e.clientY/window.innerHeight-.5)*2;yaw=pointerBaseYaw+pointerLookX*.56;pitch=pointerLookY*-.26;}
+    else if(pointerDragging){
+      const dx=e.clientX-pointerLastX,dy=e.clientY-pointerLastY;
+      if(Math.abs(dx)+Math.abs(dy)>2)pointerDragMoved=true;
+      yaw-=dx*.0042;pitch-=dy*.0042;
+      pointerLastX=e.clientX;pointerLastY=e.clientY;
+    }
     pitch=THREE.MathUtils.clamp(pitch,-1.22,1.22);updateCamera();
   });
   document.addEventListener("keydown",e=>{
@@ -893,7 +919,10 @@ function bindEvents() {
     keys[e.code]=false;
     if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=false;
   });
-  canvas.addEventListener("click",()=>{if(started&&!paused&&$("film-panel").hidden&&$("library-panel").hidden)interact();});
+  canvas.addEventListener("click",()=>{
+    if(suppressCanvasClick){suppressCanvasClick=false;return;}
+    if(started&&!paused&&$("film-panel").hidden&&$("library-panel").hidden)interact();
+  });
   canvas.addEventListener("wheel",e=>{
     if(!started||paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
     e.preventDefault();const step=THREE.MathUtils.clamp(Math.abs(e.deltaY)*.004,0,.9)*Math.sign(e.deltaY);
