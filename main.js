@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -329,21 +330,37 @@ function createWorld() {
   pegboardMaterial=new THREE.MeshStandardMaterial({map:pegTex,color:0xffffff,roughness:.9});
   metalMaterial=new THREE.MeshStandardMaterial({color:0x59625b,roughness:.45,metalness:.7});
   pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
-  caseMaterial=new THREE.MeshStandardMaterial({color:0x161a18,roughness:.64,metalness:.08});
-  caseGeometry=new THREE.BoxGeometry(.292,.52,.105);
-  spineCaseGeometry=new THREE.BoxGeometry(.105,.52,.105);
+  caseMaterial=new THREE.MeshStandardMaterial({color:0x20251f,roughness:.46,metalness:.035});
+  // Reuse a softly rounded mould for every cassette instead of allocating per-tape bevels.
+  caseGeometry=new RoundedBoxGeometry(.292,.52,.105,2,.012);
+  spineCaseGeometry=new RoundedBoxGeometry(.105,.52,.105,2,.009);
   for(let i=0;i<5;i++){
     const z=-16+i*8;
     const left=createShelfModule(-1,z,i*2,i);
     const right=createShelfModule(1,z,i*2+1,i);
     aislePairs.push({z,left,right,index:i});
   }
-  // Fluorescent tubes are streamed too, keeping the aisle lit without a visible end.
+  // Streamed fluorescent fittings: metal housing, luminous diffuser and a soft ceiling spill.
+  const fixtureHousingMaterial=new THREE.MeshStandardMaterial({color:0x252d27,metalness:.58,roughness:.38});
+  const fixtureTubeMaterial=new THREE.MeshBasicMaterial({color:0xe4ecd9});
+  const fixtureGlowMaterial=new THREE.MeshBasicMaterial({color:0xc3d7bd,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
+  const fixtureHousingGeometry=new THREE.BoxGeometry(.43,.12,3.82);
+  const fixtureTubeGeometry=new THREE.BoxGeometry(.16,.026,3.48);
+  const fixtureEndGeometry=new THREE.BoxGeometry(.24,.075,.075);
+  const fixtureGlowGeometry=new THREE.PlaneGeometry(2.35,3.8);
   for(let i=0;i<13;i++){
     const fixtureGroup=new THREE.Group();fixtureGroup.position.z=24-i*6;
-    addBox(fixtureGroup,[.28,.09,3.5],[0,5.02,0],new THREE.MeshBasicMaterial({color:0xdfe8cd}));
-    const light=new THREE.PointLight(0xd1dec4,8,11,2);light.position.set(0,4.88,0);fixtureGroup.add(light);
-    if(i%2===0)addBox(fixtureGroup,[2.5,.018,4],[0,4.94,0],new THREE.MeshBasicMaterial({color:0xaec4aa,transparent:true,opacity:.09}));
+    const housing=new THREE.Mesh(fixtureHousingGeometry,fixtureHousingMaterial);
+    housing.position.set(0,5.01,0);housing.castShadow=false;housing.receiveShadow=false;fixtureGroup.add(housing);
+    const diffuser=new THREE.Mesh(fixtureTubeGeometry,fixtureTubeMaterial);
+    diffuser.position.set(0,4.94,0);fixtureGroup.add(diffuser);
+    for(const z of [-1.86,1.86]){
+      const cap=new THREE.Mesh(fixtureEndGeometry,fixtureHousingMaterial);
+      cap.position.set(0,4.965,z);fixtureGroup.add(cap);
+    }
+    const glow=new THREE.Mesh(fixtureGlowGeometry,fixtureGlowMaterial);
+    glow.rotation.x=-Math.PI/2;glow.position.set(0,4.885,0);fixtureGroup.add(glow);
+    const light=new THREE.PointLight(0xd1dec4,7.5,11,2);light.position.set(0,4.88,0);fixtureGroup.add(light);
     scene.add(fixtureGroup);streamedFixtures.push(fixtureGroup);
   }
   const backSign=createPosterSign("OPEN 24 HOURS. ALWAYS.",4.5,.55,"#d4e0c4");
