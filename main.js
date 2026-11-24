@@ -71,7 +71,7 @@ const sideSections = [];
 const anomalyObjects = [];
 const textureCache = new Map();
 const raycaster = new THREE.Raycaster();
-raycaster.far = 3.8;
+raycaster.far = 5.1;
 const screenCenter = new THREE.Vector2(0,0);
 const player = { position: new THREE.Vector3(0,0,3.2), velocity: new THREE.Vector3() };
 const tempForward = new THREE.Vector3();
@@ -487,7 +487,7 @@ function updateLook() {
     $("crosshair").classList.toggle("active",!!next);
     $("interaction-hint").hidden=!next;
     $("look-hint").style.opacity=next?"0":"0.9";
-    if(next && next.userData.kind==="anomaly") $("interaction-hint").lastElementChild.textContent="INVESTIGATE ANOMALY";
+    $("interaction-hint").lastElementChild.textContent=next && next.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":"EXAMINE TAPE";
   }
 }
 
