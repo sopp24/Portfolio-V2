@@ -98,6 +98,11 @@ const raycaster = new THREE.Raycaster();
 raycaster.far = 5.1;
 const screenCenter = new THREE.Vector2(0,0);
 const player = { position: new THREE.Vector3(0,0,3.2), velocity: new THREE.Vector3() };
+const PLAYER_RADIUS=.27;
+const AISLE_LIMIT_X=3.68;
+const PLAYER_SOLID_AREAS=[
+  {minX:2.85,maxX:4.65,minZ:-20.55,maxZ:-19.45}
+];
 function isInterfacePanelOpen(){return !$("film-panel").hidden||!$("library-panel").hidden;}
 function clearMovementInput(stopVelocity=false){
   for(const state of ["moveForward","moveBack","moveLeft","moveRight","Space"])keys[state]=false;
@@ -106,6 +111,30 @@ function clearMovementInput(stopVelocity=false){
 }
 const tempForward = new THREE.Vector3();
 const tempRight = new THREE.Vector3();
+function isPlayerPositionClear(x,z){
+  if(x < -AISLE_LIMIT_X || x > AISLE_LIMIT_X)return false;
+  for(const area of PLAYER_SOLID_AREAS){
+    const nearestX=THREE.MathUtils.clamp(x,area.minX,area.maxX);
+    const nearestZ=THREE.MathUtils.clamp(z,area.minZ,area.maxZ);
+    const dx=x-nearestX,dz=z-nearestZ;
+    if(dx*dx+dz*dz < PLAYER_RADIUS*PLAYER_RADIUS)return false;
+  }
+  return true;
+}
+function movePlayerBy(dx,dz){
+  const steps=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dz))/.12));
+  const stepX=dx/steps,stepZ=dz/steps;
+  for(let i=0;i<steps;i++){
+    const rawX=player.position.x+stepX;
+    const nextX=THREE.MathUtils.clamp(rawX,-AISLE_LIMIT_X,AISLE_LIMIT_X);
+    if(nextX!==rawX)player.velocity.x=0;
+    if(isPlayerPositionClear(nextX,player.position.z))player.position.x=nextX;
+    else player.velocity.x=0;
+    const nextZ=player.position.z+stepZ;
+    if(isPlayerPositionClear(player.position.x,nextZ))player.position.z=nextZ;
+    else player.velocity.z=0;
+  }
+}
 
 function seeded(index, salt) {
   const x = Math.sin((index + 1) * 127.1 + (salt || 0) * 311.7) * 43758.5453;
@@ -647,9 +676,7 @@ function updateMovement(delta) {
   const accel=1-Math.exp(-10*delta);
   player.velocity.x+=(desired.x-player.velocity.x)*accel;
   player.velocity.z+=(desired.z-player.velocity.z)*accel;
-  player.position.x+=player.velocity.x*delta;
-  player.position.z+=player.velocity.z*delta;
-  player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);
+  movePlayerBy(player.velocity.x*delta,player.velocity.z*delta);
 
   if(keys.Space && grounded){verticalVelocity=5.2;grounded=false;keys.Space=false;}
   verticalVelocity-=14*delta;
@@ -1342,8 +1369,8 @@ function bindEvents() {
   canvas.addEventListener("wheel",e=>{
     if(!started||paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
     e.preventDefault();const step=THREE.MathUtils.clamp(Math.abs(e.deltaY)*.004,0,.9)*Math.sign(e.deltaY);
-    tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));player.position.addScaledVector(tempForward,step);
-    player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);
+    tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));
+    movePlayerBy(tempForward.x*step,tempForward.z*step);
     updateWorldStreaming();updateCamera();
   },{passive:false});
   // Mobile controls hold movement keys; touch-drag rotates the camera.
