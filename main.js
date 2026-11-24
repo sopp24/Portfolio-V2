@@ -706,7 +706,8 @@ async function importLetterboxdFiles(event){
   const files=[...(event.target.files||[])];if(!files.length)return;const imported=[];
   try{
     for(const file of files)csvRows(await file.text()).forEach(row=>{const item=importedMovieFromRow(row);if(item)imported.push(item);});
-    const merged=new Map(movieCatalogue.map(m=>[movieKey(m),m]));imported.forEach(item=>merged.set(movieKey(item),item));
+    const hasPreviousImport=!!localStorage.getItem("midnightvideo.letterboxd");
+    const merged=new Map((hasPreviousImport?movieCatalogue:[]).map(m=>[movieKey(m),m]));imported.forEach(item=>merged.set(movieKey(item),item));
     movieCatalogue=[...merged.values()].sort((a,b)=>a.title.localeCompare(b.title));
     saveImportedMovies();refreshGenreFilter();refreshTapeCatalogue();renderMovieList($("movie-search").value);
     showToast(imported.length+" LETTERBOXD ROWS IMPORTED");$("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" unique films loaded. Metadata loads as tapes are inspected.";
