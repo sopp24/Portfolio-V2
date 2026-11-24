@@ -745,12 +745,17 @@ function updateWorldStreaming() {
 function updateLook() {
   raycaster.setFromCamera(screenCenter,camera);
   const hits=raycaster.intersectObjects(getNearbyInteractables(),false);
-  let next=null;
+  let nearestHit=null,retainedHit=null;
   for(const hit of hits){
     const root=hit.object.userData.root;if(!root)continue;
     if(root.userData.kind==="anomaly"&&(!survivalMode||root.userData.found))continue;
-    next=root;break;
+    if(!nearestHit)nearestHit=hit;
+    if(root===selectedTarget&&!retainedHit)retainedHit=hit;
   }
+  // Keep the current target when two neighbouring meshes nearly overlap at screen centre.
+  // This small distance margin prevents the interaction hint and tape animation flickering.
+  const next=retainedHit&&nearestHit&&retainedHit.distance<=nearestHit.distance+.2
+    ?selectedTarget:nearestHit?.object.userData.root||null;
   if(selectedTarget!==next){
     if(selectedTarget&&selectedTarget.userData.kind==="movie"){
       selectedTarget.userData.pullTarget=0;
