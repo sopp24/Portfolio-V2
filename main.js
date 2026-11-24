@@ -80,7 +80,6 @@ const animatedCases = [];
 const sideSections = [];
 const AISLE_LABELS = ["THRILLER","HORROR","SCI-FI","CRIME","DRAMA","CULT CLASSICS","ACTION","NO HOPE","MYSTERY","ANIMATION"];
 const anomalyObjects = [];
-const textureCache = new Map();
 const raycaster = new THREE.Raycaster();
 raycaster.far = 5.1;
 const screenCenter = new THREE.Vector2(0,0);
@@ -93,10 +92,10 @@ function seeded(index, salt) {
   return x - Math.floor(x);
 }
 
-function posterCanvas(movie, index) {
+function posterCanvas(movie, index, onArtworkLoaded=null) {
   const canvas = document.createElement("canvas");
-  canvas.width = 256; canvas.height = 384;
-  const ctx = canvas.getContext("2d");
+  canvas.width = 128; canvas.height = 192;
+  const ctx = canvas.getContext("2d");ctx.scale(.5,.5);
   const colors = PALETTES[index % PALETTES.length];
   const grad = ctx.createLinearGradient(0,0,256,384);
   grad.addColorStop(0,colors[0]); grad.addColorStop(.55,colors[1]); grad.addColorStop(1,colors[2]);
@@ -138,7 +137,7 @@ function posterCanvas(movie, index) {
   ctx.fillStyle = "rgba(10,10,10,.22)"; ctx.fillRect(0,0,10,384);
   if(movie.posterUrl){
     const image=new Image();image.crossOrigin="anonymous";
-    image.onload=()=>{ctx.clearRect(0,0,256,384);const scale=Math.max(256/image.width,384/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,(256-w)/2,(384-h)/2,w,h);const cached=textureCache.get((movie.title||"")+"|"+(movie.year||0));if(cached)cached.needsUpdate=true;};
+    image.onload=()=>{ctx.clearRect(0,0,256,384);const scale=Math.max(256/image.width,384/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,(256-w)/2,(384-h)/2,w,h);if(onArtworkLoaded)onArtworkLoaded();};
     image.src=movie.posterUrl;
   }
   return canvas;
@@ -177,8 +176,9 @@ function createPosterSign(text, width, height, color) {
 }
 
 function spineCanvas(movie,index) {
-  const canvas=document.createElement("canvas");canvas.width=256;canvas.height=512;
-  const ctx=canvas.getContext("2d"),palette=PALETTES[index%PALETTES.length];
+  const canvas=document.createElement("canvas");canvas.width=128;canvas.height=256;
+  const ctx=canvas.getContext("2d");ctx.scale(.5,.5);
+  const palette=PALETTES[index%PALETTES.length];
   ctx.fillStyle=palette[0];ctx.fillRect(0,0,256,512);
   ctx.fillStyle="rgba(0,0,0,.32)";ctx.fillRect(0,0,256,512);
   ctx.fillStyle=palette[1];ctx.fillRect(12,18,8,476);
@@ -203,10 +203,17 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   root.position.set(position[0],position[1],position[2]);root.rotation.y=rotationY;
   root.userData.kind="movie";root.userData.movie=movie;root.userData.catalogueIndex=catalogueIndex;
   root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;
-  root.userData.spineMode=spineMode;root.userData.coverMesh=null;animatedCases.push(root);
+  root.userData.spineMode=spineMode;root.userData.coverMesh=null;root.userData.tapeTexture=null;
+  root.userData.textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.posterUrl||"");
+  animatedCases.push(root);
   const body=new THREE.Mesh(spineMode?spineCaseGeometry:caseGeometry,caseMaterial);root.add(body);
   const faceWidth=spineMode?.095:.274;
-  const faceMaterial=new THREE.MeshBasicMaterial({map:spineMode?getSpineTexture(movie,movieIndex):getMovieTexture(movie,movieIndex),side:THREE.DoubleSide});
+  let tapeTexture;
+  const artwork=spineMode?spineCanvas(movie,movieIndex):posterCanvas(movie,movieIndex,()=>{if(tapeTexture)tapeTexture.needsUpdate=true;});
+  tapeTexture=new THREE.CanvasTexture(artwork);tapeTexture.colorSpace=THREE.SRGBColorSpace;
+  tapeTexture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  root.userData.tapeTexture=tapeTexture;
+  const faceMaterial=new THREE.MeshBasicMaterial({map:tapeTexture,side:THREE.DoubleSide});
   const cover=new THREE.Mesh(new THREE.PlaneGeometry(faceWidth,.475),faceMaterial);
   cover.position.set(0,0,.054);root.add(cover);root.userData.coverMesh=cover;
   body.userData.root=root;cover.userData.root=root;interactables.push(body,cover);parent.add(root);return root;
@@ -221,8 +228,13 @@ function assignSectionCatalogue(section) {
     const slot=base+root.userData.slotOffset;
     const index=((slot%count)+count)%count;
     const movie=movieCatalogue[index];root.userData.movie=movie;root.userData.catalogueIndex=index;
-    const cover=root.userData.coverMesh;
-    if(cover){cover.material.map=root.userData.spineMode?getSpineTexture(movie,index):getMovieTexture(movie,index);cover.material.needsUpdate=true;}
+    const textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.posterUrl||"");
+    if(root.userData.textureKey===textureKey)return;
+    const tapeTexture=root.userData.tapeTexture;
+    if(tapeTexture){
+      const artwork=root.userData.spineMode?spineCanvas(movie,index):posterCanvas(movie,index,()=>{tapeTexture.needsUpdate=true;});
+      tapeTexture.image=artwork;tapeTexture.needsUpdate=true;root.userData.textureKey=textureKey;
+    }
   });
 }
 function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumber%10) {
