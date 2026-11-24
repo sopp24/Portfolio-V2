@@ -10,8 +10,8 @@ Serve `index.html` from a static web host. GitHub Pages works with the repositor
 
 | Input | Action |
 |---|---|
-| WASD | Walk |
-| Mouse | Look / aim |
+| ZQSD / WASD / arrows | Walk |
+| Mouse drag | Look / aim |
 | Mouse wheel | Walk forward / backward |
 | Shift | Run |
 | Space | Jump |
