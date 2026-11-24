@@ -663,6 +663,8 @@ function setFlashlight(enabled) {
   flashlightOn=enabled && flashlightBattery>0;
   flashlight.intensity=flashlightOn?36:0;
   $("battery").style.opacity=flashlightOn?".95":".5";
+  const mobileButton=$("mobile-flashlight");
+  if(mobileButton){mobileButton.textContent=flashlightOn?"LIGHT ON":"LIGHT";mobileButton.setAttribute("aria-pressed",String(flashlightOn));}
 }
 
 function openLibrary() {
@@ -884,6 +886,13 @@ function renderFilmMetadata(movie){
   $("film-director").textContent=movie.director||"";$("film-cast").textContent=movie.cast||"";$("film-synopsis").textContent=movie.synopsis||"";
   $("film-back-title").textContent=(movie.title||"").toUpperCase()+" / "+(movie.year||"");$("film-back-synopsis").textContent=movie.synopsis||"";
   if(movie.posterUrl){const img=$("film-art").querySelector("img");if(img)img.src=movie.posterUrl;}
+  const reverse=$("film-art").querySelector(".film-art-back");
+  if(reverse){
+    const title=reverse.querySelector("strong"),synopsis=reverse.querySelector("p"),director=reverse.querySelector("small");
+    if(title)title.textContent=(movie.title||"UNTITLED").toUpperCase()+" · "+(movie.year||"—");
+    if(synopsis)synopsis.textContent=movie.synopsis||"PLEASE ASK THE CLERK FOR MORE INFORMATION.";
+    if(director)director.textContent="DIRECTED BY "+(movie.director||"UNKNOWN");
+  }
 }
 
 function bindEvents() {
@@ -969,7 +978,7 @@ function bindEvents() {
   });
   $("mobile-run").addEventListener("pointerdown",e=>{e.preventDefault();running=true;});
   ["pointerup","pointercancel","pointerleave","lostpointercapture"].forEach(e=>$("mobile-run").addEventListener(e,()=>running=false));
-  $("mobile-jump").addEventListener("pointerdown",e=>{e.preventDefault();keys.Space=true;});
+  $("mobile-jump").addEventListener("pointerdown",e=>{e.preventDefault();if(grounded)keys.Space=true;});
   $("mobile-crouch").addEventListener("click",()=>{
     crouching=!crouching;$("mobile-crouch").textContent=crouching?"STAND":"CROUCH";
     showToast(crouching?"CROUCH":"STANDING");
