@@ -77,6 +77,8 @@ let movieCatalogue = MOVIES.slice();
 let tmdbToken = localStorage.getItem("midnightvideo.tmdbToken") || "";
 let pointerDragging=false,pointerDragMoved=false,pointerLastX=0,pointerLastY=0,suppressCanvasClick=false;
 let yaw=0,pitch=0,verticalVelocity=0,grounded=true;
+let cameraBobOffset=0,cameraRollOffset=0,gaitPhase=0;
+const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||false;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
 let flashlight,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
@@ -107,7 +109,7 @@ function isInterfacePanelOpen(){return !$("film-panel").hidden||!$("library-pane
 function clearMovementInput(stopVelocity=false){
   for(const state of ["moveForward","moveBack","moveLeft","moveRight","Space"])keys[state]=false;
   running=false;footstepTimer=0;pointerDragging=false;
-  if(stopVelocity)player.velocity.set(0,0,0);
+  if(stopVelocity){player.velocity.set(0,0,0);cameraBobOffset=0;cameraRollOffset=0;}
 }
 const tempForward = new THREE.Vector3();
 const tempRight = new THREE.Vector3();
@@ -639,9 +641,9 @@ function enterStore() {
 function updateCamera() {
   if(playerRig){
     playerRig.position.set(player.position.x,player.position.y,player.position.z);playerRig.rotation.y=yaw;
-    camera.position.set(0,crouching?.95:1.68,0);camera.rotation.set(pitch,0,0,"YXZ");
+    camera.position.set(0,(crouching?.95:1.68)+cameraBobOffset,0);camera.rotation.set(pitch,0,cameraRollOffset,"YXZ");
   }else{
-    camera.rotation.set(pitch,yaw,0,"YXZ");camera.position.set(player.position.x,player.position.y+(crouching?.95:1.68),player.position.z);
+    camera.rotation.set(pitch,yaw,cameraRollOffset,"YXZ");camera.position.set(player.position.x,player.position.y+(crouching?.95:1.68)+cameraBobOffset,player.position.z);
   }
 }
 
@@ -676,6 +678,17 @@ function updateMovement(delta) {
   const accel=1-Math.exp(-10*delta);
   player.velocity.x+=(desired.x-player.velocity.x)*accel;
   player.velocity.z+=(desired.z-player.velocity.z)*accel;
+  const horizontalSpeed=Math.hypot(player.velocity.x,player.velocity.z);
+  const inXR=!!renderer?.xr?.isPresenting;
+  if(!inXR&&grounded&&horizontalSpeed>.12)gaitPhase+=delta*(running?13:crouching?7:9);
+  const gaitAmount=reducedMotion?.35:1;
+  const bobAmplitude=running?.032:crouching?.006:.018;
+  const movementWeight=THREE.MathUtils.clamp(horizontalSpeed/1.25,0,1);
+  const targetBob=!inXR&&grounded?Math.sin(gaitPhase*2)*bobAmplitude*movementWeight*gaitAmount:0;
+  const lateralSpeed=player.velocity.dot(tempRight);
+  const targetRoll=!inXR?THREE.MathUtils.clamp(-lateralSpeed*.0035,-.018,.018)*movementWeight*gaitAmount:0;
+  cameraBobOffset=THREE.MathUtils.damp(cameraBobOffset,targetBob,9,delta);
+  cameraRollOffset=THREE.MathUtils.damp(cameraRollOffset,targetRoll,7,delta);
   movePlayerBy(player.velocity.x*delta,player.velocity.z*delta);
 
   if(keys.Space && grounded){verticalVelocity=5.2;grounded=false;keys.Space=false;}
