@@ -81,7 +81,7 @@ let cameraBobOffset=0,cameraRollOffset=0,gaitPhase=0;
 const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||false;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
-let flashlight,tvGlow=null,tvScreenMesh=null,tvScreenMaterial=null,tvPowered=true,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
+let flashlight,tvGlow=null,tvScreenMesh=null,tvScreenMaterial=null,tvPowerIndicatorMaterial=null,tvPowered=true,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
 let audioMasterGain=null,tvPanner=null,tvHumGain=null,tvHumOscillators=[],footstepBuffer=null;
 let footstepTimer=0,footstepIndex=0,tvStaticTexture=null,tvStaticCanvas=null,tvStaticTimer=0;
 const keys = Object.create(null);
@@ -497,6 +497,12 @@ function createWorld() {
   // A little TV and counter detail in the corner of the store.
   const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
   const tv=addBox(scene,[.85,.63,.19],[3.72,2.1,-20.1],new THREE.MeshStandardMaterial({color:0x030605,roughness:.2,metalness:.2}));
+  // A tiny standby lamp gives the CRT a readable physical power state.
+  tvPowerIndicatorMaterial=new THREE.MeshStandardMaterial({color:0x8a3025,emissive:0x54140e,emissiveIntensity:.7,roughness:.32,metalness:.18});
+  const tvPowerIndicator=new THREE.Mesh(new THREE.SphereGeometry(.018,10,8),tvPowerIndicatorMaterial);
+  tvPowerIndicator.position.set(.425,-.235,.035);tv.add(tvPowerIndicator);
+  const tvPowerButton=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.018,12),new THREE.MeshStandardMaterial({color:0x555d53,roughness:.48,metalness:.55}));
+  tvPowerButton.rotation.z=Math.PI/2;tvPowerButton.position.set(.426,-.17,-.035);tv.add(tvPowerButton);
   tvStaticTexture=createStaticTexture();tvStaticCanvas=tvStaticTexture.image;
   tvScreenMaterial=new THREE.MeshBasicMaterial({map:tvStaticTexture});
   tvScreenMesh=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),tvScreenMaterial);
@@ -532,6 +538,11 @@ function toggleCRT() {
     tvScreenMaterial.map=tvPowered?tvStaticTexture:null;
     tvScreenMaterial.color.setHex(tvPowered?0xffffff:0x030504);
     tvScreenMaterial.needsUpdate=true;
+  }
+  if(tvPowerIndicatorMaterial){
+    tvPowerIndicatorMaterial.color.setHex(tvPowered?0x78b875:0x8a3025);
+    tvPowerIndicatorMaterial.emissive.setHex(tvPowered?0x286b32:0x54140e);
+    tvPowerIndicatorMaterial.emissiveIntensity=tvPowered?.9:.7;
   }
   if(!tvPowered&&tvGlow)tvGlow.intensity=0;
   playInteractionSound("focus");
