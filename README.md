@@ -35,7 +35,7 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Tapes slide out of the shelf when targeted, then open an inspection panel with a reversible front/back sleeve, synopsis, year, director, cast and catalogue information.
 - Searchable, filterable, sortable and paginated film index.
 - Letterboxd CSV import, duplicate removal, browser-side archive persistence, progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected.
-- Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store.
+- Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store. Target selection includes a small distance hysteresis so neighbouring cassette meshes do not rapidly steal focus, keeping the highlight, prompt and extraction animation stable.
 - Full pause behaviour for the film/library panels, including frozen movement, look interaction, in-game clock and flashlight battery; movement keys and touch controls are cleared on focus loss or when the interface closes.
 - Recycled shelf sections reset any extracted cassette to its correct seated position and clear stale selection state before receiving the next catalogue segment.
 - Collision-aware first-person movement with a circular player footprint, corridor edge clearance, a solid counter obstacle, swept sub-steps to prevent tunnelling, and axis-separated sliding when brushing against objects. Keyboard, touch, XR and mouse-wheel movement share the same collision resolver.
