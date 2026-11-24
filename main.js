@@ -1,0 +1,747 @@
+import * as THREE from "three";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+/* Midnight Video — an original, procedural reconstruction of the endless VHS store. */
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("world");
+const boot = $("boot");
+const progress = $("boot-progress");
+const enterButton = $("enter-store");
+const hud = $("hud");
+const fallback = $("fallback");
+
+const MOVIES = [
+  {title:"The Shining",year:1980,genre:"Horror",runtime:"146 MIN",rating:"R",director:"Stanley Kubrick",cast:"Jack Nicholson · Shelley Duvall · Danny Lloyd",synopsis:"A writer takes a winter caretaker job at an isolated hotel. As the snow closes in, the building begins to remember things that should have stayed buried."},
+  {title:"The Thing",year:1982,genre:"Science Fiction / Horror",runtime:"109 MIN",rating:"R",director:"John Carpenter",cast:"Kurt Russell · Wilford Brimley · Keith David",synopsis:"An isolated Antarctic research team discovers a life-form capable of imitating anything it touches. Trust is the first thing to disappear."},
+  {title:"Alien",year:1979,genre:"Science Fiction / Horror",runtime:"117 MIN",rating:"R",director:"Ridley Scott",cast:"Sigourney Weaver · Tom Skerritt · John Hurt",synopsis:"A commercial starship answers a distress signal on a remote moon. Something comes aboard, and the return journey becomes a fight for survival."},
+  {title:"Blade Runner",year:1982,genre:"Science Fiction",runtime:"117 MIN",rating:"R",director:"Ridley Scott",cast:"Harrison Ford · Rutger Hauer · Sean Young",synopsis:"In a rain-soaked future Los Angeles, a retired detective is pulled back into a world where the line between human and artificial memory has worn thin."},
+  {title:"Videodrome",year:1983,genre:"Body Horror",runtime:"87 MIN",rating:"R",director:"David Cronenberg",cast:"James Woods · Deborah Harry · Sonja Smits",synopsis:"A late-night television programmer discovers a broadcast signal that seems to alter its viewers. The screen becomes a door, and the body becomes the receiver."},
+  {title:"Possession",year:1981,genre:"Psychological Horror",runtime:"124 MIN",rating:"Not Rated",director:"Andrzej Żuławski",cast:"Isabelle Adjani · Sam Neill · Heinz Bennent",synopsis:"A marriage fractures in a divided Berlin. Jealousy, grief and something unnameable spill into the streets and apartments around it."},
+  {title:"Brazil",year:1985,genre:"Dystopian / Fantasy",runtime:"132 MIN",rating:"R",director:"Terry Gilliam",cast:"Jonathan Pryce · Kim Greist · Robert De Niro",synopsis:"A low-level clerk escapes the machinery of a suffocating bureaucracy through impossible dreams, while a small clerical error grows into a nightmare."},
+  {title:"Akira",year:1988,genre:"Anime / Science Fiction",runtime:"124 MIN",rating:"R",director:"Katsuhiro Otomo",cast:"Mitsuo Iwata · Nozomu Sasaki · Mami Koyama",synopsis:"In Neo-Tokyo, a biker gang is caught in the aftermath of a secret military experiment. A city on the edge of collapse meets a power no one can contain."},
+  {title:"Ghost in the Shell",year:1995,genre:"Anime / Science Fiction",runtime:"83 MIN",rating:"R",director:"Mamoru Oshii",cast:"Atsuko Tanaka · Akio Ōtsuka · Iemasa Kayumi",synopsis:"A cybernetic officer hunts a mysterious hacker in a world where memory, identity and the human body are no longer fixed things."},
+  {title:"Lost Highway",year:1997,genre:"Mystery / Thriller",runtime:"134 MIN",rating:"R",director:"David Lynch",cast:"Bill Pullman · Patricia Arquette · Balthazar Getty",synopsis:"A musician receives anonymous videotapes of his home. The images grow more intimate, and the identity of the person watching begins to slip."},
+  {title:"Mulholland Drive",year:2001,genre:"Mystery / Thriller",runtime:"147 MIN",rating:"R",director:"David Lynch",cast:"Naomi Watts · Laura Harring · Justin Theroux",synopsis:"A woman with no memory arrives in Los Angeles. An aspiring actor helps her reconstruct a life that becomes stranger with every answer."},
+  {title:"The Fly",year:1986,genre:"Body Horror",runtime:"96 MIN",rating:"R",director:"David Cronenberg",cast:"Jeff Goldblum · Geena Davis · John Getz",synopsis:"An ambitious scientist tests a teleportation device. A tiny accident sets off a transformation that science cannot reverse."},
+  {title:"Eraserhead",year:1977,genre:"Surrealist Horror",runtime:"89 MIN",rating:"Not Rated",director:"David Lynch",cast:"Jack Nance · Charlotte Stewart · Allen Joseph",synopsis:"A factory worker navigates an industrial dreamscape of anxious domesticity, strange noises and a newborn that refuses to behave like anything familiar."},
+  {title:"Evil Dead II",year:1987,genre:"Horror / Comedy",runtime:"84 MIN",rating:"R",director:"Sam Raimi",cast:"Bruce Campbell · Sarah Berry · Dan Hicks",synopsis:"A remote cabin, a forbidden book and a tape recorder turn a weekend away into a relentless, splattering fight against the dead."},
+  {title:"Suspiria",year:1977,genre:"Supernatural Horror",runtime:"99 MIN",rating:"R",director:"Dario Argento",cast:"Jessica Harper · Stefania Casini · Joan Bennett",synopsis:"A young dancer arrives at a prestigious academy during a storm. The rooms are beautiful, the lessons are strange, and the walls seem to listen."},
+  {title:"Halloween",year:1978,genre:"Slasher",runtime:"91 MIN",rating:"R",director:"John Carpenter",cast:"Jamie Lee Curtis · Donald Pleasence · Nancy Kyes",synopsis:"On a quiet suburban night, a masked figure returns to the neighbourhood where a childhood crime began. The streetlights do little to make the darkness feel safe."},
+  {title:"Carrie",year:1976,genre:"Horror",runtime:"98 MIN",rating:"R",director:"Brian De Palma",cast:"Sissy Spacek · Piper Laurie · Amy Irving",synopsis:"A shy teenager discovers a terrifying ability while trying to survive school, a controlling home and a town that has never been kind to her."},
+  {title:"The Warriors",year:1979,genre:"Action / Thriller",runtime:"92 MIN",rating:"R",director:"Walter Hill",cast:"Michael Beck · James Remar · Dorsey Wright",synopsis:"A gang must cross a hostile city after being blamed for a crime they did not commit. Every station, street and tunnel has its own rules."},
+  {title:"A Clockwork Orange",year:1971,genre:"Crime / Science Fiction",runtime:"136 MIN",rating:"R",director:"Stanley Kubrick",cast:"Malcolm McDowell · Patrick Magee · Michael Bates",synopsis:"A young delinquent is subjected to an experimental correction programme. The film asks what remains of choice when behaviour is treated as a machine."},
+  {title:"Blue Velvet",year:1986,genre:"Mystery / Neo-noir",runtime:"120 MIN",rating:"R",director:"David Lynch",cast:"Kyle MacLachlan · Isabella Rossellini · Dennis Hopper",synopsis:"A discovery in an ordinary field leads a student into the hidden rooms of a seemingly peaceful town. The grass is green; something beneath it is not."},
+  {title:"The Wicker Man",year:1973,genre:"Folk Horror",runtime:"88 MIN",rating:"R",director:"Robin Hardy",cast:"Edward Woodward · Christopher Lee · Britt Ekland",synopsis:"A police sergeant arrives on a remote island to investigate a missing child. The community offers songs, smiles and answers that never quite fit."},
+  {title:"Night of the Living Dead",year:1968,genre:"Horror",runtime:"96 MIN",rating:"Not Rated",director:"George A. Romero",cast:"Duane Jones · Judith O'Dea · Karl Hardman",synopsis:"Strangers barricade themselves inside a farmhouse as the dead begin to walk. Outside, the night grows crowded; inside, fear makes its own rules."},
+  {title:"The Texas Chain Saw Massacre",year:1974,genre:"Horror",runtime:"83 MIN",rating:"R",director:"Tobe Hooper",cast:"Marilyn Burns · Gunnar Hansen · Paul A. Partain",synopsis:"A group of travellers stops at a remote farmhouse. The welcome is wrong, the house is wrong, and the road back is much too far."},
+  {title:"Blue Thunder",year:1983,genre:"Action / Thriller",runtime:"109 MIN",rating:"R",director:"John Badham",cast:"Roy Scheider · Warren Oates · Candy Clark",synopsis:"A police helicopter pilot tests a surveillance aircraft built for the future. The machine sees everything, including things its makers would rather hide."},
+  {title:"Escape from New York",year:1981,genre:"Action / Science Fiction",runtime:"99 MIN",rating:"R",director:"John Carpenter",cast:"Kurt Russell · Lee Van Cleef · Ernest Borgnine",synopsis:"A former soldier is sent into a sealed-off Manhattan to retrieve a missing passenger. The deadline is short and the city has become its own country."},
+  {title:"The Crow",year:1994,genre:"Supernatural / Action",runtime:"102 MIN",rating:"R",director:"Alex Proyas",cast:"Brandon Lee · Rochelle Davis · Ernie Hudson",synopsis:"On the anniversary of a brutal night, a murdered musician returns through the rain-soaked streets to settle a debt and find a quiet ending."},
+  {title:"The Blair Witch Project",year:1999,genre:"Found Footage Horror",runtime:"81 MIN",rating:"R",director:"Daniel Myrick & Eduardo Sánchez",cast:"Heather Donahue · Michael C. Williams · Joshua Leonard",synopsis:"Three filmmakers enter a forest to document a local legend. Their footage becomes the only record of a journey that does not seem to end."},
+  {title:"Jacob's Ladder",year:1990,genre:"Psychological Horror",runtime:"113 MIN",rating:"R",director:"Adrian Lyne",cast:"Tim Robbins · Elizabeth Peña · Danny Aiello",synopsis:"A veteran returns to New York and begins experiencing fractured memories and impossible encounters. The past follows him in the shape of the present."},
+  {title:"Videodrome: Director's Cut",year:2004,genre:"Body Horror",runtime:"89 MIN",rating:"R",director:"David Cronenberg",cast:"James Woods · Deborah Harry · Sonja Smits",synopsis:"A late-night broadcast resurfaces in an extended cut. The signal is stronger this time, and the tape has not been rewound."},
+  {title:"The Fog",year:1980,genre:"Supernatural Horror",runtime:"89 MIN",rating:"R",director:"John Carpenter",cast:"Adrienne Barbeau · Jamie Lee Curtis · Janet Leigh",synopsis:"A coastal town prepares for its anniversary as a strange fog rolls in from the sea. The lights are on, but the people arriving in the mist are not invited."},
+  {title:"Metropolis",year:1927,genre:"Science Fiction",runtime:"153 MIN",rating:"Not Rated",director:"Fritz Lang",cast:"Brigitte Helm · Alfred Abel · Gustav Fröhlich",synopsis:"Beneath a monumental city, workers keep the machines running. Above them, a new arrival discovers how deeply the city has divided its people."},
+  {title:"The Cabinet of Dr. Caligari",year:1920,genre:"Expressionist Horror",runtime:"77 MIN",rating:"Not Rated",director:"Robert Wiene",cast:"Werner Krauss · Conrad Veidt · Friedrich Fehér",synopsis:"A travelling showman arrives with a somnambulist who predicts the future. A small town follows the clues into a world of painted shadows and unreliable truths."},
+  {title:"Stalker",year:1979,genre:"Science Fiction / Drama",runtime:"162 MIN",rating:"PG",director:"Andrei Tarkovsky",cast:"Alexander Kaidanovsky · Anatoly Solonitsyn · Nikolai Grinko",synopsis:"A guide leads two men into a forbidden place where ordinary rules seem to have stopped working. Their destination may grant a wish, but none of them agrees on what they want."},
+  {title:"The Passenger",year:1975,genre:"Drama / Thriller",runtime:"126 MIN",rating:"PG",director:"Michelangelo Antonioni",cast:"Jack Nicholson · Maria Schneider · Jenny Runacre",synopsis:"A journalist assumes the identity of a stranger and leaves his old life behind. The journey opens a series of questions that no passport can answer."},
+  {title:"Chungking Express",year:1994,genre:"Romance / Drama",runtime:"102 MIN",rating:"PG-13",director:"Wong Kar-wai",cast:"Brigitte Lin · Takeshi Kaneshiro · Tony Leung",synopsis:"Two lonely policemen move through the same city at different hours. A snack bar, a song and a series of missed connections become their small universes."}
+];
+
+const PALETTES = [
+  ["#a84e3e","#e0b47c","#182a30"],["#27465a","#d0a16d","#e1d2b8"],["#9b8b43","#2b3735","#bd473a"],
+  ["#5b445d","#d8a8a0","#26343b"],["#b58a4e","#1e3941","#dbd0ad"],["#934b38","#d5c28c","#263f37"],
+  ["#596c68","#b96f50","#dfd1b4"],["#473d6b","#bd7b55","#e2d7c3"]
+];
+
+let scene, camera, renderer, composer, crtPass, clock;
+let initialized = false, started = false, paused = false, isLocked = false;
+let yaw = -Math.PI / 2, pitch = 0, verticalVelocity = 0, grounded = true;
+let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
+let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
+let flashlight, ambientAudio = null, audioContext = null, audioGain = null;
+const keys = Object.create(null);
+const interactables = [];
+const sideSections = [];
+const anomalyObjects = [];
+const textureCache = new Map();
+const raycaster = new THREE.Raycaster();
+raycaster.far = 3.8;
+const screenCenter = new THREE.Vector2(0,0);
+const player = { position: new THREE.Vector3(0,0,3.2), velocity: new THREE.Vector3() };
+const tempForward = new THREE.Vector3();
+const tempRight = new THREE.Vector3();
+
+function seeded(index, salt) {
+  const x = Math.sin((index + 1) * 127.1 + (salt || 0) * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function posterCanvas(movie, index) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256; canvas.height = 384;
+  const ctx = canvas.getContext("2d");
+  const colors = PALETTES[index % PALETTES.length];
+  const grad = ctx.createLinearGradient(0,0,256,384);
+  grad.addColorStop(0,colors[0]); grad.addColorStop(.55,colors[1]); grad.addColorStop(1,colors[2]);
+  ctx.fillStyle = grad; ctx.fillRect(0,0,256,384);
+  const rand = (n) => seeded(index * 8 + n, 18);
+  ctx.save();
+  ctx.globalAlpha = .28;
+  for (let i=0;i<9;i++) {
+    ctx.fillStyle = i%2 ? colors[2] : "#e6d9b8";
+    ctx.beginPath();
+    const x = rand(i) * 300 - 25, y = rand(i+20) * 430 - 25, r = 24 + rand(i+50)*90;
+    ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle = "rgba(0,0,0,.26)";
+  ctx.fillRect(0,0,256,384);
+  ctx.strokeStyle = "rgba(245,237,211,.52)";
+  ctx.lineWidth = 2; ctx.strokeRect(12,12,232,360);
+  ctx.fillStyle = "rgba(245,237,211,.83)";
+  ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
+  ctx.fillText("MIDNIGHT VIDEO PRESENTS",128,34);
+  const title = movie.title.toUpperCase();
+  const words = title.split(" ");
+  let lines = [], line = "";
+  ctx.font = "900 31px Arial";
+  for (const word of words) {
+    const next = line ? line + " " + word : word;
+    if (ctx.measureText(next).width > 216 && line) { lines.push(line); line = word; } else line = next;
+  }
+  if (line) lines.push(line);
+  const fontSize = lines.length > 3 ? 22 : lines.length > 2 ? 25 : 31;
+  ctx.font = "900 " + fontSize + "px Arial";
+  const startY = 218 - (lines.length-1)*fontSize*.52;
+  lines.slice(0,4).forEach((t,i)=>ctx.fillText(t,128,startY+i*fontSize*1.12));
+  ctx.fillStyle = "rgba(255,243,213,.76)";
+  ctx.font = "9px monospace"; ctx.fillText(movie.year + "  /  " + movie.genre.toUpperCase(),128,344);
+  ctx.fillStyle = "#f5ead0"; ctx.fillRect(22,50,3,65);
+  ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(31,50,1,70);
+  ctx.fillStyle = "rgba(10,10,10,.22)"; ctx.fillRect(0,0,10,384);
+  return canvas;
+}
+
+function getMovieTexture(movie, index) {
+  if (textureCache.has(movie.title)) return textureCache.get(movie.title);
+  const texture = new THREE.CanvasTexture(posterCanvas(movie,index));
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
+  textureCache.set(movie.title,texture);
+  return texture;
+}
+
+function addBox(parent, size, position, material, rotation) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(size[0],size[1],size[2]),material);
+  mesh.position.set(position[0],position[1],position[2]);
+  if (rotation) mesh.rotation.set(rotation[0],rotation[1],rotation[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+function createPosterSign(text, width, height, color) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#101713"; ctx.fillRect(0,0,512,128);
+  ctx.strokeStyle = "rgba(220,231,208,.4)"; ctx.lineWidth = 2; ctx.strokeRect(5,5,502,118);
+  ctx.fillStyle = color || "#d5dfbd"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = "bold 35px Arial"; ctx.fillText(text,256,63);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));
+  return mesh;
+}
+
+function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex) {
+  const root = new THREE.Group();
+  root.position.set(position[0],position[1],position[2]);
+  root.rotation.y = rotationY;
+  root.userData.kind = "movie";
+  root.userData.movie = movie;
+  root.userData.catalogueIndex = catalogueIndex;
+  const body = new THREE.Mesh(caseGeometry,caseMaterial);
+  root.add(body);
+  const cover = new THREE.Mesh(new THREE.PlaneGeometry(.425,.665),new THREE.MeshBasicMaterial({map:getMovieTexture(movie,movieIndex),side:THREE.DoubleSide}));
+  cover.position.set(0,0,.062);
+  root.add(cover);
+  const spineMat = new THREE.MeshStandardMaterial({color:new THREE.Color(PALETTES[movieIndex%PALETTES.length][0]),roughness:.75});
+  const spine = new THREE.Mesh(spineGeometry,spineMat);
+  spine.position.set(-.218,0,0);
+  root.add(spine);
+  body.userData.root = root;
+  cover.userData.root = root;
+  interactables.push(body,cover);
+  parent.add(root);
+  return root;
+}
+
+let caseGeometry, spineGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial;
+
+function createShelfModule(side, centerZ, segmentNumber) {
+  const parent = new THREE.Group();
+  parent.position.set(side * 4.45,0,centerZ);
+  parent.rotation.y = side === -1 ? Math.PI/2 : -Math.PI/2;
+  const back = addBox(parent,[8.15,4.3,.12],[0,2.2,-.48],pegboardMaterial);
+  const levels = [.55,1.48,2.41,3.34];
+  levels.forEach((y,level)=>{
+    addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
+    addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
+    const count = 12;
+    for(let i=0;i<count;i++){
+      const movieIndex = (segmentNumber*13 + level*17 + i*3 + (side===1?7:0)) % MOVIES.length;
+      const movie = MOVIES[movieIndex];
+      const x = (i-(count-1)/2)*.62;
+      addCase(parent,[x,y+.43,.18],0,movie,movieIndex,segmentNumber*100+level*20+i);
+    }
+  });
+  for(let i=0;i<7;i++){
+    addBox(parent,[.08,4.3,.16],[-3.95+i*1.31,2.2,-.38],metalMaterial);
+  }
+  for(let i=0;i<11;i++){
+    addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
+  }
+  const label = createPosterSign(segmentNumber%2===0?"NEW ARRIVALS":"STAFF PICKS",2.2,.36,"#d7dfc1");
+  label.position.set(0,4.48,-.35); parent.add(label);
+  sideSections.push(parent);
+  scene.add(parent);
+  return parent;
+}
+
+function createEndWall() {
+  const wall = new THREE.Group();
+  wall.position.set(0,0,-30);
+  addBox(wall,[18,5.3,.22],[0,2.65,-.3],wallMaterial);
+  for(let level=0;level<4;level++){
+    const y=.55+level*.93;
+    addBox(wall,[17.5,.11,1.1],[0,y,0],shelfMaterial);
+    addBox(wall,[17.45,.05,.05],[0,y+.07,.49],metalMaterial);
+    for(let i=0;i<28;i++){
+      const movieIndex=(i*5+level*9+6)%MOVIES.length;
+      const x=(i-13.5)*.62;
+      addCase(wall,[x,y+.43,.18],0,MOVIES[movieIndex],movieIndex,500+level*30+i);
+    }
+  }
+  const sign=createPosterSign("MEMBERSHIP REQUIRED",3.2,.8,"#d5d7c8");
+  sign.position.set(0,4.3,.03);
+  wall.add(sign);
+  scene.add(wall);
+  return wall;
+}
+
+function createWorld() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x080b09);
+  scene.fog = new THREE.FogExp2(0x080b09,.033);
+
+  camera = new THREE.PerspectiveCamera(69,window.innerWidth/window.innerHeight,.1,110);
+  camera.position.set(player.position.x,1.68,player.position.z);
+  camera.rotation.order="YXZ";
+  camera.rotation.set(pitch,yaw,0);
+
+  renderer = new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance",alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.15;
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+  const ambient=new THREE.HemisphereLight(0xc4d0c2,0x121510,1.18);
+  scene.add(ambient);
+  const keyLight=new THREE.PointLight(0xc7d8bf,23,27,1.8);
+  keyLight.position.set(0,4.55,-1); keyLight.castShadow=true; keyLight.shadow.mapSize.set(1024,1024); scene.add(keyLight);
+  const sideLight1=new THREE.PointLight(0x9bb2c4,11,18,2);
+  sideLight1.position.set(3.8,3.8,9); scene.add(sideLight1);
+  const sideLight2=new THREE.PointLight(0xb8bea0,10,19,2);
+  sideLight2.position.set(-3.8,3.8,-13); scene.add(sideLight2);
+
+  const floorCanvas=document.createElement("canvas"); floorCanvas.width=512; floorCanvas.height=512;
+  const fctx=floorCanvas.getContext("2d"); fctx.fillStyle="#252a25"; fctx.fillRect(0,0,512,512);
+  for(let y=0;y<512;y+=64) for(let x=0;x<512;x+=64){
+    fctx.fillStyle=((x/64+y/64)%2===0)?"#2b302b":"#222722"; fctx.fillRect(x+1,y+1,62,62);
+  }
+  for(let i=0;i<1800;i++){
+    fctx.fillStyle="rgba(0,0,0,"+(Math.random()*.13)+")";
+    fctx.fillRect(Math.random()*512,Math.random()*512,1+Math.random()*5,1+Math.random()*4);
+  }
+  const floorTex=new THREE.CanvasTexture(floorCanvas); floorTex.wrapS=floorTex.wrapT=THREE.RepeatWrapping; floorTex.repeat.set(3,16); floorTex.colorSpace=THREE.SRGBColorSpace;
+  const floorMat=new THREE.MeshStandardMaterial({map:floorTex,roughness:.94,metalness:.03});
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(11,90),floorMat);
+  floor.rotation.x=-Math.PI/2; floor.position.set(0,-.055,-3); floor.receiveShadow=true; scene.add(floor);
+
+  const ceilingMat=new THREE.MeshStandardMaterial({color:0x141a16,roughness:.95});
+  const ceiling=new THREE.Mesh(new THREE.PlaneGeometry(11,90),ceilingMat);
+  ceiling.rotation.x=Math.PI/2; ceiling.position.set(0,5.15,-3); scene.add(ceiling);
+  wallMaterial=new THREE.MeshStandardMaterial({color:0x151c17,roughness:.96});
+  const leftWall=addBox(scene,[.18,5.2,90],[-5.3,2.55,-3],wallMaterial);
+  const rightWall=addBox(scene,[.18,5.2,90],[5.3,2.55,-3],wallMaterial);
+  const backWall=addBox(scene,[10.5,5.2,.18],[0,2.55,42],wallMaterial);
+
+  shelfMaterial=new THREE.MeshStandardMaterial({color:0x333a36,roughness:.68,metalness:.45});
+  pegboardMaterial=new THREE.MeshStandardMaterial({color:0x222b26,roughness:.9});
+  metalMaterial=new THREE.MeshStandardMaterial({color:0x59625b,roughness:.45,metalness:.7});
+  pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
+  caseMaterial=new THREE.MeshStandardMaterial({color:0x161a18,roughness:.64,metalness:.08});
+  caseGeometry=new THREE.BoxGeometry(.455,.69,.135);
+  spineGeometry=new THREE.BoxGeometry(.025,.69,.135);
+
+  for(let i=0;i<7;i++){
+    createShelfModule(-1,-24+i*8,i);
+    createShelfModule(1,-24+i*8,i+3);
+  }
+  createEndWall();
+
+  // Ceiling tubes and their cold reflections.
+  for(let i=0;i<11;i++){
+    const z=30-i*6;
+    const fixture=addBox(scene,[.28,.09,3.5],[0,5.02,z],new THREE.MeshBasicMaterial({color:0xdfe8cd}));
+    const light=new THREE.PointLight(0xd1dec4,8,11,2);
+    light.position.set(0,4.88,z); scene.add(light);
+    if(i%2===0){
+      const glow=addBox(scene,[2.5,.018,4],[0,4.94,z],new THREE.MeshBasicMaterial({color:0xaec4aa,transparent:true,opacity:.09}));
+    }
+  }
+  const backSign=createPosterSign("OPEN 24 HOURS. ALWAYS.",4.5,.55,"#d4e0c4");
+  backSign.position.set(0,4.55,-12); backSign.rotation.y=0; scene.add(backSign);
+  const aisleSign=createPosterSign("THRILLER  /  SCI-FI",3.2,.45,"#d4e0c4");
+  aisleSign.position.set(0,4.48,10); aisleSign.rotation.y=Math.PI; scene.add(aisleSign);
+
+  // A little TV and counter detail in the corner of the store.
+  const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
+  const tv=addBox(scene,[.85,.63,.19],[3.72,2.1,-20.1],new THREE.MeshStandardMaterial({color:0x030605,roughness:.2,metalness:.2}));
+  const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),new THREE.MeshBasicMaterial({map:createStaticTexture()}));
+  tvScreen.position.set(3.72,2.1,-19.995); tvScreen.rotation.y=Math.PI/2; scene.add(tvScreen);
+
+  flashlight=new THREE.SpotLight(0xe2e8c9,0,13,Math.PI/6,.55,1.25);
+  flashlight.position.set(0,0,0); flashlight.target.position.set(0,0,-1);
+  camera.add(flashlight); camera.add(flashlight.target); scene.add(camera);
+
+  createAnomalies();
+  createPostprocessing();
+}
+
+function createStaticTexture() {
+  const c=document.createElement("canvas"); c.width=128; c.height=96;
+  const ctx=c.getContext("2d");
+  for(let i=0;i<1500;i++){
+    ctx.fillStyle=Math.random()>.5?"rgba(230,240,222,.55)":"rgba(0,0,0,.65)";
+    ctx.fillRect(Math.random()*128,Math.random()*96,1+Math.random()*4,1);
+  }
+  ctx.fillStyle="rgba(230,240,222,.45)"; ctx.font="8px monospace"; ctx.fillText("NO SIGNAL",37,84);
+  const t=new THREE.CanvasTexture(c); return t;
+}
+
+function createAnomalies() {
+  const anomalyMaterial=new THREE.MeshStandardMaterial({color:0x9d241d,emissive:0xb91c17,emissiveIntensity:2,roughness:.25});
+  for(let i=0;i<38;i++){
+    const group=new THREE.Group();
+    const sphere=new THREE.Mesh(new THREE.IcosahedronGeometry(.075+seeded(i,3)*.05,1),anomalyMaterial.clone());
+    group.add(sphere);
+    const halo=new THREE.Mesh(new THREE.TorusGeometry(.13,.008,5,24),new THREE.MeshBasicMaterial({color:0xff5543,transparent:true,opacity:.75}));
+    group.add(halo);
+    const row=(i%4), section=Math.floor(i/4)%7, side=i%2===0?1:-1;
+    group.position.set(side*4.2,.65+row*.93,-24+section*8+(seeded(i,8)-.5)*4);
+    group.rotation.x=seeded(i,2)*.7;
+    group.visible=false;
+    group.userData.kind="anomaly"; group.userData.found=false; group.userData.index=i;
+    anomalyObjects.push(group); scene.add(group); interactables.push(sphere);
+    sphere.userData.root=group;
+  }
+}
+
+const CRTShader = {
+  uniforms:{tDiffuse:{value:null},time:{value:0},resolution:{value:new THREE.Vector2(1,1)}},
+  vertexShader:"varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+  fragmentShader:[
+    "uniform sampler2D tDiffuse;",
+    "uniform float time;",
+    "uniform vec2 resolution;",
+    "varying vec2 vUv;",
+    "void main(){",
+    "  vec2 uv=vUv;",
+    "  vec2 centered=uv-.5;",
+    "  float barrel=dot(centered,centered);",
+    "  uv += centered*barrel*.035;",
+    "  float chroma=.0012+barrel*.0015;",
+    "  float r=texture2D(tDiffuse,uv+vec2(chroma,0.0)).r;",
+    "  float g=texture2D(tDiffuse,uv).g;",
+    "  float b=texture2D(tDiffuse,uv-vec2(chroma,0.0)).b;",
+    "  vec3 color=vec3(r,g,b);",
+    "  float scan=.975+.025*sin(uv.y*resolution.y*1.2);",
+    "  float vignette=1.0-smoothstep(.28,.82,length(centered));",
+    "  float noise=fract(sin(dot(uv*resolution+time,vec2(12.9898,78.233)))*43758.5453)-.5;",
+    "  color*=scan*(.66+.34*vignette);",
+    "  color+=noise*.012;",
+    "  gl_FragColor=vec4(color,1.0);",
+    "}"
+  ].join("\n")
+};
+
+function createPostprocessing() {
+  composer=new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene,camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth,window.innerHeight),.36,.55,.76));
+  crtPass=new ShaderPass(CRTShader);
+  crtPass.uniforms.resolution.value.set(window.innerWidth*renderer.getPixelRatio(),window.innerHeight*renderer.getPixelRatio());
+  composer.addPass(crtPass);
+  composer.addPass(new OutputPass());
+}
+
+function updateResize() {
+  if(!renderer||!camera) return;
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  if(composer) composer.setSize(window.innerWidth,window.innerHeight);
+  if(crtPass) crtPass.uniforms.resolution.value.set(window.innerWidth*renderer.getPixelRatio(),window.innerHeight*renderer.getPixelRatio());
+}
+
+function showToast(message) {
+  const toast=$("toast"); toast.textContent=message; toast.classList.add("visible");
+  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>toast.classList.remove("visible"),2200);
+}
+
+function requestLock() {
+  if(!renderer||paused) return;
+  if(renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+}
+
+function onPointerLockChange() {
+  isLocked=document.pointerLockElement===renderer.domElement;
+  if(started && !isLocked && !$("film-panel").hidden && !$("library-panel").hidden) return;
+  if(started && !isLocked && $("film-panel").hidden && $("library-panel").hidden){
+    paused=true; $("pause-screen").hidden=false;
+  } else if(isLocked){
+    paused=false; $("pause-screen").hidden=true;
+  }
+}
+
+function enterStore() {
+  if(!initialized || started) return;
+  started=true; paused=false;
+  boot.classList.add("leaving");
+  hud.classList.add("visible");
+  hud.setAttribute("aria-hidden","false");
+  $("look-hint").style.opacity=".9";
+  requestLock();
+  clock.start();
+}
+
+function updateCamera() {
+  camera.rotation.set(pitch,yaw,0,"YXZ");
+  camera.position.set(player.position.x,player.position.y+(crouching?.95:1.68),player.position.z);
+}
+
+function updateMovement(delta) {
+  if(!started || paused || !isLocked) return;
+  const speed=running?6.6:3.35;
+  const axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  const axisZ=(keys.KeyS?1:0)-(keys.KeyW?1:0);
+  tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));
+  tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
+  const desired=new THREE.Vector3();
+  desired.addScaledVector(tempRight,axisX);
+  desired.addScaledVector(tempForward,-axisZ);
+  if(desired.lengthSq()>0) desired.normalize().multiplyScalar(speed*(crouching?.46:1));
+  const accel=1-Math.exp(-10*delta);
+  player.velocity.x+=(desired.x-player.velocity.x)*accel;
+  player.velocity.z+=(desired.z-player.velocity.z)*accel;
+  player.position.x+=player.velocity.x*delta;
+  player.position.z+=player.velocity.z*delta;
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);
+  if(player.position.z < -34) player.position.z=30;
+  if(player.position.z > 34) player.position.z=-30;
+
+  if(keys.Space && grounded){verticalVelocity=5.2;grounded=false;keys.Space=false;}
+  verticalVelocity-=14*delta;
+  player.position.y+=verticalVelocity*delta;
+  if(player.position.y<=0){player.position.y=0;verticalVelocity=0;grounded=true;}
+  updateWorldStreaming();
+  updateCamera();
+}
+
+function updateWorldStreaming() {
+  for(const section of sideSections){
+    const z=section.position.z;
+    if(z-player.position.z>29) section.position.z-=56;
+    else if(z-player.position.z < -29) section.position.z+=56;
+  }
+}
+
+function updateLook() {
+  raycaster.setFromCamera(screenCenter,camera);
+  const hits=raycaster.intersectObjects(interactables,false);
+  let next=null;
+  for(const hit of hits){
+    const root=hit.object.userData.root;
+    if(!root) continue;
+    if(root.userData.kind==="anomaly" && (!survivalMode || root.userData.found)) continue;
+    next=root; break;
+  }
+  if(selectedTarget!==next){
+    selectedTarget=next;
+    $("crosshair").classList.toggle("active",!!next);
+    $("interaction-hint").hidden=!next;
+    $("look-hint").style.opacity=next?"0":"0.9";
+    if(next && next.userData.kind==="anomaly") $("interaction-hint").lastElementChild.textContent="INVESTIGATE ANOMALY";
+  }
+}
+
+function openFilm(movie,index) {
+  if(!movie) return;
+  $("film-panel").hidden=false;
+  $("film-back").hidden=true;
+  $("film-art").classList.remove("flipped");
+  const poster=posterCanvas(movie,MOVIES.indexOf(movie)>=0?MOVIES.indexOf(movie):0);
+  $("film-art").innerHTML="";
+  const img=document.createElement("img"); img.src=poster.toDataURL("image/png"); img.alt=movie.title+" VHS cover";
+  $("film-art").appendChild(img);
+  $("film-title").textContent=movie.title.toUpperCase();
+  $("film-year").textContent=String(movie.year);
+  $("film-genre").textContent=movie.genre.toUpperCase();
+  $("film-runtime").textContent=movie.runtime;
+  $("film-rating").textContent=movie.rating;
+  $("film-director").textContent=movie.director;
+  $("film-cast").textContent=movie.cast;
+  $("film-synopsis").textContent=movie.synopsis;
+  $("film-back-title").textContent=movie.title.toUpperCase()+" / "+movie.year;
+  $("film-back-synopsis").textContent=movie.synopsis;
+  $("film-catalogue-id").textContent="MV—"+String(index||Math.floor(Math.random()*9999)).padStart(4,"0");
+  document.exitPointerLock?.();
+}
+
+function flipFilm() {
+  const art=$("film-art");
+  art.classList.toggle("flipped");
+  const isBack=art.classList.contains("flipped");
+  $("film-back").hidden=!isBack;
+  $("film-info").style.display=isBack?"none":"flex";
+}
+
+function investigateAnomaly(target) {
+  if(!target || target.userData.found) return;
+  target.userData.found=true; target.visible=false; foundAnomalies++;
+  $("anomaly-count").textContent=String(foundAnomalies).padStart(2,"0")+" / 38";
+  if(foundAnomalies===38) showToast("ALL 38 ANOMALIES FOUND. THE STORE REMEMBERS.");
+  else showToast("ANOMALY "+String(foundAnomalies).padStart(2,"0")+" / 38 FOUND");
+}
+
+function interact() {
+  if(!selectedTarget) return;
+  if(selectedTarget.userData.kind==="anomaly") investigateAnomaly(selectedTarget);
+  else if(selectedTarget.userData.kind==="movie") openFilm(selectedTarget.userData.movie,selectedTarget.userData.catalogueIndex);
+}
+
+function setSurvival(enabled) {
+  survivalMode=enabled;
+  anomalyObjects.forEach(a=>{if(!a.userData.found)a.visible=enabled;});
+  $("survival-toggle").setAttribute("aria-pressed",String(enabled));
+  $("survival-counter").hidden=!enabled;
+  $("anomaly-count").textContent=String(foundAnomalies).padStart(2,"0")+" / 38";
+  showToast(enabled?"SURVIVAL MODE ACTIVE · 38 ANOMALIES HIDDEN IN THE AISLES":"SURVIVAL MODE DISABLED");
+}
+
+function setFlashlight(enabled) {
+  flashlightOn=enabled && flashlightBattery>0;
+  flashlight.intensity=flashlightOn?36:0;
+  $("battery").style.opacity=flashlightOn?".95":".5";
+}
+
+function openLibrary() {
+  $("library-panel").hidden=false;
+  $("movie-search").value="";
+  renderMovieList("");
+  document.exitPointerLock?.();
+}
+function closePanels() {
+  $("film-panel").hidden=true; $("library-panel").hidden=true;
+  $("film-info").style.display="flex"; $("film-back").hidden=true;
+  if(started) requestLock();
+}
+
+function renderMovieList(query) {
+  const list=$("movie-list"); list.innerHTML="";
+  const q=(query||"").trim().toLowerCase();
+  const results=MOVIES.filter(m=>!q || m.title.toLowerCase().includes(q) || m.director.toLowerCase().includes(q) || String(m.year).includes(q) || m.genre.toLowerCase().includes(q));
+  $("library-count").textContent=results.length+" TITLES / 10,000+ ARCHIVE";
+  results.forEach((movie,i)=>{
+    const row=document.createElement("button"); row.className="movie-row"; row.type="button";
+    const img=document.createElement("img"); img.className="movie-mini"; img.alt=""; img.src=posterCanvas(movie,MOVIES.indexOf(movie)).toDataURL("image/jpeg",.68);
+    const name=document.createElement("span");
+    const title=document.createElement("strong"); title.textContent=movie.title;
+    const director=document.createElement("small"); director.textContent=movie.director;
+    name.append(title,director);
+    const year=document.createElement("span"); year.className="movie-date"; year.textContent=String(movie.year);
+    const genre=document.createElement("span"); genre.className="movie-genre"; genre.textContent=movie.genre.toUpperCase();
+    const arrow=document.createElement("span"); arrow.className="movie-arrow"; arrow.textContent="↗";
+    row.append(img,name,year,genre,arrow);
+    row.addEventListener("click",()=>{closePanels();openFilm(movie,3000+i);});
+    list.appendChild(row);
+  });
+  if(results.length===0){const empty=document.createElement("p");empty.className="panel-eyebrow";empty.textContent="NO TAPES MATCH YOUR SEARCH.";list.appendChild(empty);}
+}
+
+function toggleAudio() {
+  const enabled=$("sound-toggle").getAttribute("aria-pressed")!=="true";
+  $("sound-toggle").setAttribute("aria-pressed",String(enabled));
+  if(enabled){
+    try{
+      const AudioCtx=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtx){showToast("AMBIENCE UNAVAILABLE IN THIS BROWSER");return;}
+      if(!audioContext){
+        audioContext=new AudioCtx();
+        const osc=audioContext.createOscillator(); osc.type="sawtooth"; osc.frequency.value=49;
+        const filter=audioContext.createBiquadFilter(); filter.type="lowpass"; filter.frequency.value=118;
+        audioGain=audioContext.createGain(); audioGain.gain.value=.018;
+        osc.connect(filter); filter.connect(audioGain); audioGain.connect(audioContext.destination); osc.start();
+        const hum=audioContext.createOscillator(); hum.type="sine"; hum.frequency.value=99; hum.connect(audioGain); hum.start();
+      } else audioContext.resume();
+      showToast("STORE AMBIENCE ON");
+    } catch(e){showToast("AMBIENCE UNAVAILABLE");}
+  } else {
+    if(audioContext) audioContext.suspend();
+    showToast("STORE AMBIENCE OFF");
+  }
+}
+
+async function enterVR() {
+  if(!navigator.xr || !navigator.xr.requestSession){showToast("WEBXR HEADSET NOT DETECTED");return;}
+  try{
+    const session=await navigator.xr.requestSession("immersive-vr",{optionalFeatures:["local-floor","bounded-floor"]});
+    renderer.xr.enabled=true; await renderer.xr.setSession(session);
+    showToast("ENTERING THE STORE IN VR");
+  }catch(e){showToast("VR SESSION COULD NOT START");}
+}
+
+function formatTime(seconds) {
+  const s=Math.floor(seconds%60), m=Math.floor(seconds/60)%60, h=Math.floor(seconds/3600);
+  return [h,m,s].map(v=>String(v).padStart(2,"0")).join(":");
+}
+
+function updateUI(delta) {
+  if(started && !paused) elapsedTime+=delta;
+  $("clock-readout").textContent=formatTime(elapsedTime);
+  const speed=Math.sqrt(player.velocity.x*player.velocity.x+player.velocity.z*player.velocity.z);
+  $("speed-readout").textContent=running&&speed>.7?"RUN":"SP";
+  if(flashlightOn){
+    flashlightBattery=Math.max(0,flashlightBattery-delta*.95);
+    if(flashlightBattery<=0){setFlashlight(false);showToast("FLASHLIGHT BATTERY DEPLETED");}
+  } else if(flashlightBattery<100){
+    flashlightBattery=Math.min(100,flashlightBattery+delta*.13);
+  }
+  $("battery-level").style.width=flashlightBattery+"%";
+  $("battery-value").textContent=Math.round(flashlightBattery)+"%";
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if(!initialized) return;
+  const delta=Math.min(clock.getDelta(),.05);
+  if(started && !paused && isLocked) updateMovement(delta);
+  else updateCamera();
+  if(started && !paused) updateLook();
+  updateUI(delta);
+  if(crtPass) crtPass.uniforms.time.value=elapsedTime;
+  if(composer) composer.render(); else renderer.render(scene,camera);
+  // Very subtle fluorescent fluctuation; avoid theatrical flicker.
+  if(scene && scene.children.length>0){
+    const flicker=1+Math.sin(elapsedTime*2.7)*.014+Math.sin(elapsedTime*8.1)*.005;
+    scene.traverse(o=>{if(o.isPointLight && o.userData.fluorescent)o.intensity=o.userData.baseIntensity*flicker;});
+  }
+}
+
+function bindEvents() {
+  enterButton.addEventListener("click",enterStore);
+  $("play-toggle").addEventListener("click",()=>{if(paused){paused=false;requestLock();}else if(isLocked){document.exitPointerLock?.();}else requestLock();});
+  $("resume-store").addEventListener("click",()=>{paused=false;$("pause-screen").hidden=true;requestLock();});
+  $("film-close").addEventListener("click",closePanels);
+  $("library-close").addEventListener("click",closePanels);
+  $("flip-film").addEventListener("click",flipFilm);
+  $("flip-back").addEventListener("click",()=>{flipFilm();});
+  $("library-open").addEventListener("click",openLibrary);
+  $("survival-toggle").addEventListener("click",()=>setSurvival(!survivalMode));
+  $("vr-toggle").addEventListener("click",enterVR);
+  $("sound-toggle").addEventListener("click",toggleAudio);
+  $("movie-search").addEventListener("input",e=>renderMovieList(e.target.value));
+  document.addEventListener("pointerlockchange",onPointerLockChange);
+  document.addEventListener("mousemove",e=>{
+    if(!isLocked || paused || !$("film-panel").hidden || !$("library-panel").hidden) return;
+    yaw-=e.movementX*.00215; pitch-=e.movementY*.00215;
+    pitch=THREE.MathUtils.clamp(pitch,-1.22,1.22);
+    updateCamera();
+  });
+  document.addEventListener("keydown",e=>{
+    keys[e.code]=true;
+    if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
+    if(e.repeat) return;
+    if(e.code==="KeyE" && started && isLocked) interact();
+    if(e.code==="KeyF" && started) setFlashlight(!flashlightOn);
+    if(e.code==="KeyC" && started){crouching=!crouching;showToast(crouching?"CROUCH":"STANDING");}
+    if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=true;
+    if(e.code==="KeyM" && started){if($("library-panel").hidden)openLibrary();else closePanels();}
+    if(e.code==="KeyR" && started)setSurvival(!survivalMode);
+    if(e.code==="Escape" && !$("film-panel").hidden){closePanels();}
+    if(e.code==="Enter" && paused){paused=false;requestLock();}
+  });
+  document.addEventListener("keyup",e=>{
+    keys[e.code]=false;
+    if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=false;
+  });
+  canvas.addEventListener("click",()=>{
+    if(started && !isLocked && $("film-panel").hidden && $("library-panel").hidden && !paused) requestLock();
+  });
+  // Mobile controls hold movement keys; touch-drag rotates the camera.
+  document.querySelectorAll("[data-move]").forEach(button=>{
+    const moveMap={forward:"KeyW",back:"KeyS",left:"KeyA",right:"KeyD"};
+    const key=moveMap[button.dataset.move];
+    button.addEventListener("pointerdown",e=>{e.preventDefault();keys[key]=true;button.setPointerCapture(e.pointerId);});
+    ["pointerup","pointercancel","lostpointercapture"].forEach(event=>button.addEventListener(event,()=>keys[key]=false));
+  });
+  $("mobile-run").addEventListener("pointerdown",()=>running=true);
+  ["pointerup","pointercancel","pointerleave"].forEach(e=>$("mobile-run").addEventListener(e,()=>running=false));
+  $("mobile-examine").addEventListener("click",interact);
+  let touchX=0,touchY=0;
+  canvas.addEventListener("touchstart",e=>{if(!started)return;touchX=e.touches[0].clientX;touchY=e.touches[0].clientY;},{passive:true});
+  canvas.addEventListener("touchmove",e=>{
+    if(!started || isLocked || $("film-panel").hidden===false || $("library-panel").hidden===false)return;
+    const t=e.touches[0],dx=t.clientX-touchX,dy=t.clientY-touchY;touchX=t.clientX;touchY=t.clientY;
+    yaw-=dx*.004;pitch=THREE.MathUtils.clamp(pitch-dy*.004,-1.22,1.22);updateCamera();
+  },{passive:true});
+  window.addEventListener("resize",updateResize);
+}
+
+async function init() {
+  try {
+    clock=new THREE.Clock();
+    // Create shared case geometries/materials before populating the store.
+    if(!window.WebGL2RenderingContext) throw new Error("WebGL 2 is not available.");
+    createWorld();
+    bindEvents();
+    initialized=true;
+    progress.style.width="100%";
+    enterButton.disabled=false;
+    $("boot-kicker").textContent="THE STORE IS OPEN";
+    $("boot-copy").innerHTML="An endless video store on a night that never ends.<br>Take a look around. Stay as long as you like.";
+    animate();
+  } catch(error) {
+    console.error(error);
+    boot.hidden=true;
+    fallback.hidden=false;
+    $("boot-error").hidden=false;
+    $("boot-error").textContent=error.message||"Could not start the 3D experience.";
+  }
+}
+
+// The first frame remains intentionally close to the reference: a quiet studio mark on black.
+progress.style.width="12%";
+setTimeout(()=>{progress.style.width="38%";},180);
+setTimeout(()=>{progress.style.width="64%";},420);
+init();

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050706">
+  <meta name="description" content="An endless video store at midnight. Thousands of movies to discover, increasingly strange aisles, and nowhere to go.">
+  <title>Midnight Video — Open 24 Hours. Always.</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="experience" aria-label="Midnight Video interactive experience">
+    <canvas id="world" aria-label="Explore the Midnight Video store"></canvas>
+    <div class="screen-grain" aria-hidden="true"></div>
+    <div class="screen-vignette" aria-hidden="true"></div>
+
+    <section id="boot" class="boot" aria-label="Enter Midnight Video">
+      <div class="boot-brand">cuchillo</div>
+      <div class="boot-progress"><span id="boot-progress"></span></div>
+      <p class="boot-kicker">AN ENDLESS VHS STORE AT MIDNIGHT</p>
+      <div class="boot-title">MIDNIGHT<br><i>VIDEO</i></div>
+      <p class="boot-copy">Thousands of movies. An endless night.<br>And nowhere to go.</p>
+      <button id="enter-store" class="enter-button" disabled><span>ENTER THE STORE</span><b>↗</b></button>
+      <div class="boot-foot"><span>OPEN 24 HOURS. ALWAYS.</span><span>HEADPHONES RECOMMENDED</span></div>
+      <p id="boot-error" class="boot-error" hidden></p>
+    </section>
+
+    <section id="hud" class="hud" aria-hidden="true">
+      <div class="hud-top">
+        <div class="hud-station">
+          <button id="play-toggle" class="hud-play"><span class="play-triangle">▶</span><span>PLAY</span></button>
+          <div class="hud-station-meta"><span class="tiny-arrow">▸</span><span id="aisle-name">THRILLER</span></div>
+        </div>
+        <div class="hud-top-center"><span class="rec-dot"></span><span>OPEN 24 HOURS</span></div>
+        <div class="hud-readout">
+          <span id="speed-readout">SP</span>
+          <span id="clock-readout">00:00:00</span>
+        </div>
+      </div>
+
+      <div class="hud-crosshair" id="crosshair"><span></span><i></i></div>
+      <div id="look-hint" class="look-hint">LOOK AROUND <span>↗</span></div>
+      <div id="interaction-hint" class="interaction-hint" hidden><kbd>E</kbd><span>EXAMINE TAPE</span></div>
+
+      <div class="hud-bottom">
+        <div class="control-legend">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>MOVE</span></div>
+          <div><kbd>SHIFT</kbd><span>RUN</span></div>
+          <div><kbd>SPACE</kbd><span>JUMP</span></div>
+          <div><kbd>C</kbd><span>CROUCH</span></div>
+          <div><kbd>F</kbd><span>FLASHLIGHT</span></div>
+          <div><kbd>E</kbd><span>EXAMINE</span></div>
+        </div>
+        <div class="hud-actions">
+          <button id="library-open" class="icon-button" aria-label="Open movie index" title="Movie index (M)">INDEX <span>↗</span></button>
+          <button id="survival-toggle" class="icon-button" aria-pressed="false" title="Toggle survival mode">SURVIVAL <span>38</span></button>
+          <button id="vr-toggle" class="icon-button" title="Enter virtual reality">VR <span>◉</span></button>
+          <button id="sound-toggle" class="icon-button" aria-pressed="false" title="Toggle ambience">SOUND <span>♪</span></button>
+        </div>
+      </div>
+      <div class="battery" id="battery"><span>FLASHLIGHT</span><div><i id="battery-level"></i></div><b id="battery-value">100%</b></div>
+      <div class="survival-counter" id="survival-counter" hidden><span>ANOMALIES</span><b id="anomaly-count">00 / 38</b></div>
+    </section>
+
+    <section id="pause-screen" class="overlay-panel pause-screen" hidden>
+      <div class="panel-eyebrow">MIDNIGHT VIDEO / PAUSED</div>
+      <h2>TAKE YOUR<br><i>TIME.</i></h2>
+      <p>The store isn't going anywhere.</p>
+      <button id="resume-store" class="line-button">BACK TO THE AISLES <span>↗</span></button>
+      <div class="pause-links"><span>ESC</span> TO RESUME <span>·</span> M TO BROWSE</div>
+    </section>
+
+    <section id="film-panel" class="film-panel" hidden aria-label="Film information">
+      <button class="panel-close" id="film-close" aria-label="Close film details">×</button>
+      <div class="film-panel-top"><span>MEMBERSHIP REQUIRED</span><span id="film-catalogue-id">MV—0000</span></div>
+      <div class="film-card-row">
+        <div class="film-art-wrap">
+          <div id="film-art" class="film-art"></div>
+          <button id="flip-film" class="flip-button">FLIP TAPE ↻</button>
+        </div>
+        <div class="film-info">
+          <div class="panel-eyebrow" id="film-genre">FEATURE PRESENTATION</div>
+          <h2 id="film-title">THE SHINING</h2>
+          <div class="film-year"><span id="film-year">1980</span><span>·</span><span id="film-runtime">146 MIN</span><span>·</span><span id="film-rating">R</span></div>
+          <p class="film-synopsis" id="film-synopsis"></p>
+          <dl class="film-credits">
+            <div><dt>DIRECTOR</dt><dd id="film-director"></dd></div>
+            <div><dt>CAST</dt><dd id="film-cast"></dd></div>
+          </dl>
+          <div class="film-footer"><span>PLEASE REWIND BEFORE RETURNING</span><span>▰ VHS / STEREO</span></div>
+        </div>
+      </div>
+      <div id="film-back" class="film-back" hidden>
+        <div class="film-back-label">MIDNIGHT VIDEO · RENTAL COPY</div>
+        <h3 id="film-back-title"></h3>
+        <p id="film-back-synopsis"></p>
+        <div class="film-back-lines"><span>PLEASE BE KIND</span><span>REWIND TO THE BEGINNING</span><span>RETURN BEFORE MIDNIGHT</span></div>
+        <button id="flip-back" class="line-button">RETURN TO COVER <span>↶</span></button>
+      </div>
+    </section>
+
+    <section id="library-panel" class="overlay-panel library-panel" hidden aria-label="Movie index">
+      <button class="panel-close" id="library-close" aria-label="Close movie index">×</button>
+      <div class="panel-eyebrow">THE COLLECTION / PERSONAL ARCHIVE</div>
+      <div class="library-heading"><h2>THE <i>INDEX</i></h2><span>SELECT A TAPE TO FIND IT IN THE STORE</span></div>
+      <div class="library-tools">
+        <label class="search-box"><span>⌕</span><input id="movie-search" type="search" placeholder="Search title, director, year…" autocomplete="off"></label>
+        <div id="library-count" class="library-count">10,000+ TITLES</div>
+      </div>
+      <div id="movie-list" class="movie-list"></div>
+      <div class="library-footer"><span>FROM A PERSONAL LETTERBOXD ARCHIVE</span><span>SCROLL TO EXPLORE ↓</span></div>
+    </section>
+
+    <section id="mobile-controls" class="mobile-controls" aria-label="Touch controls">
+      <div class="mobile-pad">
+        <button data-move="forward" aria-label="Move forward">↑</button>
+        <div><button data-move="left" aria-label="Move left">←</button><button data-move="back" aria-label="Move back">↓</button><button data-move="right" aria-label="Move right">→</button></div>
+      </div>
+      <div class="mobile-actions"><button id="mobile-run">RUN</button><button id="mobile-examine">EXAMINE</button></div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="fallback" class="fallback" hidden>
+      <div class="boot-brand">cuchillo</div>
+      <h2>YOUR BROWSER<br>ISN'T READY.</h2>
+      <p>Midnight Video needs WebGL 2. Try the latest version of Chrome, Safari or Firefox with hardware acceleration enabled.</p>
+    </div>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
