@@ -960,8 +960,14 @@ function bindEvents() {
     button.addEventListener("pointerdown",e=>{e.preventDefault();keys[key]=true;button.setPointerCapture(e.pointerId);});
     ["pointerup","pointercancel","lostpointercapture"].forEach(event=>button.addEventListener(event,()=>keys[key]=false));
   });
-  $("mobile-run").addEventListener("pointerdown",()=>running=true);
-  ["pointerup","pointercancel","pointerleave"].forEach(e=>$("mobile-run").addEventListener(e,()=>running=false));
+  $("mobile-run").addEventListener("pointerdown",e=>{e.preventDefault();running=true;});
+  ["pointerup","pointercancel","pointerleave","lostpointercapture"].forEach(e=>$("mobile-run").addEventListener(e,()=>running=false));
+  $("mobile-jump").addEventListener("pointerdown",e=>{e.preventDefault();keys.Space=true;});
+  $("mobile-crouch").addEventListener("click",()=>{
+    crouching=!crouching;$("mobile-crouch").textContent=crouching?"STAND":"CROUCH";
+    showToast(crouching?"CROUCH":"STANDING");
+  });
+  $("mobile-flashlight").addEventListener("click",()=>setFlashlight(!flashlightOn));
   $("mobile-examine").addEventListener("click",interact);
   let touchX=0,touchY=0;
   canvas.addEventListener("touchstart",e=>{if(!started)return;touchX=e.touches[0].clientX;touchY=e.touches[0].clientY;},{passive:true});
