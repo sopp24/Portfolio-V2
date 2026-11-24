@@ -288,7 +288,7 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   if(Array.isArray(hitTargets))hitTargets.push(body,cover);else staticInteractables.push(body,cover);
   parent.add(root);return root;
 }
-let caseGeometry, spineCaseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial;
+let caseGeometry, spineCaseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial, shelfFastenerGeometry, shelfFastenerMaterial;
 
 function assignSectionCatalogue(section) {
   const count=movieCatalogue.length;
@@ -330,6 +330,15 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
   levels.forEach((y,level)=>{
     addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
     addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
+    if(shelfFastenerGeometry&&shelfFastenerMaterial){
+      for(const x of [-4.02,4.02]){
+        const fastener=new THREE.Mesh(shelfFastenerGeometry,shelfFastenerMaterial);
+        fastener.position.set(x,y+.075,.463);
+        fastener.rotation.x=Math.PI/2;
+        fastener.castShadow=false;fastener.receiveShadow=false;
+        parent.add(fastener);
+      }
+    }
     if(shelfTicketGeometry&&shelfTicketMaterial){
       const ticket=new THREE.Mesh(shelfTicketGeometry,shelfTicketMaterial);
       ticket.position.set(0,y+.12,.492);ticket.renderOrder=1;parent.add(ticket);
@@ -440,6 +449,9 @@ function createWorld() {
   const pegTex=new THREE.CanvasTexture(pegCanvas);pegTex.wrapS=pegTex.wrapT=THREE.RepeatWrapping;pegTex.repeat.set(3,2);
   pegboardMaterial=new THREE.MeshStandardMaterial({map:pegTex,color:0xffffff,roughness:.9});
   metalMaterial=new THREE.MeshStandardMaterial({color:0x59625b,roughness:.45,metalness:.7});
+  // Small shared countersunk-style fasteners add scale and assembly detail without per-shelf geometry churn.
+  shelfFastenerGeometry=new THREE.CylinderGeometry(.022,.022,.012,10);
+  shelfFastenerMaterial=new THREE.MeshStandardMaterial({color:0x899087,roughness:.38,metalness:.82});
   pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
   caseMaterial=new THREE.MeshStandardMaterial({color:0x20251f,roughness:.46,metalness:.035});
   // Reuse a softly rounded mould for every cassette instead of allocating per-tape bevels.
