@@ -32,7 +32,8 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Mixed face-out movie covers and readable VHS spines, with individual reusable GPU textures to limit memory growth as the catalogue streams.
 - Tapes slide out of the shelf when targeted, then open an inspection panel with a reversible front/back sleeve, synopsis, year, director, cast and catalogue information.
 - Searchable, filterable, sortable and paginated film index.
-- Letterboxd CSV import, duplicate removal, browser-side archive persistence and on-demand TMDB metadata/poster enrichment.
+- Letterboxd CSV import, duplicate removal, browser-side archive persistence, progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected.
+- Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store.
 - Survival Mode with 38 varied anomalies placed in the aisles.
 - First-person movement, jump, run, crouch, flashlight/battery, store ambience, CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support.
 - Responsive desktop and touch layouts.
@@ -45,7 +46,7 @@ To populate this repository with your own full collection:
 
 1. Export your Letterboxd data and open the Movie Index in the experience with `M`.
 2. Choose **IMPORT CSV** and select your Letterboxd `watched.csv`, `watchlist.csv`, or other export files. The importer deduplicates by title and release year.
-3. To load original movie artwork and metadata, provide your own TMDB API Read Access Token in the index panel. Lookups happen when a tape is inspected rather than firing thousands of requests on page load.
+3. To load original movie artwork and metadata, provide your own TMDB API Read Access Token in the index panel. Once you enter the store, face-out tapes on nearby shelves are enriched progressively with real TMDB posters (two lookups at a time); full film details are fetched when you inspect a tape. Poster URLs are cached in the browser so they do not need to be looked up again after a reload.
 4. The Movie Index contains a TMDB Credits section with the approved logo and required attribution notice. TMDB's developer API is free for non-commercial use with attribution; commercial use requires a separate license.
 
 The default built-in sample catalogue is a small demo, not the creator's 10,000-film dataset. A personal CSV is required to reproduce that data layer faithfully.
