@@ -34,7 +34,7 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Reusable rental ticket strips along the shelf edges and subtle hovering/rotation motion for the hidden anomalies in Survival Mode.
 - Tapes slide out of the shelf when targeted, then open an inspection panel with a reversible front/back sleeve, synopsis, year, director, cast and catalogue information.
 - Searchable, filterable, sortable and paginated film index.
-- Letterboxd CSV import, duplicate removal, browser-side archive persistence, progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected.
+- Letterboxd CSV import, duplicate removal, browser-side archive persistence, progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected. Loaded poster art receives a restrained cinematic gradient, MIDNIGHT VIDEO title treatment and readable year/genre footer so covers remain legible at shelf distance.
 - Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store. Target selection includes a small distance hysteresis so neighbouring cassette meshes do not rapidly steal focus, keeping the highlight, prompt and extraction animation stable.
 - Full pause behaviour for the film/library panels, including frozen movement, look interaction, in-game clock and flashlight battery; movement keys and touch controls are cleared on focus loss or when the interface closes.
 - Recycled shelf sections reset any extracted cassette to its correct seated position and clear stale selection state before receiving the next catalogue segment.
