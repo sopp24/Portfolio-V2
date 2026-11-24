@@ -60,7 +60,12 @@ const PALETTES = [
   ["#596c68","#b96f50","#dfd1b4"],["#473d6b","#bd7b55","#e2d7c3"]
 ];
 
-let scene, camera, renderer, composer, crtPass, bokehPass, clock;
+let scene, camera, renderer, composer, crtPass, bokehPass, clock, playerRig;
+let floorSurface, ceilingSurface;
+const endlessWalls = [];
+const streamedFixtures = [];
+let libraryResults = [];
+let libraryDisplayed = 0;
 let initialized = false, started = false, paused = false, isLocked = false;
 let movieCatalogue = MOVIES.slice();
 let tmdbToken = localStorage.getItem("midnightvideo.tmdbToken") || "";
@@ -171,47 +176,79 @@ function createPosterSign(text, width, height, color) {
   return mesh;
 }
 
-function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex) {
+function spineCanvas(movie,index) {
+  const canvas=document.createElement("canvas");canvas.width=256;canvas.height=512;
+  const ctx=canvas.getContext("2d"),palette=PALETTES[index%PALETTES.length];
+  ctx.fillStyle=palette[0];ctx.fillRect(0,0,256,512);
+  ctx.fillStyle="rgba(0,0,0,.32)";ctx.fillRect(0,0,256,512);
+  ctx.fillStyle=palette[1];ctx.fillRect(12,18,8,476);
+  ctx.fillStyle="rgba(245,239,220,.84)";ctx.textAlign="center";
+  ctx.save();ctx.translate(135,256);ctx.rotate(-Math.PI/2);
+  const title=(movie.title||"UNTITLED").toUpperCase();
+  ctx.font="bold "+(title.length>22?20:25)+"px Arial";ctx.fillText(title,0,0,470);ctx.restore();
+  ctx.fillStyle="rgba(245,239,220,.7)";ctx.font="18px monospace";ctx.fillText(String(movie.year||"—"),132,482);
+  ctx.fillStyle="#090c09";ctx.fillRect(0,0,256,12);ctx.fillRect(0,500,256,12);
+  return canvas;
+}
+function getSpineTexture(movie,index) {
+  const key="spine|"+(movie.title||"")+"|"+(movie.year||0);
+  if(textureCache.has(key))return textureCache.get(key);
+  const texture=new THREE.CanvasTexture(spineCanvas(movie,index));
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=renderer?renderer.capabilities.getMaxAnisotropy():4;
+  textureCache.set(key,texture);return texture;
+}
+function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex, spineMode=false) {
   const root=new THREE.Group();
   root.position.set(position[0],position[1],position[2]);root.rotation.y=rotationY;
   root.userData.kind="movie";root.userData.movie=movie;root.userData.catalogueIndex=catalogueIndex;
-  root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;animatedCases.push(root);
-  const body=new THREE.Mesh(caseGeometry,caseMaterial);root.add(body);
-  const cover=new THREE.Mesh(new THREE.PlaneGeometry(.274,.475),new THREE.MeshBasicMaterial({map:getMovieTexture(movie,movieIndex),side:THREE.DoubleSide}));
-  cover.position.set(0,0,.052);root.add(cover);
+  root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;
+  root.userData.spineMode=spineMode;root.userData.coverMesh=null;animatedCases.push(root);
+  const body=new THREE.Mesh(spineMode?spineCaseGeometry:caseGeometry,caseMaterial);root.add(body);
+  const faceWidth=spineMode?.095:.274;
+  const faceMaterial=new THREE.MeshBasicMaterial({map:spineMode?getSpineTexture(movie,movieIndex):getMovieTexture(movie,movieIndex),side:THREE.DoubleSide});
+  const cover=new THREE.Mesh(new THREE.PlaneGeometry(faceWidth,.475),faceMaterial);
+  cover.position.set(0,0,.054);root.add(cover);root.userData.coverMesh=cover;
   body.userData.root=root;cover.userData.root=root;interactables.push(body,cover);parent.add(root);return root;
 }
+let caseGeometry, spineCaseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial;
 
-let caseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial;
-
+function assignSectionCatalogue(section) {
+  const count=movieCatalogue.length;
+  if(!count||!section.userData.caseRoots)return;
+  const base=(section.userData.streamIndex||0)*88;
+  section.userData.caseRoots.forEach(root=>{
+    const slot=base+root.userData.slotOffset;
+    const index=((slot%count)+count)%count;
+    const movie=movieCatalogue[index];root.userData.movie=movie;root.userData.catalogueIndex=index;
+    const cover=root.userData.coverMesh;
+    if(cover){cover.material.map=root.userData.spineMode?getSpineTexture(movie,index):getMovieTexture(movie,index);cover.material.needsUpdate=true;}
+  });
+}
 function createShelfModule(side, centerZ, segmentNumber) {
-  const parent = new THREE.Group();
-  parent.position.set(side * 4.45,0,centerZ);
-  parent.rotation.y = side === -1 ? Math.PI/2 : -Math.PI/2;
-  const back = addBox(parent,[8.15,4.3,.12],[0,2.2,-.48],pegboardMaterial);
-  const levels = [.52,1.46,2.40,3.34];
+  const parent=new THREE.Group();
+  parent.position.set(side*4.45,0,centerZ);
+  parent.rotation.y=side===-1?Math.PI/2:-Math.PI/2;
+  parent.userData.streamIndex=segmentNumber;parent.userData.side=side;parent.userData.caseRoots=[];
+  addBox(parent,[8.15,4.3,.12],[0,2.2,-.48],pegboardMaterial);
+  const levels=[.52,1.46,2.40,3.34];
   levels.forEach((y,level)=>{
     addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
     addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
-    const count = 22;
-    for(let i=0;i<count;i++){
-      const movieIndex=(segmentNumber*37+level*101+i*3+(side===1?7:0))%movieCatalogue.length;
-      const movie=movieCatalogue[movieIndex];
-      const x=(i-(count-1)/2)*.36;
-      addCase(parent,[x,y+.43,.18],0,movie,movieIndex,segmentNumber*100+level*20+i);
+    for(let i=0;i<22;i++){
+      const slot=segmentNumber*88+level*22+i;
+      const movieIndex=((slot%movieCatalogue.length)+movieCatalogue.length)%movieCatalogue.length;
+      const movie=movieCatalogue[movieIndex],x=(i-10.5)*.36;
+      const faceOut=(i%4===0)||(level===1&&i%4===2);
+      const root=addCase(parent,[x,y+.43,.18],0,movie,movieIndex,movieIndex,!faceOut);
+      root.userData.slotOffset=level*22+i;parent.userData.caseRoots.push(root);
     }
   });
-  for(let i=0;i<7;i++){
-    addBox(parent,[.08,4.3,.16],[-3.95+i*1.31,2.2,-.38],metalMaterial);
-  }
-  for(let i=0;i<11;i++){
-    addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
-  }
-  const label = createPosterSign(AISLE_LABELS[segmentNumber%AISLE_LABELS.length],2.2,.36,segmentNumber%4===3?"#c77c62":"#d7dfc1");
-  label.position.set(0,4.48,-.35); parent.add(label);
-  sideSections.push(parent);
-  scene.add(parent);
-  return parent;
+  for(let i=0;i<7;i++)addBox(parent,[.08,4.3,.16],[-3.95+i*1.31,2.2,-.38],metalMaterial);
+  for(let i=0;i<11;i++)addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
+  const label=createPosterSign(AISLE_LABELS[segmentNumber%AISLE_LABELS.length],2.2,.36,segmentNumber%4===3?"#c77c62":"#d7dfc1");
+  label.position.set(0,4.48,-.35);parent.add(label);
+  sideSections.push(parent);scene.add(parent);return parent;
 }
 
 function createEndWall() {
@@ -240,10 +277,8 @@ function createWorld() {
   scene.background = new THREE.Color(0x080b09);
   scene.fog = new THREE.FogExp2(0x080b09,.033);
 
-  camera = new THREE.PerspectiveCamera(69,window.innerWidth/window.innerHeight,.1,110);
-  camera.position.set(player.position.x,1.68,player.position.z);
-  camera.rotation.order="YXZ";
-  camera.rotation.set(pitch,yaw,0);
+  camera = new THREE.PerspectiveCamera(69,window.innerWidth/window.innerHeight,.1,160);
+  camera.position.set(0,1.68,0);camera.rotation.order="YXZ";camera.rotation.set(pitch,0,0);
 
   renderer = new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance",alpha:false});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
@@ -274,16 +309,15 @@ function createWorld() {
   }
   const floorTex=new THREE.CanvasTexture(floorCanvas); floorTex.wrapS=floorTex.wrapT=THREE.RepeatWrapping; floorTex.repeat.set(3,16); floorTex.colorSpace=THREE.SRGBColorSpace;
   const floorMat=new THREE.MeshStandardMaterial({map:floorTex,roughness:.94,metalness:.03});
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(11,90),floorMat);
-  floor.rotation.x=-Math.PI/2; floor.position.set(0,-.055,-3); floor.receiveShadow=true; scene.add(floor);
-
+  floorSurface=new THREE.Mesh(new THREE.PlaneGeometry(11,4000),floorMat);
+  floorSurface.rotation.x=-Math.PI/2;floorSurface.position.set(0,-.055,player.position.z-1950);floorSurface.receiveShadow=true;scene.add(floorSurface);
   const ceilingMat=new THREE.MeshStandardMaterial({color:0x141a16,roughness:.95});
-  const ceiling=new THREE.Mesh(new THREE.PlaneGeometry(11,90),ceilingMat);
-  ceiling.rotation.x=Math.PI/2; ceiling.position.set(0,5.15,-3); scene.add(ceiling);
+  ceilingSurface=new THREE.Mesh(new THREE.PlaneGeometry(11,4000),ceilingMat);
+  ceilingSurface.rotation.x=Math.PI/2;ceilingSurface.position.set(0,5.15,player.position.z-1950);scene.add(ceilingSurface);
   wallMaterial=new THREE.MeshStandardMaterial({color:0x151c17,roughness:.96});
-  const leftWall=addBox(scene,[.18,5.2,90],[-5.3,2.55,-3],wallMaterial);
-  const rightWall=addBox(scene,[.18,5.2,90],[5.3,2.55,-3],wallMaterial);
-  const backWall=addBox(scene,[10.5,5.2,.18],[0,2.55,42],wallMaterial);
+  const leftWall=addBox(scene,[.18,5.2,4000],[-5.3,2.55,player.position.z-1950],wallMaterial);
+  const rightWall=addBox(scene,[.18,5.2,4000],[5.3,2.55,player.position.z-1950],wallMaterial);
+  endlessWalls.push(leftWall,rightWall);
 
   shelfMaterial=new THREE.MeshStandardMaterial({color:0x333a36,roughness:.68,metalness:.45});
   const pegCanvas=document.createElement("canvas");pegCanvas.width=512;pegCanvas.height=512;
@@ -295,22 +329,18 @@ function createWorld() {
   pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
   caseMaterial=new THREE.MeshStandardMaterial({color:0x161a18,roughness:.64,metalness:.08});
   caseGeometry=new THREE.BoxGeometry(.292,.52,.105);
-
+  spineCaseGeometry=new THREE.BoxGeometry(.105,.52,.105);
   for(let i=0;i<5;i++){
     createShelfModule(-1,-16+i*8,i);
-    createShelfModule(1,-16+i*8,i+3);
+    createShelfModule(1,-16+i*8,i+5);
   }
-  createEndWall();
-
-  // Ceiling tubes and their cold reflections.
-  for(let i=0;i<11;i++){
-    const z=30-i*6;
-    const fixture=addBox(scene,[.28,.09,3.5],[0,5.02,z],new THREE.MeshBasicMaterial({color:0xdfe8cd}));
-    const light=new THREE.PointLight(0xd1dec4,8,11,2);
-    light.position.set(0,4.88,z); scene.add(light);
-    if(i%2===0){
-      const glow=addBox(scene,[2.5,.018,4],[0,4.94,z],new THREE.MeshBasicMaterial({color:0xaec4aa,transparent:true,opacity:.09}));
-    }
+  // Fluorescent tubes are streamed too, keeping the aisle lit without a visible end.
+  for(let i=0;i<13;i++){
+    const fixtureGroup=new THREE.Group();fixtureGroup.position.z=24-i*6;
+    addBox(fixtureGroup,[.28,.09,3.5],[0,5.02,0],new THREE.MeshBasicMaterial({color:0xdfe8cd}));
+    const light=new THREE.PointLight(0xd1dec4,8,11,2);light.position.set(0,4.88,0);fixtureGroup.add(light);
+    if(i%2===0)addBox(fixtureGroup,[2.5,.018,4],[0,4.94,0],new THREE.MeshBasicMaterial({color:0xaec4aa,transparent:true,opacity:.09}));
+    scene.add(fixtureGroup);streamedFixtures.push(fixtureGroup);
   }
   const backSign=createPosterSign("OPEN 24 HOURS. ALWAYS.",4.5,.55,"#d4e0c4");
   backSign.position.set(0,4.55,-12); backSign.rotation.y=0; scene.add(backSign);
@@ -326,8 +356,10 @@ function createWorld() {
   tvScreen.position.set(3.72,2.1,-19.995); tvScreen.rotation.y=Math.PI/2; scene.add(tvScreen);
 
   flashlight=new THREE.SpotLight(0xe2e8c9,0,13,Math.PI/6,.55,1.25);
-  flashlight.position.set(0,0,0); flashlight.target.position.set(0,0,-1);
-  camera.add(flashlight); camera.add(flashlight.target); scene.add(camera);
+  flashlight.position.set(0,0,0);flashlight.target.position.set(0,0,-1);
+  camera.add(flashlight);camera.add(flashlight.target);
+  playerRig=new THREE.Group();playerRig.position.copy(player.position);playerRig.add(camera);scene.add(playerRig);
+  const xrController=renderer.xr.getController(0);xrController.addEventListener("select",interact);scene.add(xrController);
 
   createAnomalies();
   createPostprocessing();
@@ -345,20 +377,44 @@ function createStaticTexture() {
 }
 
 function createAnomalies() {
-  const anomalyMaterial=new THREE.MeshStandardMaterial({color:0x9d241d,emissive:0xb91c17,emissiveIntensity:2,roughness:.25});
+  const red=new THREE.MeshStandardMaterial({color:0x74352c,emissive:0x63120e,emissiveIntensity:.55,roughness:.45});
+  const pale=new THREE.MeshStandardMaterial({color:0xaaa997,emissive:0x20251e,emissiveIntensity:.22,roughness:.7});
+  const dark=new THREE.MeshStandardMaterial({color:0x080c09,roughness:.92});
+  const metal=new THREE.MeshStandardMaterial({color:0x747c70,metalness:.72,roughness:.35});
   for(let i=0;i<38;i++){
-    const group=new THREE.Group();
-    const sphere=new THREE.Mesh(new THREE.IcosahedronGeometry(.075+seeded(i,3)*.05,1),anomalyMaterial.clone());
-    group.add(sphere);
-    const halo=new THREE.Mesh(new THREE.TorusGeometry(.13,.008,5,24),new THREE.MeshBasicMaterial({color:0xff5543,transparent:true,opacity:.75}));
-    group.add(halo);
-    const row=(i%4), section=Math.floor(i/4)%5, side=i%2===0?1:-1;
-    group.position.set(side*4.2,.65+row*.93,-16+section*8+(seeded(i,8)-.5)*4);
-    group.rotation.x=seeded(i,2)*.7;
-    group.visible=false;
-    group.userData.kind="anomaly"; group.userData.found=false; group.userData.index=i;
-    anomalyObjects.push(group); scene.add(group); interactables.push(sphere);
-    sphere.userData.root=group;
+    const group=new THREE.Group();let target;const type=i%8;
+    if(type===0){
+      const eye=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12),pale);group.add(eye);
+      const pupil=new THREE.Mesh(new THREE.SphereGeometry(.048,12,10),red);pupil.position.z=.105;group.add(pupil);target=eye;
+    }else if(type===1){
+      const tape=new THREE.Mesh(new THREE.BoxGeometry(.32,.20,.06),dark);group.add(tape);
+      const label=new THREE.Mesh(new THREE.PlaneGeometry(.22,.08),new THREE.MeshBasicMaterial({color:0x9f3024}));label.position.z=.034;group.add(label);target=tape;
+    }else if(type===2){
+      const orb=new THREE.Mesh(new THREE.IcosahedronGeometry(.17,1),red);group.add(orb);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(.23,.009,5,28),new THREE.MeshBasicMaterial({color:0xb45a4e,transparent:true,opacity:.65}));group.add(ring);target=orb;
+    }else if(type===3){
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8),dark);head.position.y=.22;group.add(head);
+      const body=new THREE.Mesh(new THREE.CapsuleGeometry(.075,.30,3,6),dark);body.position.y=-.02;group.add(body);target=body;
+    }else if(type===4){
+      const lamp=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.48,8),pale);group.add(lamp);
+      const glow=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),red);glow.position.y=.25;group.add(glow);target=lamp;
+    }else if(type===5){
+      const skull=new THREE.Mesh(new THREE.SphereGeometry(.15,12,10),pale);group.add(skull);
+      const jaw=new THREE.Mesh(new THREE.BoxGeometry(.18,.07,.14),dark);jaw.position.y=-.12;group.add(jaw);
+      const eye1=new THREE.Mesh(new THREE.SphereGeometry(.035,8,8),red);eye1.position.set(-.06,.025,.12);group.add(eye1);
+      const eye2=eye1.clone();eye2.position.x=.06;group.add(eye2);target=skull;
+    }else if(type===6){
+      const shell=new THREE.Mesh(new THREE.BoxGeometry(.34,.23,.07),metal);group.add(shell);
+      const reel1=new THREE.Mesh(new THREE.TorusGeometry(.045,.012,6,12),red);reel1.position.set(-.08,0,.04);group.add(reel1);
+      const reel2=reel1.clone();reel2.position.x=.08;group.add(reel2);target=shell;
+    }else{
+      const shape=new THREE.Mesh(new THREE.TorusKnotGeometry(.10,.035,48,8,2,3),red);group.add(shape);target=shape;
+    }
+    group.position.set((seeded(i,2)-.5)*6.2,.48+(i%4)*.92,.60);
+    group.rotation.y=(seeded(i,5)-.5)*.6;group.visible=false;
+    group.userData.kind="anomaly";group.userData.found=false;group.userData.index=i;
+    const section=sideSections[i%sideSections.length];section.add(group);
+    anomalyObjects.push(group);interactables.push(target);target.userData.root=group;
   }
 }
 
@@ -440,8 +496,12 @@ function enterStore() {
 }
 
 function updateCamera() {
-  camera.rotation.set(pitch,yaw,0,"YXZ");
-  camera.position.set(player.position.x,player.position.y+(crouching?.95:1.68),player.position.z);
+  if(playerRig){
+    playerRig.position.set(player.position.x,player.position.y,player.position.z);playerRig.rotation.y=yaw;
+    camera.position.set(0,crouching?.95:1.68,0);camera.rotation.set(pitch,0,0,"YXZ");
+  }else{
+    camera.rotation.set(pitch,yaw,0,"YXZ");camera.position.set(player.position.x,player.position.y+(crouching?.95:1.68),player.position.z);
+  }
 }
 
 function updateMovement(delta) {
@@ -462,8 +522,6 @@ function updateMovement(delta) {
   player.position.x+=player.velocity.x*delta;
   player.position.z+=player.velocity.z*delta;
   player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);
-  if(player.position.z < -34) player.position.z=30;
-  if(player.position.z > 34) player.position.z=-30;
 
   if(keys.Space && grounded){verticalVelocity=5.2;grounded=false;keys.Space=false;}
   verticalVelocity-=14*delta;
@@ -475,10 +533,18 @@ function updateMovement(delta) {
 
 function updateWorldStreaming() {
   for(const section of sideSections){
-    const z=section.position.z;
-    if(z-player.position.z>21.5) section.position.z-=40;
-    else if(z-player.position.z < -21.5) section.position.z+=40;
+    const delta=section.position.z-player.position.z;
+    if(delta>24){section.position.z-=40;section.userData.streamIndex+=10;assignSectionCatalogue(section);}
+    else if(delta < -24){section.position.z+=40;section.userData.streamIndex-=10;assignSectionCatalogue(section);}
   }
+  for(const fixture of streamedFixtures){
+    const delta=fixture.position.z-player.position.z;
+    if(delta>27)fixture.position.z-=78;
+    else if(delta < -27)fixture.position.z+=78;
+  }
+  if(floorSurface)floorSurface.position.z=player.position.z-1950;
+  if(ceilingSurface)ceilingSurface.position.z=player.position.z-1950;
+  endlessWalls.forEach(wall=>wall.position.z=player.position.z-1950);
 }
 
 
@@ -571,23 +637,37 @@ function closePanels() {
 }
 
 
-function renderMovieList(query) {
-  const list=$("movie-list");list.innerHTML="";
-  const q=(query||"").trim().toLowerCase(),genre=$("genre-filter").value,sort=$("library-sort").value;
-  let results=movieCatalogue.filter(m=>(!q||m.title.toLowerCase().includes(q)||(m.director||"").toLowerCase().includes(q)||String(m.year||"").includes(q)||(m.genre||"").toLowerCase().includes(q))&&(!genre||(m.genre||"").toLowerCase().includes(genre.toLowerCase())));
-  results.sort((a,b)=>sort==="za"?b.title.localeCompare(a.title):sort==="year-desc"?(b.year||0)-(a.year||0):sort==="year-asc"?(a.year||0)-(b.year||0):a.title.localeCompare(b.title));
-  $("library-count").textContent=results.length+" / "+movieCatalogue.length+" TITLES";
-  results.forEach((movie,i)=>{
+function appendMovieRows(){
+  const list=$("movie-list"),page=libraryResults.slice(libraryDisplayed,libraryDisplayed+80);
+  page.forEach(movie=>{
     const row=document.createElement("button");row.className="movie-row";row.type="button";
-    const img=document.createElement("img");img.className="movie-mini";img.alt="";img.src=movie.posterUrl||posterCanvas(movie,movieCatalogue.indexOf(movie)).toDataURL("image/jpeg",.68);
+    const img=document.createElement("img");img.className="movie-mini";img.alt="";img.loading="lazy";
+    img.src=movie.posterUrl||posterCanvas(movie,movieCatalogue.indexOf(movie)).toDataURL("image/jpeg",.58);
     const name=document.createElement("span"),title=document.createElement("strong"),director=document.createElement("small");
     title.textContent=movie.title;director.textContent=movie.director||"Metadata pending";name.append(title,director);
     const year=document.createElement("span");year.className="movie-date";year.textContent=String(movie.year||"—");
     const genreLabel=document.createElement("span");genreLabel.className="movie-genre";genreLabel.textContent=(movie.genre||"UNKNOWN").toUpperCase();
     const arrow=document.createElement("span");arrow.className="movie-arrow";arrow.textContent="↗";
-    row.append(img,name,year,genreLabel,arrow);row.addEventListener("click",()=>{closePanels();openFilm(movie,3000+i);});list.appendChild(row);
+    row.append(img,name,year,genreLabel,arrow);
+    row.addEventListener("click",()=>{closePanels();openFilm(movie,movieCatalogue.indexOf(movie)+1);});
+    list.appendChild(row);
   });
-  if(!results.length){const empty=document.createElement("p");empty.className="panel-eyebrow";empty.textContent="NO TAPES MATCH YOUR SEARCH.";list.appendChild(empty);}
+  libraryDisplayed+=page.length;
+  const old=list.querySelector(".load-more");if(old)old.remove();
+  if(libraryDisplayed<libraryResults.length){
+    const more=document.createElement("button");more.className="load-more";more.type="button";
+    more.textContent="LOAD MORE · "+(libraryResults.length-libraryDisplayed)+" REMAINING";
+    more.addEventListener("click",appendMovieRows);list.appendChild(more);
+  }
+}
+function renderMovieList(query) {
+  const list=$("movie-list");list.innerHTML="";
+  const q=(query||"").trim().toLowerCase(),genre=$("genre-filter").value,sort=$("library-sort").value;
+  libraryResults=movieCatalogue.filter(m=>(!q||m.title.toLowerCase().includes(q)||(m.director||"").toLowerCase().includes(q)||String(m.year||"").includes(q)||(m.genre||"").toLowerCase().includes(q))&&(!genre||(m.genre||"").toLowerCase().includes(genre.toLowerCase())));
+  libraryResults.sort((a,b)=>sort==="za"?b.title.localeCompare(a.title):sort==="year-desc"?(b.year||0)-(a.year||0):sort==="year-asc"?(a.year||0)-(b.year||0):a.title.localeCompare(b.title));
+  libraryDisplayed=0;$("library-count").textContent=libraryResults.length+" / "+movieCatalogue.length+" TITLES";
+  if(!libraryResults.length){const empty=document.createElement("p");empty.className="panel-eyebrow";empty.textContent="NO TAPES MATCH YOUR SEARCH.";list.appendChild(empty);return;}
+  appendMovieRows();
 }
 
 function toggleAudio() {
@@ -616,15 +696,17 @@ function toggleAudio() {
 async function enterVR() {
   if(!navigator.xr || !navigator.xr.requestSession){showToast("WEBXR HEADSET NOT DETECTED");return;}
   try{
-    const session=await navigator.xr.requestSession("immersive-vr",{optionalFeatures:["local-floor","bounded-floor"]});
-    renderer.xr.enabled=true; await renderer.xr.setSession(session);
+    renderer.xr.enabled=true;
+    const session=await navigator.xr.requestSession("immersive-vr",{optionalFeatures:["local-floor","bounded-floor","hand-tracking"]});
+    await renderer.xr.setSession(session);
+    session.addEventListener("end",()=>{if(renderer)renderer.xr.enabled=false;});
     showToast("ENTERING THE STORE IN VR");
-  }catch(e){showToast("VR SESSION COULD NOT START");}
+  }catch(e){console.warn(e);showToast("VR SESSION COULD NOT START");}
 }
 
 function formatTime(seconds) {
-  const s=Math.floor(seconds%60), m=Math.floor(seconds/60)%60, h=Math.floor(seconds/3600);
-  return [h,m,s].map(v=>String(v).padStart(2,"0")).join(":");
+  const s=Math.floor(seconds%60),m=Math.floor(seconds/60)%60,h=Math.floor(seconds/3600);
+  return h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
 }
 
 function updateUI(delta) {
@@ -644,21 +726,25 @@ function updateUI(delta) {
 
 
 function animate() {
-  requestAnimationFrame(animate);
-  if(!initialized)return;
-  const delta=Math.min(clock.getDelta(),.05);
-  if(started&&!paused)updateMovement(delta);else updateCamera();
-  if(started&&!paused)updateLook();
-  for(const tape of animatedCases){
-    if(!tape.parent)continue;
-    tape.userData.pull=THREE.MathUtils.damp(tape.userData.pull,tape.userData.pullTarget||0,7,delta);
-    tape.position.z=tape.userData.baseZ+tape.userData.pull;
-  }
-  updateUI(delta);
-  if(crtPass)crtPass.uniforms.time.value=elapsedTime;
-  if(renderer.xr.isPresenting)renderer.render(scene,camera);
-  else if(composer)composer.render();
-  else renderer.render(scene,camera);
+  const frame=()=>{
+    if(!initialized)return;
+    const delta=Math.min(clock.getDelta(),.05);
+    if(started&&!paused)updateMovement(delta);else updateCamera();
+    if(started&&!paused)updateLook();
+    for(const tape of animatedCases){
+      if(!tape.parent)continue;
+      tape.userData.pull=THREE.MathUtils.damp(tape.userData.pull,tape.userData.pullTarget||0,7,delta);
+      tape.position.z=tape.userData.baseZ+tape.userData.pull;
+    }
+    anomalyObjects.forEach((a,i)=>{if(a.visible)a.rotation.y+=delta*(.18+(i%4)*.04);});
+    updateUI(delta);
+    if(crtPass)crtPass.uniforms.time.value=elapsedTime;
+    if(renderer.xr.isPresenting)renderer.render(scene,camera);
+    else if(composer)composer.render();
+    else renderer.render(scene,camera);
+  };
+  if(renderer&&renderer.setAnimationLoop)renderer.setAnimationLoop(frame);
+  else {const fallbackLoop=()=>{frame();requestAnimationFrame(fallbackLoop);};fallbackLoop();}
 }
 
 
@@ -694,8 +780,7 @@ function saveImportedMovies(){
 }
 function refreshTapeCatalogue(){
   if(!movieCatalogue.length)return;
-  const roots=[...new Set(interactables.map(o=>o.userData.root).filter(r=>r&&r.userData.kind==="movie"))];
-  roots.forEach((root,i)=>{const id=(root.userData.catalogueIndex??i)%movieCatalogue.length,movie=movieCatalogue[id];root.userData.movie=movie;root.userData.catalogueIndex=id;const cover=root.children.find(child=>child.material&&child.material.map);if(cover){cover.material.map=getMovieTexture(movie,id);cover.material.needsUpdate=true;}});
+  sideSections.forEach(assignSectionCatalogue);
 }
 function restoreImportedMovies(){
   try{const saved=localStorage.getItem("midnightvideo.letterboxd");if(saved){const data=JSON.parse(saved);if(Array.isArray(data)&&data.length)movieCatalogue=data;}}
@@ -795,7 +880,7 @@ function bindEvents() {
     if(!started||paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
     e.preventDefault();const step=THREE.MathUtils.clamp(Math.abs(e.deltaY)*.004,0,.9)*Math.sign(e.deltaY);
     tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));player.position.addScaledVector(tempForward,step);
-    player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);player.position.z=THREE.MathUtils.clamp(player.position.z,-34,34);
+    player.position.x=THREE.MathUtils.clamp(player.position.x,-3.75,3.75);
     updateWorldStreaming();updateCamera();
   },{passive:false});
   // Mobile controls hold movement keys; touch-drag rotates the camera.
