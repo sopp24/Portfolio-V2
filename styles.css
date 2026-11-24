@@ -264,3 +264,20 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
 #world:active { cursor:grabbing; }
 .help-toggle { bottom:78px; }
 @media (max-width:760px) { .help-toggle { bottom:112px; } }
+/* Complete touch-game controls: keep the HUD and locomotion pad on separate rows. */
+.mobile-actions {
+  display:grid; grid-template-columns:repeat(2,auto); gap:6px;
+  align-items:end; justify-items:end;
+}
+.mobile-actions button {
+  min-width:58px; height:34px; border-radius:2px; padding:0 8px;
+  font:7px var(--mono); letter-spacing:.07em;
+}
+.mobile-pad button { touch-action:none; }
+@media (max-width:760px) {
+  .hud-bottom { bottom:max(124px,calc(env(safe-area-inset-bottom) + 124px)); }
+  .mobile-controls { bottom:max(14px,env(safe-area-inset-bottom)); }
+  .battery { left:auto; right:18px; top:58px; bottom:auto; }
+  .survival-counter { left:18px; right:auto; top:58px; bottom:auto; }
+  .help-toggle { bottom:185px; }
+}
