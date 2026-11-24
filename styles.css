@@ -259,3 +259,8 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
   .film-art-back small { font-size:5px; }
   .tape-barcode { font-size:6px; padding-top:5px; margin-top:5px; }
 }
+/* Drag-to-look: retain a clear cursor on desktops without pointer lock. */
+#world { cursor:grab; touch-action:none; }
+#world:active { cursor:grabbing; }
+.help-toggle { bottom:78px; }
+@media (max-width:760px) { .help-toggle { bottom:112px; } }
