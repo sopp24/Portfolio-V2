@@ -24,7 +24,7 @@ Serve `index.html` from a static web host. GitHub Pages works with the repositor
 | H / ? | Help |
 | Esc | Pause / close panel |
 
-Touch devices have a movement pad, run and examine controls. WebXR requires a compatible headset, browser and secure HTTPS origin.
+Touch devices have a movement pad, run, jump, crouch, flashlight and examine controls. WebXR requires a compatible headset, browser and secure HTTPS origin.
 
 ## Recreated systems
 
