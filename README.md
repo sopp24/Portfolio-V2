@@ -39,6 +39,7 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 - Full pause behaviour for the film/library panels, including frozen movement, look interaction, in-game clock and flashlight battery; movement keys and touch controls are cleared on focus loss or when the interface closes.
 - Recycled shelf sections reset any extracted cassette to its correct seated position and clear stale selection state before receiving the next catalogue segment.
 - Collision-aware first-person movement with a circular player footprint, corridor edge clearance, a solid counter obstacle, swept sub-steps to prevent tunnelling, and axis-separated sliding when brushing against objects. Keyboard, touch, XR and mouse-wheel movement share the same collision resolver.
+- Subtle speed-sensitive first-person head bob and lateral camera lean, smoothly blended with acceleration, reduced for crouching and reduced-motion preferences, and disabled in XR to avoid unnecessary headset motion.
 - Survival Mode with 38 varied anomalies placed in the aisles.
 - Dynamic desktop depth of field that follows the cassette under inspection, eased VHS extraction with a subtle tilt, and a short inspection-panel entrance transition; depth of field is skipped on touch devices for smoother rendering.
 - First-person movement, jump, run, crouch and flashlight/battery; opt-in layered store ambience with a spatial TV hum, speed-sensitive footsteps and subtle tape/anomaly interaction sounds.
