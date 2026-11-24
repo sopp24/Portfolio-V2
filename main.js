@@ -484,7 +484,7 @@ function createWorld() {
     const glow=new THREE.Mesh(fixtureGlowGeometry,fixtureGlowMaterial);
     glow.rotation.x=-Math.PI/2;glow.position.set(0,4.885,0);fixtureGroup.add(glow);
     const light=new THREE.PointLight(0xd1dec4,7.5,11,2);light.position.set(0,4.88,0);fixtureGroup.add(light);
-    fluorescentLights.push({light,baseIntensity:7.5,phase:i*1.73});
+    fluorescentLights.push({light,baseIntensity:7.5,baseColor:light.color.clone(),phase:i*1.73});
     scene.add(fixtureGroup);streamedFixtures.push(fixtureGroup);
   }
   const backSign=createPosterSign("OPEN 24 HOURS. ALWAYS.",4.5,.55,"#d4e0c4");
@@ -1141,9 +1141,13 @@ function animate() {
       a.rotation.x=a.userData.baseRotationX+Math.sin(phase*.63)*.018;
     });
     for(const fitting of fluorescentLights){
+      // Each tube drifts very slightly in warmth and output, like ageing fluorescent hardware.
+      const slowDrift=Math.sin(elapsedTime*.21+fitting.phase*1.3)*.012;
       const pulse=Math.sin(elapsedTime*1.37+fitting.phase)*.018+Math.sin(elapsedTime*.29+fitting.phase*1.8)*.009;
       const rareDip=Math.sin(elapsedTime*.43+fitting.phase*2.1)>.999?-.12:0;
-      fitting.light.intensity=fitting.baseIntensity*(1+pulse+rareDip);
+      const warmth=Math.sin(elapsedTime*.075+fitting.phase*1.17)*.006;
+      fitting.light.color.copy(fitting.baseColor).offsetHSL(warmth,0,0);
+      fitting.light.intensity=fitting.baseIntensity*(1+slowDrift+pulse+rareDip);
     }
     if(tvGlow){
       const tvDistance=Math.hypot(player.position.x-3.7,player.position.y+1.55-2.05,player.position.z+19.72);
