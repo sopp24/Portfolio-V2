@@ -300,3 +300,16 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
   .tmdb-logo-link { width:56px; min-height:40px; }
   .tmdb-credit-copy p { font-size:7px; }
 }
+
+/* Cinematic inspection entrance: brief motion, no layout shift. */
+.film-panel {
+  animation: film-panel-arrive .42s cubic-bezier(.2,.72,.22,1) both;
+  transform-origin: 50% 50%;
+}
+@keyframes film-panel-arrive {
+  from { opacity: 0; transform: translate(-50%,-47.5%) scale(.985); }
+  to { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .film-panel { animation: none !important; }
+}
