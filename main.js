@@ -61,6 +61,9 @@ const PALETTES = [
 ];
 
 let scene, camera, renderer, composer, crtPass, bokehPass, clock, playerRig, xrController;
+let bokehFocus = 8;
+const focusCameraPosition = new THREE.Vector3();
+const focusTargetPosition = new THREE.Vector3();
 let floorSurface, ceilingSurface;
 const endlessWalls = [];
 const streamedFixtures = [];
@@ -78,7 +81,7 @@ const keys = Object.create(null);
 const staticInteractables = [];
 const nearbyInteractables = [];
 let nearbyInteractionAnchorZ = NaN;
-const animatedCases = [];
+const activeTapeAnimations = new Set();
 const sideSections = [];
 const aislePairs=[];
 const posterQueue = [];
@@ -193,7 +196,8 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;
   root.userData.spineMode=spineMode;root.userData.coverMesh=null;root.userData.tapeTexture=null;
   root.userData.textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.genre||"")+"|"+(movie.posterUrl||"");
-  animatedCases.push(root);
+  root.userData.baseRotationX=root.rotation.x;
+  root.userData.baseRotationY=root.rotation.y;
   const body=new THREE.Mesh(spineMode?spineCaseGeometry:caseGeometry,caseMaterial);root.add(body);
   const faceWidth=spineMode?.095:.274;
   let tapeTexture;
@@ -485,6 +489,8 @@ function createPostprocessing() {
   composer=new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene,camera));
   bokehPass=new BokehPass(scene,camera,{focus:8,aperture:0.000018,maxblur:0.007,width:window.innerWidth,height:window.innerHeight});
+  // Depth of field is reserved for fine-pointer desktops; touch devices keep the faster crisp render.
+  bokehPass.enabled=window.matchMedia("(min-width: 761px) and (pointer: fine)").matches;
   composer.addPass(bokehPass);
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth,window.innerHeight),.36,.55,.76));
   crtPass=new ShaderPass(CRTShader);
@@ -639,13 +645,19 @@ function updateLook() {
     next=root;break;
   }
   if(selectedTarget!==next){
-    if(selectedTarget&&selectedTarget.userData.kind==="movie")selectedTarget.userData.pullTarget=0;
+    if(selectedTarget&&selectedTarget.userData.kind==="movie"){
+      selectedTarget.userData.pullTarget=0;
+      activeTapeAnimations.add(selectedTarget);
+    }
     selectedTarget=next;
     $("crosshair").classList.toggle("active",!!next);
     $("interaction-hint").hidden=!next;
     $("look-hint").style.opacity=next?"0":"0.9";
     $("interaction-hint").lastElementChild.textContent=next&&next.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":"EXAMINE TAPE";
-    if(next&&next.userData.kind==="movie")next.userData.pullTarget=.46;
+    if(next&&next.userData.kind==="movie"){
+      next.userData.pullTarget=.46;
+      activeTapeAnimations.add(next);
+    }
   }
 }
 
@@ -712,6 +724,10 @@ function interactFromXR() {
     if(!root)continue;
     if(root.userData.kind==="anomaly"&&(!survivalMode||root.userData.found))continue;
     selectedTarget=root;
+    if(root.userData.kind==="movie"){
+      root.userData.pullTarget=.46;
+      activeTapeAnimations.add(root);
+    }
     interact();
     return;
   }
@@ -852,13 +868,33 @@ function animate() {
     const delta=Math.min(clock.getDelta(),.05);
     if(started&&!paused)updateMovement(delta);else updateCamera();
     if(started&&!paused)updateLook();
-    for(const tape of animatedCases){
-      if(!tape.parent)continue;
-      tape.userData.pull=THREE.MathUtils.damp(tape.userData.pull,tape.userData.pullTarget||0,7,delta);
+    for(const tape of activeTapeAnimations){
+      if(!tape.parent){activeTapeAnimations.delete(tape);continue;}
+      const targetPull=tape.userData.pullTarget||0;
+      tape.userData.pull=THREE.MathUtils.damp(tape.userData.pull,targetPull,7,delta);
       tape.position.z=tape.userData.baseZ+tape.userData.pull;
+      const targetTilt=targetPull>.02?-.045:0;
+      tape.rotation.x=THREE.MathUtils.damp(tape.rotation.x,targetTilt,8,delta);
+      if(Math.abs(tape.userData.pull-targetPull)<.001&&Math.abs(tape.rotation.x-targetTilt)<.001){
+        tape.userData.pull=targetPull;
+        tape.position.z=tape.userData.baseZ+targetPull;
+        tape.rotation.x=targetTilt;
+        if(targetPull===0)activeTapeAnimations.delete(tape);
+      }
     }
     anomalyObjects.forEach((a,i)=>{if(a.visible)a.rotation.y+=delta*(.18+(i%4)*.04);});
     updateUI(delta);
+    if(bokehPass?.enabled){
+      let desiredFocus=8;
+      if(selectedTarget?.userData.kind==="movie"){
+        camera.getWorldPosition(focusCameraPosition);
+        selectedTarget.getWorldPosition(focusTargetPosition);
+        desiredFocus=THREE.MathUtils.clamp(focusCameraPosition.distanceTo(focusTargetPosition),2.4,16);
+      }
+      bokehFocus=THREE.MathUtils.damp(bokehFocus,desiredFocus,4.5,delta);
+      const focusUniform=bokehPass.materialBokeh?.uniforms?.focus;
+      if(focusUniform)focusUniform.value=bokehFocus;
+    }
     if(crtPass)crtPass.uniforms.time.value=elapsedTime;
     if(renderer.xr.isPresenting)renderer.render(scene,camera);
     else if(composer)composer.render();
