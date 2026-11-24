@@ -74,10 +74,14 @@ let crouching = false, running = false, flashlightOn = false, flashlightBattery 
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
 let flashlight,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
 const keys = Object.create(null);
-const interactables = [];
+const staticInteractables = [];
+const nearbyInteractables = [];
+let nearbyInteractionAnchorZ = NaN;
 const animatedCases = [];
 const sideSections = [];
 const aislePairs=[];
+const posterQueue = [];
+let posterQueueActive = 0, posterQueuePaused = false, posterQueueToken = "", posterPersistTimer = 0;
 let nextAislePair=5,previousAislePair=-1;
 const AISLE_LABELS = ["THRILLER","HORROR","SCI-FI","CRIME","DRAMA","CULT CLASSICS","ACTION","NO HOPE","MYSTERY","ANIMATION"];
 const anomalyObjects = [];
@@ -199,7 +203,10 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   const faceMaterial=new THREE.MeshBasicMaterial({map:tapeTexture,side:THREE.DoubleSide});
   const cover=new THREE.Mesh(new THREE.PlaneGeometry(faceWidth,.475),faceMaterial);
   cover.position.set(0,0,.054);root.add(cover);root.userData.coverMesh=cover;
-  body.userData.root=root;cover.userData.root=root;interactables.push(body,cover);parent.add(root);return root;
+  body.userData.root=root;cover.userData.root=root;
+  const hitTargets=parent.userData.hitTargets;
+  if(Array.isArray(hitTargets))hitTargets.push(body,cover);else staticInteractables.push(body,cover);
+  parent.add(root);return root;
 }
 let caseGeometry, spineCaseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial;
 
@@ -224,7 +231,7 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
   const parent=new THREE.Group();
   parent.position.set(side*4.45,0,centerZ);
   parent.rotation.y=side===-1?Math.PI/2:-Math.PI/2;
-  parent.userData.streamIndex=segmentNumber;parent.userData.side=side;parent.userData.aisleIndex=aisleIndex;parent.userData.caseRoots=[];
+  parent.userData.streamIndex=segmentNumber;parent.userData.side=side;parent.userData.aisleIndex=aisleIndex;parent.userData.caseRoots=[];parent.userData.hitTargets=[];
   addBox(parent,[8.15,4.3,.12],[0,2.2,-.48],pegboardMaterial);
   const levels=[.52,1.46,2.40,3.34];
   levels.forEach((y,level)=>{
@@ -411,8 +418,22 @@ function createAnomalies() {
     group.rotation.y=(seeded(i,5)-.5)*.6;group.visible=false;
     group.userData.kind="anomaly";group.userData.found=false;group.userData.index=i;
     const section=sideSections[i%sideSections.length];section.add(group);
-    anomalyObjects.push(group);interactables.push(target);target.userData.root=group;
+    anomalyObjects.push(group);section.userData.hitTargets.push(target);target.userData.root=group;
   }
+}
+
+function getNearbyInteractables() {
+  if(!Number.isFinite(nearbyInteractionAnchorZ)||Math.abs(player.position.z-nearbyInteractionAnchorZ)>=2){
+    nearbyInteractionAnchorZ=player.position.z;
+    nearbyInteractables.length=0;
+    nearbyInteractables.push(...staticInteractables);
+    for(const section of sideSections){
+      if(Math.abs(section.position.z-player.position.z)<=9.5&&Array.isArray(section.userData.hitTargets)){
+        nearbyInteractables.push(...section.userData.hitTargets);
+      }
+    }
+  }
+  return nearbyInteractables;
 }
 
 const CRTShader = {
@@ -493,6 +514,7 @@ function enterStore() {
   $("mobile-controls").hidden=!(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches);
   $("help-toggle").hidden=false;
   clock.start();
+  queueVisiblePosters();
 }
 
 function updateCamera() {
@@ -557,10 +579,12 @@ function refreshAisleSign(section) {
   label.material.map=map;label.material.needsUpdate=true;
 }
 function updateWorldStreaming() {
+  let sectionsStreamed=false;
   for(const pair of aislePairs){
     const delta=pair.z-player.position.z;
     if(delta>24){
       pair.z-=40;pair.left.position.z=pair.z;pair.right.position.z=pair.z;
+      nearbyInteractionAnchorZ=NaN;sectionsStreamed=true;
       pair.index=nextAislePair++;
       pair.left.userData.streamIndex=pair.index*2;pair.right.userData.streamIndex=pair.index*2+1;
       pair.left.userData.aisleIndex=pair.index;pair.right.userData.aisleIndex=pair.index;
@@ -568,6 +592,7 @@ function updateWorldStreaming() {
       refreshAisleSign(pair.left);refreshAisleSign(pair.right);
     }else if(delta < -24){
       pair.z+=40;pair.left.position.z=pair.z;pair.right.position.z=pair.z;
+      nearbyInteractionAnchorZ=NaN;sectionsStreamed=true;
       pair.index=previousAislePair--;
       pair.left.userData.streamIndex=pair.index*2;pair.right.userData.streamIndex=pair.index*2+1;
       pair.left.userData.aisleIndex=pair.index;pair.right.userData.aisleIndex=pair.index;
@@ -583,12 +608,13 @@ function updateWorldStreaming() {
   if(floorSurface)floorSurface.position.z=player.position.z;
   if(ceilingSurface)ceilingSurface.position.z=player.position.z;
   endlessWalls.forEach(wall=>wall.position.z=player.position.z);
+  if(sectionsStreamed&&started)queueVisiblePosters();
 }
 
 
 function updateLook() {
   raycaster.setFromCamera(screenCenter,camera);
-  const hits=raycaster.intersectObjects(interactables,false);
+  const hits=raycaster.intersectObjects(getNearbyInteractables(),false);
   let next=null;
   for(const hit of hits){
     const root=hit.object.userData.root;if(!root)continue;
@@ -663,7 +689,7 @@ function interactFromXR() {
   const rotation=new THREE.Matrix4().extractRotation(xrController.matrixWorld);
   const direction=new THREE.Vector3(0,0,-1).applyMatrix4(rotation).normalize();
   raycaster.set(origin,direction);
-  const hits=raycaster.intersectObjects(interactables,false);
+  const hits=raycaster.intersectObjects(getNearbyInteractables(),false);
   for(const hit of hits){
     const root=hit.object.userData.root;
     if(!root)continue;
@@ -858,7 +884,7 @@ function refreshGenreFilter(){
 }
 function saveImportedMovies(){
   try{
-    const compact=movieCatalogue.map(m=>({title:m.title,year:m.year||0,letterboxdUrl:m.letterboxdUrl||""}));
+    const compact=movieCatalogue.map(m=>({title:m.title,year:m.year||0,letterboxdUrl:m.letterboxdUrl||"",tmdbId:m.tmdbId||null,posterUrl:m.posterUrl||"",posterLookupDone:!!m.posterLookupDone}));
     localStorage.setItem("midnightvideo.letterboxd",JSON.stringify(compact));
     $("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" titles stored in this browser.";
   }catch(e){$("tmdb-status").textContent="Archive too large for browser storage. Keep the original CSV export to reimport it.";}
@@ -867,6 +893,77 @@ function refreshTapeCatalogue(){
   if(!movieCatalogue.length)return;
   sideSections.forEach(assignSectionCatalogue);
 }
+function scheduleImportedMoviesSave(){
+  if(posterPersistTimer)clearTimeout(posterPersistTimer);
+  posterPersistTimer=setTimeout(()=>{posterPersistTimer=0;saveImportedMovies();},900);
+}
+function queueVisiblePosters(){
+  if(!tmdbToken||!sideSections.length)return;
+  if(posterQueueToken!==tmdbToken){
+    posterQueueToken=tmdbToken;posterQueue.length=0;posterQueuePaused=false;
+    movieCatalogue.forEach(movie=>{movie.posterQueued=false;});
+  }
+  if(posterQueuePaused)return;
+  for(const section of sideSections){
+    if(Math.abs(section.position.z-player.position.z)>9.5)continue;
+    for(const root of section.userData.caseRoots||[]){
+      const movie=root.userData.movie;
+      if(root.userData.spineMode||!movie||movie.posterUrl||movie.posterLookupDone||movie.posterQueued||movie.posterLoading)continue;
+      movie.posterQueued=true;posterQueue.push({movie,token:tmdbToken});
+    }
+  }
+  pumpPosterQueue();
+}
+function pumpPosterQueue(){
+  if(posterQueuePaused||!tmdbToken)return;
+  while(posterQueueActive<2&&posterQueue.length){
+    const job=posterQueue.shift(),movie=job.movie;
+    if(!movie||job.token!==tmdbToken){if(movie)movie.posterQueued=false;continue;}
+    if(movie.posterUrl||movie.posterLookupDone||movie.posterLoading){movie.posterQueued=false;continue;}
+    posterQueueActive++;
+    loadTMDBPoster(movie,job.token).finally(()=>{
+      posterQueueActive--;
+      pumpPosterQueue();
+    });
+  }
+}
+async function loadTMDBPoster(movie,token){
+  movie.posterLoading=true;
+  try{
+    const headers={Authorization:"Bearer "+token,Accept:"application/json"};
+    const query=new URLSearchParams({query:movie.title,include_adult:"true"});
+    if(movie.year)query.set("year",String(movie.year));
+    const response=await fetch("https://api.themoviedb.org/3/search/movie?"+query,{headers});
+    if(token!==tmdbToken)return;
+    if(!response.ok){
+      if([401,403,429].includes(response.status)){
+        posterQueuePaused=true;posterQueue.length=0;
+        $("tmdb-status").textContent=response.status===429?"TMDB rate limit reached. Visible poster loading is paused; reconnect later to resume.":"TMDB rejected the token. Check your Read Access Token.";
+        return;
+      }
+      throw new Error("TMDB poster search failed: "+response.status);
+    }
+    const results=(await response.json()).results||[];
+    const match=results.find(r=>!movie.year||!r.release_date||Number(r.release_date.slice(0,4))===Number(movie.year))||results[0];
+    movie.posterLookupDone=true;
+    if(!match)return;
+    movie.tmdbId=match.id;
+    if(match.poster_path){
+      movie.posterUrl="https://image.tmdb.org/t/p/w500"+match.poster_path;
+      refreshTapeCatalogue();
+      scheduleImportedMoviesSave();
+    }
+  }catch(error){
+    if(token===tmdbToken&&!posterQueuePaused){
+      movie.posterLookupDone=true;
+      console.warn("TMDB poster:",error);
+    }
+  }finally{
+    movie.posterLoading=false;movie.posterQueued=false;
+    if(token!==tmdbToken&&tmdbToken)queueVisiblePosters();
+  }
+}
+
 function restoreImportedMovies(){
   try{const saved=localStorage.getItem("midnightvideo.letterboxd");if(saved){const data=JSON.parse(saved);if(Array.isArray(data)&&data.length)movieCatalogue=data;}}
   catch(e){console.warn("Could not restore the local Letterboxd archive.",e);}
@@ -877,34 +974,45 @@ async function importLetterboxdFiles(event){
   try{
     for(const file of files)csvRows(await file.text()).forEach(row=>{const item=importedMovieFromRow(row);if(item)imported.push(item);});
     const hasPreviousImport=!!localStorage.getItem("midnightvideo.letterboxd");
-    const merged=new Map((hasPreviousImport?movieCatalogue:[]).map(m=>[movieKey(m),m]));imported.forEach(item=>merged.set(movieKey(item),item));
+    const merged=new Map((hasPreviousImport?movieCatalogue:[]).map(m=>[movieKey(m),m]));
+    imported.forEach(item=>{const key=movieKey(item),existing=merged.get(key);merged.set(key,existing?{...item,...existing,letterboxdUrl:item.letterboxdUrl||existing.letterboxdUrl||""}:item);});
     movieCatalogue=[...merged.values()].sort((a,b)=>a.title.localeCompare(b.title));
-    saveImportedMovies();refreshGenreFilter();refreshTapeCatalogue();renderMovieList($("movie-search").value);
-    showToast(imported.length+" LETTERBOXD ROWS IMPORTED");$("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" unique films loaded. Metadata loads as tapes are inspected.";
+    saveImportedMovies();refreshGenreFilter();refreshTapeCatalogue();renderMovieList($("movie-search").value);queueVisiblePosters();
+    showToast(imported.length+" LETTERBOXD ROWS IMPORTED");$("tmdb-status").textContent=movieCatalogue.length.toLocaleString()+" unique films loaded. Visible shelf artwork is loading progressively.";
   }catch(error){console.error(error);$("tmdb-status").textContent="CSV unreadable. Use a Letterboxd data export.";}
   finally{event.target.value="";}
 }
 function saveTMDBToken(){
   tmdbToken=$("tmdb-token").value.trim();try{localStorage.setItem("midnightvideo.tmdbToken",tmdbToken);}catch(e){}
-  $("tmdb-status").textContent=tmdbToken?"TMDB connected. Posters and film data load when tapes are inspected.":"TMDB token cleared.";
+  posterQueue.length=0;posterQueuePaused=false;posterQueueToken="";
+  movieCatalogue.forEach(movie=>{movie.posterQueued=false;});
+  $("tmdb-status").textContent=tmdbToken?"TMDB connected. Artwork loads progressively on nearby shelves; full details load when tapes are inspected.":"TMDB token cleared.";
   showToast(tmdbToken?"TMDB CONNECTION SAVED":"TMDB CONNECTION CLEARED");
+  if(tmdbToken&&started)queueVisiblePosters();
 }
 async function enrichMovieWithTMDB(movie){
   if(!tmdbToken||movie.tmdbLoaded||movie.tmdbLoading)return;movie.tmdbLoading=true;
   try{
-    const headers={Authorization:"Bearer "+tmdbToken,Accept:"application/json"},query=new URLSearchParams({query:movie.title,include_adult:"true"});
-    if(movie.year)query.set("year",String(movie.year));
-    const response=await fetch("https://api.themoviedb.org/3/search/movie?"+query,{headers});
-    if(!response.ok)throw new Error("TMDB search failed: "+response.status);
-    const results=(await response.json()).results||[];if(!results.length)throw new Error("No title match");
-    const match=results.find(r=>!movie.year||!r.release_date||Number(r.release_date.slice(0,4))===Number(movie.year))||results[0];
-    const details=await fetch("https://api.themoviedb.org/3/movie/"+match.id+"?append_to_response=credits",{headers});
+    const headers={Authorization:"Bearer "+tmdbToken,Accept:"application/json"};
+    let movieId=movie.tmdbId;
+    if(!movieId){
+      const query=new URLSearchParams({query:movie.title,include_adult:"true"});
+      if(movie.year)query.set("year",String(movie.year));
+      const response=await fetch("https://api.themoviedb.org/3/search/movie?"+query,{headers});
+      if(!response.ok)throw new Error("TMDB search failed: "+response.status);
+      const results=(await response.json()).results||[];if(!results.length)throw new Error("No title match");
+      const match=results.find(r=>!movie.year||!r.release_date||Number(r.release_date.slice(0,4))===Number(movie.year))||results[0];
+      movieId=match.id;movie.tmdbId=movieId;
+      if(match.poster_path&&!movie.posterUrl)movie.posterUrl="https://image.tmdb.org/t/p/w500"+match.poster_path;
+    }
+    const details=await fetch("https://api.themoviedb.org/3/movie/"+movieId+"?append_to_response=credits",{headers});
     if(!details.ok)throw new Error("TMDB details failed: "+details.status);
     const d=await details.json();movie.tmdbId=d.id;movie.year=d.release_date?Number(d.release_date.slice(0,4)):movie.year;
     movie.genre=(d.genres||[]).map(g=>g.name).join(" / ")||movie.genre;movie.runtime=d.runtime?d.runtime+" MIN":movie.runtime;
     movie.synopsis=d.overview||movie.synopsis;movie.director=(d.credits?.crew||[]).find(p=>p.job==="Director")?.name||movie.director;
     movie.cast=(d.credits?.cast||[]).slice(0,4).map(p=>p.name).join(" · ")||movie.cast;
-    movie.posterUrl=d.poster_path?"https://image.tmdb.org/t/p/w500"+d.poster_path:"";movie.tmdbLoaded=true;
+    movie.posterUrl=d.poster_path?"https://image.tmdb.org/t/p/w500"+d.poster_path:movie.posterUrl||"";
+    movie.posterLookupDone=true;movie.tmdbLoaded=true;
     saveImportedMovies();refreshGenreFilter();refreshTapeCatalogue();
   }catch(error){console.warn("TMDB metadata:",error);$("tmdb-status").textContent="TMDB lookup failed for "+movie.title+". Check your token.";}
   finally{movie.tmdbLoading=false;}
