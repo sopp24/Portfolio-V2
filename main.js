@@ -188,7 +188,28 @@ function posterCanvas(movie, index, onArtworkLoaded=null) {
   ctx.fillStyle = "rgba(10,10,10,.22)"; ctx.fillRect(0,0,10,384);
   if(movie.posterUrl){
     const image=new Image();image.crossOrigin="anonymous";
-    image.onload=()=>{ctx.clearRect(0,0,256,384);const scale=Math.max(256/image.width,384/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,(256-w)/2,(384-h)/2,w,h);if(onArtworkLoaded)onArtworkLoaded();};
+    image.onload=()=>{
+      ctx.clearRect(0,0,256,384);
+      const scale=Math.max(256/image.width,384/image.height),w=image.width*scale,h=image.height*scale;
+      ctx.drawImage(image,(256-w)/2,(384-h)/2,w,h);
+      // Keep real poster art readable at shelf distance without hiding its original composition.
+      const shade=ctx.createLinearGradient(0,0,0,384);
+      shade.addColorStop(0,"rgba(5,8,6,.34)");shade.addColorStop(.22,"rgba(5,8,6,0)");
+      shade.addColorStop(.58,"rgba(5,8,6,0)");shade.addColorStop(1,"rgba(5,8,6,.78)");
+      ctx.fillStyle=shade;ctx.fillRect(0,0,256,384);
+      ctx.strokeStyle="rgba(245,237,211,.72)";ctx.lineWidth=2;ctx.strokeRect(12,12,232,360);
+      ctx.fillStyle="rgba(245,239,220,.82)";ctx.font="bold 10px monospace";ctx.textAlign="center";
+      ctx.fillText("MIDNIGHT VIDEO",128,30);
+      const title=String(movie.title||"UNTITLED").toUpperCase();
+      let size=title.length>25?15:title.length>17?18:22;
+      ctx.font="900 "+size+"px Arial";
+      ctx.shadowColor="rgba(0,0,0,.85)";ctx.shadowBlur=5;ctx.shadowOffsetY=1;
+      ctx.fillText(title,128,Math.min(340,330),218);
+      ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+      ctx.fillStyle="rgba(245,239,220,.78)";ctx.font="10px monospace";
+      ctx.fillText(String(movie.year||"—")+"  /  "+String(movie.genre||"FEATURE").toUpperCase(),128,354);
+      if(onArtworkLoaded)onArtworkLoaded();
+    };
     image.src=movie.posterUrl;
   }
   return canvas;
