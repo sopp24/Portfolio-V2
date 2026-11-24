@@ -971,7 +971,7 @@ function bindEvents() {
     moveBack:new Set(["s","arrowdown"]),
     moveRight:new Set(["d","arrowright"])
   };
-  const isTypingTarget=target=>target instanceof Element&&!!target.closest("input,textarea,select,[contenteditable='true']");
+  const isInteractiveTarget=target=>target instanceof Element&&!!target.closest("input,textarea,select,button,[role='button'],[contenteditable='true']");
   const updateMovementKey=(event,pressed)=>{
     const key=String(event.key||"").toLowerCase();
     for(const [state,aliases] of Object.entries(movementAliases)){
@@ -980,7 +980,7 @@ function bindEvents() {
     return false;
   };
   document.addEventListener("keydown",e=>{
-    if(isTypingTarget(e.target))return;
+    if(isInteractiveTarget(e.target)&&e.code!=="Escape")return;
     const movementKey=updateMovementKey(e,true);
     if(e.code==="Space")keys.Space=true;
     if(e.code==="ShiftLeft"||e.code==="ShiftRight")running=true;
