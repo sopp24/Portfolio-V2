@@ -101,7 +101,7 @@ const player = { position: new THREE.Vector3(0,0,3.2), velocity: new THREE.Vecto
 function isInterfacePanelOpen(){return !$("film-panel").hidden||!$("library-panel").hidden;}
 function clearMovementInput(stopVelocity=false){
   for(const state of ["moveForward","moveBack","moveLeft","moveRight","Space"])keys[state]=false;
-  running=false;footstepTimer=0;
+  running=false;footstepTimer=0;pointerDragging=false;
   if(stopVelocity)player.velocity.set(0,0,0);
 }
 const tempForward = new THREE.Vector3();
@@ -994,11 +994,13 @@ function updateUI(delta) {
     if(footstepTimer>=interval){footstepTimer-=interval;playFootstep();}
   }else footstepTimer=0;
   syncAudioListener();
-  if(flashlightOn){
-    flashlightBattery=Math.max(0,flashlightBattery-delta*.95);
-    if(flashlightBattery<=0){setFlashlight(false);showToast("FLASHLIGHT BATTERY DEPLETED");}
-  } else if(flashlightBattery<100){
-    flashlightBattery=Math.min(100,flashlightBattery+delta*.13);
+  if(!paused&&!isInterfacePanelOpen()){
+    if(flashlightOn){
+      flashlightBattery=Math.max(0,flashlightBattery-delta*.95);
+      if(flashlightBattery<=0){setFlashlight(false);showToast("FLASHLIGHT BATTERY DEPLETED");}
+    } else if(flashlightBattery<100){
+      flashlightBattery=Math.min(100,flashlightBattery+delta*.13);
+    }
   }
   $("battery-level").style.width=flashlightBattery+"%";
   $("battery-value").textContent=Math.round(flashlightBattery)+"%";
@@ -1306,6 +1308,7 @@ function bindEvents() {
   document.addEventListener("keydown",e=>{
     if(isInteractiveTarget(e.target)&&e.code!=="Escape")return;
     if(isInterfacePanelOpen()&&e.code!=="Escape")return;
+    if(paused&&!["Escape","Enter"].includes(e.code))return;
     const movementKey=updateMovementKey(e,true);
     if(e.code==="Space")keys.Space=true;
     if(e.code==="ShiftLeft"||e.code==="ShiftRight")running=true;
