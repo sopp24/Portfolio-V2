@@ -72,7 +72,7 @@ let pointerDragging=false,pointerDragMoved=false,pointerLastX=0,pointerLastY=0,s
 let yaw=0,pitch=0,verticalVelocity=0,grounded=true;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
-let flashlight, ambientAudio = null, audioContext = null, audioGain = null;
+let flashlight,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
 const keys = Object.create(null);
 const interactables = [];
 const animatedCases = [];
@@ -720,11 +720,18 @@ function toggleAudio() {
       if(!AudioCtx){showToast("AMBIENCE UNAVAILABLE IN THIS BROWSER");return;}
       if(!audioContext){
         audioContext=new AudioCtx();
-        const osc=audioContext.createOscillator(); osc.type="sawtooth"; osc.frequency.value=49;
-        const filter=audioContext.createBiquadFilter(); filter.type="lowpass"; filter.frequency.value=118;
-        audioGain=audioContext.createGain(); audioGain.gain.value=.018;
-        osc.connect(filter); filter.connect(audioGain); audioGain.connect(audioContext.destination); osc.start();
-        const hum=audioContext.createOscillator(); hum.type="sine"; hum.frequency.value=99; hum.connect(audioGain); hum.start();
+        const osc=audioContext.createOscillator();osc.type="sine";osc.frequency.value=50;
+        const filter=audioContext.createBiquadFilter();filter.type="lowpass";filter.frequency.value=150;
+        audioGain=audioContext.createGain();audioGain.gain.value=.020;
+        osc.connect(filter);filter.connect(audioGain);audioGain.connect(audioContext.destination);osc.start();
+        const hum=audioContext.createOscillator();hum.type="sine";hum.frequency.value=100;hum.connect(audioGain);hum.start();
+        const noiseBuffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate);
+        const noiseData=noiseBuffer.getChannelData(0);
+        for(let i=0;i<noiseData.length;i++)noiseData[i]=(Math.random()*2-1)*.45;
+        ambientNoiseSource=audioContext.createBufferSource();ambientNoiseSource.buffer=noiseBuffer;ambientNoiseSource.loop=true;
+        const hissFilter=audioContext.createBiquadFilter();hissFilter.type="bandpass";hissFilter.frequency.value=1250;hissFilter.Q.value=.32;
+        ambientNoiseGain=audioContext.createGain();ambientNoiseGain.gain.value=.003;
+        ambientNoiseSource.connect(hissFilter);hissFilter.connect(ambientNoiseGain);ambientNoiseGain.connect(audioContext.destination);ambientNoiseSource.start();
       } else audioContext.resume();
       showToast("STORE AMBIENCE ON");
     } catch(e){showToast("AMBIENCE UNAVAILABLE");}
