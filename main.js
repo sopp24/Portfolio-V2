@@ -12,7 +12,6 @@ const $ = (id) => document.getElementById(id);
 const canvas = $("world");
 const boot = $("boot");
 const progress = $("boot-progress");
-const enterButton = $("enter-store");
 const hud = $("hud");
 const fallback = $("fallback");
 
@@ -117,7 +116,7 @@ function posterCanvas(movie, index, onArtworkLoaded=null) {
   ctx.fillStyle = "rgba(245,237,211,.83)";
   ctx.font = "bold 11px Arial"; ctx.textAlign = "center";
   ctx.fillText("MIDNIGHT VIDEO PRESENTS",128,34);
-  const title = movie.title.toUpperCase();
+  const title = String(movie.title||"UNTITLED").toUpperCase();
   const words = title.split(" ");
   let lines = [], line = "";
   ctx.font = "900 31px Arial";
@@ -131,7 +130,7 @@ function posterCanvas(movie, index, onArtworkLoaded=null) {
   const startY = 218 - (lines.length-1)*fontSize*.52;
   lines.slice(0,4).forEach((t,i)=>ctx.fillText(t,128,startY+i*fontSize*1.12));
   ctx.fillStyle = "rgba(255,243,213,.76)";
-  ctx.font = "9px monospace"; ctx.fillText(movie.year + "  /  " + movie.genre.toUpperCase(),128,344);
+  ctx.font = "9px monospace"; ctx.fillText(String(movie.year||"—") + "  /  " + String(movie.genre||"FEATURE").toUpperCase(),128,344);
   ctx.fillStyle = "#f5ead0"; ctx.fillRect(22,50,3,65);
   ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(31,50,1,70);
   ctx.fillStyle = "rgba(10,10,10,.22)"; ctx.fillRect(0,0,10,384);
@@ -486,7 +485,10 @@ function enterStore() {
   if(!initialized || started) return;
   started=true;paused=false;boot.classList.add("leaving");
   hud.classList.add("visible");hud.setAttribute("aria-hidden","false");
-  $("look-hint").style.opacity=".9";$("hud-bottom").hidden=false;clock.start();
+  $("look-hint").style.opacity=".9";$("hud-bottom").hidden=false;
+  $("mobile-controls").hidden=!(window.matchMedia&&window.matchMedia("(pointer: coarse)").matches);
+  $("help-toggle").hidden=false;
+  clock.start();
 }
 
 function updateCamera() {
@@ -589,6 +591,7 @@ function openFilm(movie,index) {
   const poster=posterCanvas(movie,Math.max(0,movieCatalogue.indexOf(movie)));
   $("film-art").innerHTML="";
   const img=document.createElement("img");img.src=movie.posterUrl||poster.toDataURL("image/png");img.alt=movie.title+" VHS cover";img.className="film-art-front";
+  $("flip-film").textContent="FLIP TAPE ↻";
   const backFace=document.createElement("div");backFace.className="film-art-back";
   const backHeader=document.createElement("span");backHeader.className="tape-back-header";backHeader.textContent="MIDNIGHT VIDEO / RENTAL COPY";
   const backTitle=document.createElement("strong");backTitle.textContent=movie.title.toUpperCase()+" · "+(movie.year||"—");
@@ -614,6 +617,7 @@ function flipFilm() {
   art.classList.toggle("flipped");
   $("film-back").hidden=true;
   $("film-info").style.display="flex";
+  $("flip-film").textContent=art.classList.contains("flipped")?"TURN TO FRONT ↺":"FLIP TAPE ↻";
 }
 
 function investigateAnomaly(target) {
@@ -860,7 +864,6 @@ function renderFilmMetadata(movie){
 }
 
 function bindEvents() {
-  if(enterButton) enterButton.addEventListener("click",enterStore);
   $("play-toggle").addEventListener("click",()=>{toggleAudio();$("play-toggle").querySelector("span:last-child").textContent=$("sound-toggle").getAttribute("aria-pressed")==="true"?"PAUSE":"PLAY";});
   $("resume-store").addEventListener("click",()=>{paused=false;$("pause-screen").hidden=true;requestLock();});
   $("film-close").addEventListener("click",closePanels);
@@ -912,7 +915,11 @@ function bindEvents() {
     if(e.code==="KeyM" && started){if($("library-panel").hidden)openLibrary();else closePanels();}
     if(e.code==="KeyR" && started)setSurvival(!survivalMode);
     if(e.code==="KeyV" && started)enterVR();
-    if(e.code==="Escape" && !$("film-panel").hidden){closePanels();}
+    if(e.code==="Escape" && started){
+      if(!$("film-panel").hidden||!$("library-panel").hidden)closePanels();
+      else if(!paused){paused=true;document.exitPointerLock?.();$("pause-screen").hidden=false;}
+      else{paused=false;$("pause-screen").hidden=true;requestLock();}
+    }
     if(e.code==="Enter" && paused){paused=false;requestLock();}
   });
   document.addEventListener("keyup",e=>{
