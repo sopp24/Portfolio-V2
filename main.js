@@ -98,6 +98,12 @@ const raycaster = new THREE.Raycaster();
 raycaster.far = 5.1;
 const screenCenter = new THREE.Vector2(0,0);
 const player = { position: new THREE.Vector3(0,0,3.2), velocity: new THREE.Vector3() };
+function isInterfacePanelOpen(){return !$("film-panel").hidden||!$("library-panel").hidden;}
+function clearMovementInput(stopVelocity=false){
+  for(const state of ["moveForward","moveBack","moveLeft","moveRight","Space"])keys[state]=false;
+  running=false;footstepTimer=0;
+  if(stopVelocity)player.velocity.set(0,0,0);
+}
 const tempForward = new THREE.Vector3();
 const tempRight = new THREE.Vector3();
 
@@ -227,7 +233,20 @@ function assignSectionCatalogue(section) {
   section.userData.caseRoots.forEach(root=>{
     const slot=base+root.userData.slotOffset;
     const index=((slot%count)+count)%count;
-    const movie=movieCatalogue[index];root.userData.movie=movie;root.userData.catalogueIndex=index;
+    const movie=movieCatalogue[index];
+    if(root.userData.assignedStreamIndex!==section.userData.streamIndex){
+      root.userData.pull=0;root.userData.pullTarget=0;
+      root.position.z=root.userData.baseZ;
+      root.rotation.x=root.userData.baseRotationX||0;root.rotation.y=root.userData.baseRotationY||0;
+      activeTapeAnimations.delete(root);
+      if(selectedTarget===root){
+        selectedTarget=null;
+        $("crosshair").classList.remove("active");$("interaction-hint").hidden=true;
+        $("look-hint").style.opacity=started?"0.9":"0";
+      }
+      root.userData.assignedStreamIndex=section.userData.streamIndex;
+    }
+    root.userData.movie=movie;root.userData.catalogueIndex=index;
     const textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.genre||"")+"|"+(movie.posterUrl||"");
     if(root.userData.textureKey===textureKey)return;
     const tapeTexture=root.userData.tapeTexture;
@@ -257,7 +276,7 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
       const movie=movieCatalogue[movieIndex],x=(i-10.5)*.36;
       const faceOut=(i%4===0)||(level===1&&i%4===2);
       const root=addCase(parent,[x,y+.43,.18],0,movie,movieIndex,movieIndex,!faceOut);
-      root.userData.slotOffset=level*22+i;parent.userData.caseRoots.push(root);
+      root.userData.slotOffset=level*22+i;root.userData.assignedStreamIndex=segmentNumber;parent.userData.caseRoots.push(root);
     }
   });
   for(let i=0;i<7;i++)addBox(parent,[.08,4.3,.16],[-3.95+i*1.31,2.2,-.38],metalMaterial);
@@ -598,7 +617,7 @@ function updateCamera() {
 }
 
 function updateMovement(delta) {
-  if(!started || paused) return;
+  if(!started || paused || isInterfacePanelOpen()) return;
   const speed=running?6.6:3.35;
   let axisX=(keys.moveRight?1:0)-(keys.moveLeft?1:0);
   let axisZ=(keys.moveBack?1:0)-(keys.moveForward?1:0);
@@ -713,6 +732,7 @@ function updateLook() {
 function openFilm(movie,index) {
   if(!movie)return;
   playInteractionSound("tape");
+  clearMovementInput(true);
   $("film-panel").hidden=false;$("film-back").hidden=true;$("film-art").classList.remove("flipped");
   const poster=posterCanvas(movie,Math.max(0,movieCatalogue.indexOf(movie)));
   $("film-art").innerHTML="";
@@ -802,12 +822,14 @@ function setFlashlight(enabled) {
 }
 
 function openLibrary() {
+  clearMovementInput(true);
   $("library-panel").hidden=false;
   $("movie-search").value="";
   renderMovieList("");
   document.exitPointerLock?.();
 }
 function closePanels() {
+  clearMovementInput(true);
   $("film-panel").hidden=true; $("library-panel").hidden=true;
   $("film-info").style.display="flex"; $("film-back").hidden=true;
   if(started) requestLock();
@@ -959,14 +981,14 @@ function formatTime(seconds) {
 }
 
 function updateUI(delta) {
-  if(started && !paused) elapsedTime+=delta;
+  if(started && !paused && !isInterfacePanelOpen()) elapsedTime+=delta;
   $("clock-readout").textContent=formatTime(elapsedTime);
   let nearest=null,nearestDistance=Infinity;
   for(const section of sideSections){const distance=Math.abs(section.position.z-player.position.z);if(distance<nearestDistance){nearest=section;nearestDistance=distance;}}
   if(nearest)$("aisle-name").textContent=AISLE_LABELS[((nearest.userData.aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length];
   const speed=Math.sqrt(player.velocity.x*player.velocity.x+player.velocity.z*player.velocity.z);
   $("speed-readout").textContent=running&&speed>.7?"RUN":"SP";
-  if(audioContext?.state==="running"&&started&&!paused&&grounded&&speed>.48){
+  if(audioContext?.state==="running"&&started&&!paused&&!isInterfacePanelOpen()&&grounded&&speed>.48){
     footstepTimer+=delta;
     const interval=running?.31:crouching?.64:.47;
     if(footstepTimer>=interval){footstepTimer-=interval;playFootstep();}
@@ -987,8 +1009,8 @@ function animate() {
   const frame=()=>{
     if(!initialized)return;
     const delta=Math.min(clock.getDelta(),.05);
-    if(started&&!paused)updateMovement(delta);else updateCamera();
-    if(started&&!paused)updateLook();
+    if(started&&!paused&&!isInterfacePanelOpen())updateMovement(delta);else updateCamera();
+    if(started&&!paused&&!isInterfacePanelOpen())updateLook();
     for(const tape of activeTapeAnimations){
       if(!tape.parent){activeTapeAnimations.delete(tape);continue;}
       const targetPull=tape.userData.pullTarget||0;
@@ -1003,7 +1025,7 @@ function animate() {
         if(targetPull===0)activeTapeAnimations.delete(tape);
       }
     }
-    anomalyObjects.forEach((a,i)=>{
+    if(started&&!paused&&!isInterfacePanelOpen())anomalyObjects.forEach((a,i)=>{
       if(!a.visible)return;
       const phase=elapsedTime*a.userData.floatSpeed+a.userData.floatPhase;
       a.position.y=a.userData.baseY+Math.sin(phase)*a.userData.floatAmount;
@@ -1016,7 +1038,7 @@ function animate() {
       fitting.light.intensity=fitting.baseIntensity*(1+pulse+rareDip);
     }
     updateUI(delta);
-    if(started&&!paused){
+    if(started&&!paused&&!isInterfacePanelOpen()){
       tvStaticTimer+=delta;
       if(tvStaticTimer>=.17){tvStaticTimer=0;updateStaticTexture();}
     }
@@ -1228,7 +1250,7 @@ function renderFilmMetadata(movie){
 
 function bindEvents() {
   $("play-toggle").addEventListener("click",()=>{toggleAudio();$("play-toggle").querySelector("span:last-child").textContent=$("sound-toggle").getAttribute("aria-pressed")==="true"?"PAUSE":"PLAY";});
-  $("resume-store").addEventListener("click",()=>{paused=false;$("pause-screen").hidden=true;requestLock();});
+  $("resume-store").addEventListener("click",()=>{clearMovementInput(true);paused=false;$("pause-screen").hidden=true;requestLock();});
   $("film-close").addEventListener("click",closePanels);
   $("library-close").addEventListener("click",closePanels);
   $("flip-film").addEventListener("click",flipFilm);
@@ -1246,7 +1268,7 @@ function bindEvents() {
   document.addEventListener("pointerlockchange",onPointerLockChange);
   canvas.addEventListener("pointerdown",e=>{
     if(e.pointerType==="touch"||e.button!==0||!started||paused||!$("film-panel").hidden||!$("library-panel").hidden)return;
-    pointerDragging=true;pointerDragMoved=false;pointerLastX=e.clientX;pointerLastY=e.clientY;
+    suppressCanvasClick=false;pointerDragging=true;pointerDragMoved=false;pointerLastX=e.clientX;pointerLastY=e.clientY;
     canvas.setPointerCapture?.(e.pointerId);
   });
   const stopPointerDrag=e=>{
@@ -1283,6 +1305,7 @@ function bindEvents() {
   };
   document.addEventListener("keydown",e=>{
     if(isInteractiveTarget(e.target)&&e.code!=="Escape")return;
+    if(isInterfacePanelOpen()&&e.code!=="Escape")return;
     const movementKey=updateMovementKey(e,true);
     if(e.code==="Space")keys.Space=true;
     if(e.code==="ShiftLeft"||e.code==="ShiftRight")running=true;
@@ -1297,20 +1320,18 @@ function bindEvents() {
     if(e.code==="KeyH"&&started){const card=$("help-card");card.hidden=!card.hidden;$("help-toggle").setAttribute("aria-expanded",String(!card.hidden));}
     if(e.code==="Escape"&&started){
       if(!$("film-panel").hidden||!$("library-panel").hidden)closePanels();
-      else if(!paused){paused=true;document.exitPointerLock?.();$("pause-screen").hidden=false;}
+      else if(!paused){clearMovementInput(true);paused=true;document.exitPointerLock?.();$("pause-screen").hidden=false;}
       else{paused=false;$("pause-screen").hidden=true;requestLock();}
     }
-    if(e.code==="Enter"&&paused){paused=false;requestLock();}
+    if(e.code==="Enter"&&paused){clearMovementInput(true);paused=false;requestLock();}
   });
   document.addEventListener("keyup",e=>{
     updateMovementKey(e,false);
     if(e.code==="Space")keys.Space=false;
     if(e.code==="ShiftLeft"||e.code==="ShiftRight")running=false;
   });
-  window.addEventListener("blur",()=>{
-    Object.keys(keys).forEach(key=>{keys[key]=false;});
-    running=false;
-  });
+  window.addEventListener("blur",()=>clearMovementInput(true));
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)clearMovementInput(true);});
   canvas.addEventListener("click",()=>{
     if(suppressCanvasClick){suppressCanvasClick=false;return;}
     if(started&&!paused&&$("film-panel").hidden&&$("library-panel").hidden)interact();
