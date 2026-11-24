@@ -171,10 +171,6 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex)
   const cover = new THREE.Mesh(new THREE.PlaneGeometry(.425,.665),new THREE.MeshBasicMaterial({map:getMovieTexture(movie,movieIndex),side:THREE.DoubleSide}));
   cover.position.set(0,0,.062);
   root.add(cover);
-  const spineMat = new THREE.MeshStandardMaterial({color:new THREE.Color(PALETTES[movieIndex%PALETTES.length][0]),roughness:.75});
-  const spine = new THREE.Mesh(spineGeometry,spineMat);
-  spine.position.set(-.218,0,0);
-  root.add(spine);
   body.userData.root = root;
   cover.userData.root = root;
   interactables.push(body,cover);
@@ -182,7 +178,7 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex)
   return root;
 }
 
-let caseGeometry, spineGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial;
+let caseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial;
 
 function createShelfModule(side, centerZ, segmentNumber) {
   const parent = new THREE.Group();
@@ -193,11 +189,11 @@ function createShelfModule(side, centerZ, segmentNumber) {
   levels.forEach((y,level)=>{
     addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
     addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
-    const count = 12;
+    const count = 9;
     for(let i=0;i<count;i++){
       const movieIndex = (segmentNumber*13 + level*17 + i*3 + (side===1?7:0)) % MOVIES.length;
       const movie = MOVIES[movieIndex];
-      const x = (i-(count-1)/2)*.62;
+      const x = (i-(count-1)/2)*.82;
       addCase(parent,[x,y+.43,.18],0,movie,movieIndex,segmentNumber*100+level*20+i);
     }
   });
@@ -251,7 +247,7 @@ function createWorld() {
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.15;
-  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.enabled=false;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
   const ambient=new THREE.HemisphereLight(0xc4d0c2,0x121510,1.18);
@@ -291,11 +287,10 @@ function createWorld() {
   pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
   caseMaterial=new THREE.MeshStandardMaterial({color:0x161a18,roughness:.64,metalness:.08});
   caseGeometry=new THREE.BoxGeometry(.455,.69,.135);
-  spineGeometry=new THREE.BoxGeometry(.025,.69,.135);
 
-  for(let i=0;i<7;i++){
-    createShelfModule(-1,-24+i*8,i);
-    createShelfModule(1,-24+i*8,i+3);
+  for(let i=0;i<5;i++){
+    createShelfModule(-1,-16+i*8,i);
+    createShelfModule(1,-16+i*8,i+3);
   }
   createEndWall();
 
@@ -347,8 +342,8 @@ function createAnomalies() {
     group.add(sphere);
     const halo=new THREE.Mesh(new THREE.TorusGeometry(.13,.008,5,24),new THREE.MeshBasicMaterial({color:0xff5543,transparent:true,opacity:.75}));
     group.add(halo);
-    const row=(i%4), section=Math.floor(i/4)%7, side=i%2===0?1:-1;
-    group.position.set(side*4.2,.65+row*.93,-24+section*8+(seeded(i,8)-.5)*4);
+    const row=(i%4), section=Math.floor(i/4)%5, side=i%2===0?1:-1;
+    group.position.set(side*4.2,.65+row*.93,-16+section*8+(seeded(i,8)-.5)*4);
     group.rotation.x=seeded(i,2)*.7;
     group.visible=false;
     group.userData.kind="anomaly"; group.userData.found=false; group.userData.index=i;
@@ -441,7 +436,8 @@ function updateCamera() {
 }
 
 function updateMovement(delta) {
-  if(!started || paused || !isLocked) return;
+  const touchDevice=window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if(!started || paused || (!isLocked && !touchDevice)) return;
   const speed=running?6.6:3.35;
   const axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
   const axisZ=(keys.KeyS?1:0)-(keys.KeyW?1:0);
@@ -471,8 +467,8 @@ function updateMovement(delta) {
 function updateWorldStreaming() {
   for(const section of sideSections){
     const z=section.position.z;
-    if(z-player.position.z>29) section.position.z-=56;
-    else if(z-player.position.z < -29) section.position.z+=56;
+    if(z-player.position.z>21.5) section.position.z-=40;
+    else if(z-player.position.z < -21.5) section.position.z+=40;
   }
 }
 
@@ -645,17 +641,12 @@ function animate() {
   requestAnimationFrame(animate);
   if(!initialized) return;
   const delta=Math.min(clock.getDelta(),.05);
-  if(started && !paused && isLocked) updateMovement(delta);
+  if(started && !paused && (isLocked || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches))) updateMovement(delta);
   else updateCamera();
   if(started && !paused) updateLook();
   updateUI(delta);
   if(crtPass) crtPass.uniforms.time.value=elapsedTime;
   if(composer) composer.render(); else renderer.render(scene,camera);
-  // Very subtle fluorescent fluctuation; avoid theatrical flicker.
-  if(scene && scene.children.length>0){
-    const flicker=1+Math.sin(elapsedTime*2.7)*.014+Math.sin(elapsedTime*8.1)*.005;
-    scene.traverse(o=>{if(o.isPointLight && o.userData.fluorescent)o.intensity=o.userData.baseIntensity*flicker;});
-  }
 }
 
 function bindEvents() {
