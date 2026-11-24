@@ -783,6 +783,7 @@ function updateLook() {
     if(next&&next.userData.kind==="movie"){
       next.userData.pullTarget=.46;
       activeTapeAnimations.add(next);
+      playInteractionSound("focus");
     }
   }
 }
@@ -994,15 +995,19 @@ function playInteractionSound(kind){
   if(!audioContext||audioContext.state!=="running"||!audioMasterGain)return;
   const now=audioContext.currentTime;
   const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
-  const isAnomaly=kind==="anomaly";
-  oscillator.type=isAnomaly?"triangle":"sine";
-  oscillator.frequency.setValueAtTime(isAnomaly?340:185,now);
-  oscillator.frequency.exponentialRampToValueAtTime(isAnomaly?92:72,now+(isAnomaly?.22:.11));
+  const isAnomaly=kind==="anomaly",isFocus=kind==="focus";
+  oscillator.type=isAnomaly?"triangle":isFocus?"sine":"sine";
+  const startFrequency=isAnomaly?340:isFocus?620:185;
+  const endFrequency=isAnomaly?92:isFocus?360:72;
+  const duration=isAnomaly?.22:isFocus?.045:.11;
+  const peak=isAnomaly?.014:isFocus?.0032:.009;
+  oscillator.frequency.setValueAtTime(startFrequency,now);
+  oscillator.frequency.exponentialRampToValueAtTime(endFrequency,now+duration);
   gain.gain.setValueAtTime(.0001,now);
-  gain.gain.linearRampToValueAtTime(isAnomaly?.014:.009,now+.008);
-  gain.gain.exponentialRampToValueAtTime(.0001,now+(isAnomaly?.24:.13));
+  gain.gain.linearRampToValueAtTime(peak,now+.006);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+duration+.015);
   oscillator.connect(gain);gain.connect(audioMasterGain);
-  oscillator.start(now);oscillator.stop(now+(isAnomaly?.25:.14));
+  oscillator.start(now);oscillator.stop(now+duration+.02);
 }
 function toggleAudio() {
   const enabled=$("sound-toggle").getAttribute("aria-pressed")!=="true";
