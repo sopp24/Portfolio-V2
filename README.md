@@ -46,6 +46,7 @@ To populate this repository with your own full collection:
 1. Export your Letterboxd data and open the Movie Index in the experience with `M`.
 2. Choose **IMPORT CSV** and select your Letterboxd `watched.csv`, `watchlist.csv`, or other export files. The importer deduplicates by title and release year.
 3. To load original movie artwork and metadata, provide your own TMDB API Read Access Token in the index panel. Lookups happen when a tape is inspected rather than firing thousands of requests on page load.
+4. The Movie Index contains a TMDB Credits section with the approved logo and required attribution notice. TMDB's developer API is free for non-commercial use with attribution; commercial use requires a separate license.
 
 The default built-in sample catalogue is a small demo, not the creator's 10,000-film dataset. A personal CSV is required to reproduce that data layer faithfully.
 
