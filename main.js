@@ -507,8 +507,8 @@ function updateCamera() {
 function updateMovement(delta) {
   if(!started || paused) return;
   const speed=running?6.6:3.35;
-  let axisX=(keys.KeyD?1:0)-(keys.KeyA?1:0);
-  let axisZ=(keys.KeyS?1:0)-(keys.KeyW?1:0);
+  let axisX=(keys.moveRight?1:0)-(keys.moveLeft?1:0);
+  let axisZ=(keys.moveBack?1:0)-(keys.moveForward?1:0);
   if(renderer?.xr?.isPresenting){
     const sources=renderer.xr.getSession()?.inputSources||[];
     for(const source of sources){
@@ -965,27 +965,49 @@ function bindEvents() {
     }
     pitch=THREE.MathUtils.clamp(pitch,-1.22,1.22);updateCamera();
   });
+  const movementAliases={
+    moveForward:new Set(["z","w","arrowup"]),
+    moveLeft:new Set(["q","a","arrowleft"]),
+    moveBack:new Set(["s","arrowdown"]),
+    moveRight:new Set(["d","arrowright"])
+  };
+  const isTypingTarget=target=>target instanceof Element&&!!target.closest("input,textarea,select,[contenteditable='true']");
+  const updateMovementKey=(event,pressed)=>{
+    const key=String(event.key||"").toLowerCase();
+    for(const [state,aliases] of Object.entries(movementAliases)){
+      if(aliases.has(key)){keys[state]=pressed;return true;}
+    }
+    return false;
+  };
   document.addEventListener("keydown",e=>{
-    keys[e.code]=true;
-    if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
-    if(e.repeat) return;
-    if(e.code==="KeyE" && started) interact();
-    if(e.code==="KeyF" && started) setFlashlight(!flashlightOn);
-    if(e.code==="KeyC" && started){crouching=!crouching;showToast(crouching?"CROUCH":"STANDING");}
-    if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=true;
-    if(e.code==="KeyM" && started){if($("library-panel").hidden)openLibrary();else closePanels();}
-    if(e.code==="KeyR" && started)setSurvival(!survivalMode);
-    if(e.code==="KeyV" && started)enterVR();
-    if(e.code==="Escape" && started){
+    if(isTypingTarget(e.target))return;
+    const movementKey=updateMovementKey(e,true);
+    if(e.code==="Space")keys.Space=true;
+    if(e.code==="ShiftLeft"||e.code==="ShiftRight")running=true;
+    if(movementKey||["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code))e.preventDefault();
+    if(e.repeat)return;
+    if(e.code==="KeyE"&&started)interact();
+    if(e.code==="KeyF"&&started)setFlashlight(!flashlightOn);
+    if(e.code==="KeyC"&&started){crouching=!crouching;showToast(crouching?"CROUCH":"STANDING");}
+    if(e.code==="KeyM"&&started){if($("library-panel").hidden)openLibrary();else closePanels();}
+    if(e.code==="KeyR"&&started)setSurvival(!survivalMode);
+    if(e.code==="KeyV"&&started)enterVR();
+    if(e.code==="KeyH"&&started){const card=$("help-card");card.hidden=!card.hidden;$("help-toggle").setAttribute("aria-expanded",String(!card.hidden));}
+    if(e.code==="Escape"&&started){
       if(!$("film-panel").hidden||!$("library-panel").hidden)closePanels();
       else if(!paused){paused=true;document.exitPointerLock?.();$("pause-screen").hidden=false;}
       else{paused=false;$("pause-screen").hidden=true;requestLock();}
     }
-    if(e.code==="Enter" && paused){paused=false;requestLock();}
+    if(e.code==="Enter"&&paused){paused=false;requestLock();}
   });
   document.addEventListener("keyup",e=>{
-    keys[e.code]=false;
-    if(e.code==="ShiftLeft"||e.code==="ShiftRight") running=false;
+    updateMovementKey(e,false);
+    if(e.code==="Space")keys.Space=false;
+    if(e.code==="ShiftLeft"||e.code==="ShiftRight")running=false;
+  });
+  window.addEventListener("blur",()=>{
+    Object.keys(keys).forEach(key=>{keys[key]=false;});
+    running=false;
   });
   canvas.addEventListener("click",()=>{
     if(suppressCanvasClick){suppressCanvasClick=false;return;}
@@ -1000,7 +1022,7 @@ function bindEvents() {
   },{passive:false});
   // Mobile controls hold movement keys; touch-drag rotates the camera.
   document.querySelectorAll("[data-move]").forEach(button=>{
-    const moveMap={forward:"KeyW",back:"KeyS",left:"KeyA",right:"KeyD"};
+    const moveMap={forward:"moveForward",back:"moveBack",left:"moveLeft",right:"moveRight"};
     const key=moveMap[button.dataset.move];
     button.addEventListener("pointerdown",e=>{e.preventDefault();keys[key]=true;button.setPointerCapture(e.pointerId);});
     ["pointerup","pointercancel","lostpointercapture"].forEach(event=>button.addEventListener(event,()=>keys[key]=false));
