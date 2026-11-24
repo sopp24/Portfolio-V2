@@ -246,11 +246,12 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   const root=new THREE.Group();
   root.position.set(position[0],position[1],position[2]);root.rotation.y=rotationY;
   root.userData.kind="movie";root.userData.movie=movie;root.userData.catalogueIndex=catalogueIndex;
-  root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;
+  root.userData.baseX=position[0];root.userData.baseY=position[1];root.userData.baseZ=position[2];root.userData.pull=0;root.userData.pullTarget=0;
   root.userData.spineMode=spineMode;root.userData.coverMesh=null;root.userData.tapeTexture=null;
   root.userData.textureKey=(movie.title||"")+"|"+(movie.year||0)+"|"+(movie.genre||"")+"|"+(movie.posterUrl||"");
   root.userData.baseRotationX=root.rotation.x;
   root.userData.baseRotationY=root.rotation.y;
+  root.userData.baseRotationZ=root.rotation.z;
   const body=new THREE.Mesh(spineMode?spineCaseGeometry:caseGeometry,caseMaterial);root.add(body);
   const faceWidth=spineMode?.095:.274;
   let tapeTexture;
@@ -278,8 +279,8 @@ function assignSectionCatalogue(section) {
     const movie=movieCatalogue[index];
     if(root.userData.assignedStreamIndex!==section.userData.streamIndex){
       root.userData.pull=0;root.userData.pullTarget=0;
-      root.position.z=root.userData.baseZ;
-      root.rotation.x=root.userData.baseRotationX||0;root.rotation.y=root.userData.baseRotationY||0;
+      root.position.set(root.userData.baseX,root.userData.baseY,root.userData.baseZ);
+      root.rotation.x=root.userData.baseRotationX||0;root.rotation.y=root.userData.baseRotationY||0;root.rotation.z=root.userData.baseRotationZ||0;
       activeTapeAnimations.delete(root);
       if(selectedTarget===root){
         selectedTarget=null;
@@ -1076,12 +1077,21 @@ function animate() {
       const targetPull=tape.userData.pullTarget||0;
       tape.userData.pull=THREE.MathUtils.damp(tape.userData.pull,targetPull,7,delta);
       tape.position.z=tape.userData.baseZ+tape.userData.pull;
-      const targetTilt=targetPull>.02?-.045:0;
+      tape.position.y=tape.userData.baseY+tape.userData.pull*.055;
+      const extended=targetPull>.02;
+      const targetTilt=(tape.userData.baseRotationX||0)+(extended?-.045:0);
+      const targetRoll=(tape.userData.baseRotationZ||0)+(extended?.028:0);
+      const targetYaw=(tape.userData.baseRotationY||0)+(extended?.025:0);
       tape.rotation.x=THREE.MathUtils.damp(tape.rotation.x,targetTilt,8,delta);
-      if(Math.abs(tape.userData.pull-targetPull)<.001&&Math.abs(tape.rotation.x-targetTilt)<.001){
+      tape.rotation.y=THREE.MathUtils.damp(tape.rotation.y,targetYaw,8,delta);
+      tape.rotation.z=THREE.MathUtils.damp(tape.rotation.z,targetRoll,8,delta);
+      if(Math.abs(tape.userData.pull-targetPull)<.001&&Math.abs(tape.rotation.x-targetTilt)<.001&&Math.abs(tape.rotation.y-targetYaw)<.001&&Math.abs(tape.rotation.z-targetRoll)<.001){
         tape.userData.pull=targetPull;
         tape.position.z=tape.userData.baseZ+targetPull;
+        tape.position.y=tape.userData.baseY+targetPull*.055;
         tape.rotation.x=targetTilt;
+        tape.rotation.y=targetYaw;
+        tape.rotation.z=targetRoll;
         if(targetPull===0)activeTapeAnimations.delete(tape);
       }
     }
