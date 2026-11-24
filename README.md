@@ -30,7 +30,8 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 
 - Endless aisle streaming: shelves, aisle categories, ceiling fluorescents, floor and side walls are recycled as the player walks in either direction.
 - Mixed face-out movie covers and readable VHS spines, with softly rounded reusable cassette moulds and individual reusable GPU textures to limit memory growth as the catalogue streams.
-- Detailed streamed fluorescent fittings with shared housings, diffusers and subtle ceiling spill.
+- Detailed streamed fluorescent fittings with shared housings, diffusers and subtle ceiling spill, including restrained asynchronous light flicker.
+- Reusable rental ticket strips along the shelf edges and subtle hovering/rotation motion for the hidden anomalies in Survival Mode.
 - Tapes slide out of the shelf when targeted, then open an inspection panel with a reversible front/back sleeve, synopsis, year, director, cast and catalogue information.
 - Searchable, filterable, sortable and paginated film index.
 - Letterboxd CSV import, duplicate removal, browser-side archive persistence, progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected.
