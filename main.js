@@ -496,6 +496,20 @@ function createWorld() {
 
   // A little TV and counter detail in the corner of the store.
   const counter=addBox(scene,[1.8,1.1,1.1],[3.75,.55,-20],new THREE.MeshStandardMaterial({color:0x242b26,roughness:.82}));
+  // A small, usable return chute gives the counter a clear video-rental purpose.
+  const returnStation=new THREE.Group();returnStation.position.set(3.05,1.115,-20.02);scene.add(returnStation);
+  const returnBaseMaterial=new THREE.MeshStandardMaterial({color:0x343c34,roughness:.68,metalness:.28});
+  const returnSlotMaterial=new THREE.MeshStandardMaterial({color:0x080c09,roughness:.38,metalness:.12});
+  addBox(returnStation,[.72,.075,.48],[0,0,0],returnBaseMaterial);
+  addBox(returnStation,[.58,.028,.29],[0,.052,0],returnSlotMaterial);
+  const returnRailMaterial=new THREE.MeshStandardMaterial({color:0x737d6b,roughness:.42,metalness:.68});
+  addBox(returnStation,[.035,.045,.34],[-.31,.065,0],returnRailMaterial);
+  addBox(returnStation,[.035,.045,.34],[.31,.065,0],returnRailMaterial);
+  const returnLabel=createPosterSign("VIDEO RETURNS",.68,.15,"#d5dfbd");
+  returnLabel.position.set(0,.11,-.245);returnLabel.rotation.x=0;returnStation.add(returnLabel);
+  const returnTarget=addBox(returnStation,[.58,.035,.29],[0,.075,0],new THREE.MeshBasicMaterial({color:0x151c16,transparent:true,opacity:.015}));
+  returnStation.userData.kind="return";returnTarget.userData.root=returnStation;
+  staticInteractables.push(returnTarget);
   const tv=addBox(scene,[.85,.63,.19],[3.72,2.1,-20.1],new THREE.MeshStandardMaterial({color:0x030605,roughness:.2,metalness:.2}));
   // A tiny standby lamp gives the CRT a readable physical power state.
   tvPowerIndicatorMaterial=new THREE.MeshStandardMaterial({color:0x8a3025,emissive:0x54140e,emissiveIntensity:.7,roughness:.32,metalness:.18});
@@ -838,7 +852,7 @@ function updateLook() {
     $("crosshair").classList.toggle("active",!!next);
     $("interaction-hint").hidden=!next;
     $("look-hint").style.opacity=next?"0":"0.9";
-    const hintLabel=next?.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":next?.userData.kind==="tv"?"TOGGLE CRT":"EXAMINE TAPE";
+    const hintLabel=next?.userData.kind==="anomaly"?"INVESTIGATE ANOMALY":next?.userData.kind==="tv"?"TOGGLE CRT":next?.userData.kind==="return"?"RETURN VHS":"EXAMINE TAPE";
     $("interaction-hint").lastElementChild.textContent=hintLabel;
     if(next&&next.userData.kind==="movie"){
       next.userData.pullTarget=.46;
@@ -900,6 +914,10 @@ function interact() {
   if(selectedTarget.userData.kind==="anomaly") investigateAnomaly(selectedTarget);
   else if(selectedTarget.userData.kind==="movie") openFilm(selectedTarget.userData.movie,selectedTarget.userData.catalogueIndex);
   else if(selectedTarget.userData.kind==="tv") toggleCRT();
+  else if(selectedTarget.userData.kind==="return"){
+    playInteractionSound("focus");
+    showToast("VIDEO RETURNS — PLEASE REWIND BEFORE DEPOSITING.");
+  }
 }
 
 function interactFromXR() {
