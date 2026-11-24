@@ -59,7 +59,7 @@ const PALETTES = [
   ["#596c68","#b96f50","#dfd1b4"],["#473d6b","#bd7b55","#e2d7c3"]
 ];
 
-let scene, camera, renderer, composer, crtPass, bokehPass, clock, playerRig;
+let scene, camera, renderer, composer, crtPass, bokehPass, clock, playerRig, xrController;
 let floorSurface, ceilingSurface;
 const endlessWalls = [];
 const streamedFixtures = [];
@@ -356,7 +356,7 @@ function createWorld() {
   flashlight.position.set(0,0,0);flashlight.target.position.set(0,0,-1);
   camera.add(flashlight);camera.add(flashlight.target);
   playerRig=new THREE.Group();playerRig.position.copy(player.position);playerRig.add(camera);scene.add(playerRig);
-  const xrController=renderer.xr.getController(0);xrController.addEventListener("select",interact);scene.add(xrController);
+  xrController=renderer.xr.getController(0);xrController.addEventListener("select",interactFromXR);scene.add(xrController);
 
   createAnomalies();
   createPostprocessing();
@@ -520,8 +520,14 @@ function updateMovement(delta) {
       if(source.gamepad?.buttons?.[1]?.pressed&&!flashlightOn)setFlashlight(true);
     }
   }
-  tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));
-  tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
+  if(renderer?.xr?.isPresenting){
+    const xrCamera=renderer.xr.getCamera(camera);
+    xrCamera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();
+    tempRight.crossVectors(tempForward,new THREE.Vector3(0,1,0)).normalize();
+  }else{
+    tempForward.set(-Math.sin(yaw),0,-Math.cos(yaw));
+    tempRight.set(Math.cos(yaw),0,-Math.sin(yaw));
+  }
   const desired=new THREE.Vector3();
   desired.addScaledVector(tempRight,axisX);
   desired.addScaledVector(tempForward,-axisZ);
@@ -648,6 +654,25 @@ function interact() {
   if(!selectedTarget) return;
   if(selectedTarget.userData.kind==="anomaly") investigateAnomaly(selectedTarget);
   else if(selectedTarget.userData.kind==="movie") openFilm(selectedTarget.userData.movie,selectedTarget.userData.catalogueIndex);
+}
+
+function interactFromXR() {
+  if(!xrController)return;
+  xrController.updateMatrixWorld(true);
+  const origin=xrController.getWorldPosition(new THREE.Vector3());
+  const rotation=new THREE.Matrix4().extractRotation(xrController.matrixWorld);
+  const direction=new THREE.Vector3(0,0,-1).applyMatrix4(rotation).normalize();
+  raycaster.set(origin,direction);
+  const hits=raycaster.intersectObjects(interactables,false);
+  for(const hit of hits){
+    const root=hit.object.userData.root;
+    if(!root)continue;
+    if(root.userData.kind==="anomaly"&&(!survivalMode||root.userData.found))continue;
+    selectedTarget=root;
+    interact();
+    return;
+  }
+  showToast("AIM AT A TAPE OR AN ANOMALY");
 }
 
 function setSurvival(enabled) {
@@ -824,7 +849,11 @@ function movieKey(movie){return (movie.title||"").trim().toLowerCase().replace(/
 function refreshGenreFilter(){
   const select=$("genre-filter");if(!select)return;const current=select.value;
   const genres=[...new Set(movieCatalogue.map(m=>m.genre||"Unknown"))].sort();
-  select.innerHTML='<option value="">ALL GENRES</option>'+genres.map(g=>'<option value="'+g.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">'+g.toUpperCase()+'</option>').join("");
+  select.replaceChildren();
+  const all=document.createElement("option");all.value="";all.textContent="ALL GENRES";select.appendChild(all);
+  genres.forEach(genre=>{
+    const option=document.createElement("option");option.value=genre;option.textContent=genre.toUpperCase();select.appendChild(option);
+  });
   if(genres.includes(current))select.value=current;
 }
 function saveImportedMovies(){
