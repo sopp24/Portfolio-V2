@@ -281,3 +281,22 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
   .survival-counter { left:18px; right:auto; top:58px; bottom:auto; }
   .help-toggle { bottom:185px; }
 }
+.tmdb-attribution {
+  display:flex; align-items:center; gap:13px; padding:13px 0;
+  border-bottom:1px solid rgba(235,240,225,.12);
+}
+.tmdb-logo-link {
+  display:flex; flex:0 0 auto; align-items:center; justify-content:center;
+  width:66px; min-height:48px; padding:3px; background:#fff;
+}
+.tmdb-logo-link img { display:block; width:100%; height:auto; max-height:48px; object-fit:contain; }
+.tmdb-credit-copy { min-width:0; display:flex; flex-direction:column; gap:4px; }
+.tmdb-credit-copy strong { color:rgba(235,240,225,.62); font:7px var(--mono); letter-spacing:.16em; }
+.tmdb-credit-copy p { margin:0; color:rgba(235,240,225,.53); font:8px/1.45 var(--mono); }
+.tmdb-credit-copy>a { width:max-content; color:var(--acid); text-decoration:none; font:7px var(--mono); letter-spacing:.1em; }
+.tmdb-credit-copy>a:hover { text-decoration:underline; }
+@media (max-width:760px) {
+  .tmdb-attribution { gap:9px; }
+  .tmdb-logo-link { width:56px; min-height:40px; }
+  .tmdb-credit-copy p { font-size:7px; }
+}
