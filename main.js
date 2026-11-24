@@ -81,7 +81,7 @@ let cameraBobOffset=0,cameraRollOffset=0,gaitPhase=0;
 const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||false;
 let crouching = false, running = false, flashlightOn = false, flashlightBattery = 100;
 let survivalMode = false, foundAnomalies = 0, selectedTarget = null, elapsedTime = 0;
-let flashlight,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
+let flashlight,tvGlow=null,audioContext=null,audioGain=null,ambientNoiseSource=null,ambientNoiseGain=null;
 let audioMasterGain=null,tvPanner=null,tvHumGain=null,tvHumOscillators=[],footstepBuffer=null;
 let footstepTimer=0,footstepIndex=0,tvStaticTexture=null,tvStaticCanvas=null,tvStaticTimer=0;
 const keys = Object.create(null);
@@ -455,6 +455,8 @@ function createWorld() {
   tvStaticTexture=createStaticTexture();tvStaticCanvas=tvStaticTexture.image;
   const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(.72,.48),new THREE.MeshBasicMaterial({map:tvStaticTexture}));
   tvScreen.position.set(3.72,2.1,-19.995); tvScreen.rotation.y=Math.PI/2; scene.add(tvScreen);
+  tvGlow=new THREE.PointLight(0x9bbf9a,.08,8,2);
+  tvGlow.position.set(3.7,2.05,-19.72);scene.add(tvGlow);
 
   flashlight=new THREE.SpotLight(0xe2e8c9,0,13,Math.PI/6,.55,1.25);
   flashlight.position.set(0,0,0);flashlight.target.position.set(0,0,-1);
@@ -1083,6 +1085,13 @@ function animate() {
       const pulse=Math.sin(elapsedTime*1.37+fitting.phase)*.018+Math.sin(elapsedTime*.29+fitting.phase*1.8)*.009;
       const rareDip=Math.sin(elapsedTime*.43+fitting.phase*2.1)>.999?-.12:0;
       fitting.light.intensity=fitting.baseIntensity*(1+pulse+rareDip);
+    }
+    if(tvGlow){
+      const tvDistance=Math.hypot(player.position.x-3.7,player.position.y+1.55-2.05,player.position.z+19.72);
+      const proximity=1-THREE.MathUtils.clamp((tvDistance-1.2)/6.8,0,1);
+      const staticPulse=.92+.08*Math.sin(elapsedTime*17.5)+.035*Math.sin(elapsedTime*43.1);
+      const rareFlicker=Math.sin(elapsedTime*6.7)> .997?.55:1;
+      tvGlow.intensity=(.035+proximity*.82)*staticPulse*rareFlicker;
     }
     updateUI(delta);
     if(started&&!paused&&!isInterfacePanelOpen()){
