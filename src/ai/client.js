@@ -110,7 +110,8 @@ export function createShopkeeperClient({ endpoint = "", getLanguage = () => "fr"
         throw new ShopkeeperError(code, response.status);
       } catch (error) {
         lastError = error instanceof ShopkeeperError ? error : new ShopkeeperError("network");
-        const retryable = attempt === 0 && (lastError.code === "network" || (lastError.status >= 500 && lastError.status < 600));
+        // only transient failures are retried: a 502/503 (provider error, not configured) would just burn the rate limit
+        const retryable = attempt === 0 && (lastError.code === "network" || lastError.status === 504);
         if (!retryable) throw lastError;
         await sleep(RETRY_DELAY_MS, signal);
       }

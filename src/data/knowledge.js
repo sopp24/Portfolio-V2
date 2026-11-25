@@ -152,7 +152,7 @@ export function buildKnowledge({ projects = PROJECTS, categories = CATEGORIES, a
       practices: { fr: profile.music?.practices?.fr, en: profile.music?.practices?.en },
       historical: profile.music?.historical ? {
         status: statusOf(profile.music.historical), yearsOfPractice: profile.music.historical.yearsOfPractice,
-        streamsOrUses: profile.music.historical.streamsOrUses
+        streamsOrUses: bilingual(profile.music.historical.streamsOrUses)
       } : undefined,
       projects: (profile.music?.projects || []).map(item => ({
         id: item.id, name: item.name, status: statusOf(item), note: bilingual(item.note)
@@ -254,7 +254,7 @@ export function renderKnowledgeForPrompt(kb, { lang = "both" } = {}) {
 
   line("\n## Music");
   if (kb.music?.practices) line(`- Practices: ${pick(kb.music.practices, L)}`);
-  if (kb.music?.historical) line(`- [${kb.music.historical.status}] Years of practice: ${kb.music.historical.yearsOfPractice ?? "n/a"}; streams/uses: ${kb.music.historical.streamsOrUses ?? "n/a"}`);
+  if (kb.music?.historical) line(`- [${kb.music.historical.status}] Years of practice: ${kb.music.historical.yearsOfPractice ?? "n/a"}; streams/uses: ${kb.music.historical.streamsOrUses ? (kb.music.historical.streamsOrUses.en || kb.music.historical.streamsOrUses.fr) : "n/a"}`);
   for (const item of kb.music?.projects || []) line(`- [${item.status}] Music project: ${item.name}${item.note ? ` — ${pick(item.note, L)}` : ""}`);
 
   line("\n## CV and contact");

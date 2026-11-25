@@ -177,7 +177,7 @@ async function handleChat(request, env, origin) {
       system: buildSystemPrompt(input.language),
       knowledge: knowledgeFor(input.language),
       messages: input.messages,
-      maxTokens: intVar(env.MAX_OUTPUT_TOKENS, 450, 50, 1000),
+      maxTokens: intVar(env.MAX_OUTPUT_TOKENS, 900, 50, 2000),
       signal: controller.signal
     });
     const { reply, actions } = parseReply(text);

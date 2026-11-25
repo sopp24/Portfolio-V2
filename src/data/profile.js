@@ -65,7 +65,7 @@ export const PROFILE = {
       en: ["Guitar", "Piano", "Music production (DAW)", "Songwriting", "Vocals", "Mixing", "Promoting his own releases"]
     },
     // Figures from the previous portfolio — to be confirmed before they are republished.
-    historical: { confirmed: false, yearsOfPractice: 12, streamsOrUses: "13 millions", note: "À confirmer avant republication." },
+    historical: { confirmed: false, yearsOfPractice: 12, streamsOrUses: { fr: "13 millions", en: "13 million" }, note: "À confirmer avant republication." },
     projects: [
       { id: "davis-miles", name: "Davis Miles", confirmed: false, artwork: null },
       { id: "story", name: "STORY.", confirmed: false, artwork: null },
@@ -79,7 +79,8 @@ export const PROFILE = {
   // Contact. Nothing is rendered until `url` / `value` is filled. Do not invent links.
   contact: {
     email: null,                         // TODO: confirmed address
-    emailCandidate: "adam.s@outlook.fr", // seen on the previous portfolio — NOT displayed until confirmed
+    // e-mail: deliberately absent. The owner supplied a candidate address from the previous portfolio to confirm
+    // before publication; it is kept out of the deployed source until then (set `email` once confirmed).
     links: [
       { id: "linkedin",  label: "LinkedIn",  url: null },
       { id: "github",    label: "GitHub",    url: "https://github.com/sopp24", derived: "Owner of the verified SOPP Agents repositories" },

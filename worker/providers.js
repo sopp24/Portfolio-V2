@@ -55,6 +55,9 @@ export const providers = {
         {
           model: env.AI_MODEL || DEFAULT_ANTHROPIC_MODEL,
           max_tokens: maxTokens,
+          // Current Claude models think adaptively by default and thinking tokens count towards max_tokens: without a
+          // low effort a short answer budget can be spent before any text is written (empty reply -> 502).
+          ...(/^(low|medium|high)$/.test(String(env.AI_EFFORT || "")) ? { output_config: { effort: String(env.AI_EFFORT) } } : {}),
           // The knowledge block is identical across requests (per language): mark it cacheable.
           system: [
             { type: "text", text: system },

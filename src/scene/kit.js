@@ -63,3 +63,40 @@ export function addBin(ctx, { x, y, z, width = 1.18, depth = .5, rotY = 0, front
   return { inner: { floor: y + t, front: z + depth / 2 - t, width: width - t * 2 } };
 }
 export { FONT };
+
+// A stock carton with packing tape over the top seam and down one face, plus a shipping label
+// (barcode, address lines, a "this side up" arrow). `face` = the yaw (relative to the box) of the labelled face.
+export function addCardboardBox(ctx, w, h, d, position, rotY = 0, face = 0) {
+  const B = ctx.batcher, m = ctx.materials;
+  if (!ctx.boxKit) {
+    const c = createCanvas(256, 160);
+    const g = c.getContext("2d");
+    g.fillStyle = "#f1ede2"; g.fillRect(0, 0, 256, 160);
+    g.fillStyle = "#1c1b19";
+    for (let i = 0, x = 14; x < 150; i++) { const bw = 2 + ((i * 7) % 4); g.fillRect(x, 16, bw, 46); x += bw + 2 + ((i * 5) % 3); } // barcode
+    for (let i = 0; i < 5; i++) g.fillRect(14, 78 + i * 15, 118 - ((i * 23) % 40), 5);
+    g.strokeStyle = "#c2382b"; g.lineWidth = 6; g.strokeRect(160, 14, 82, 82);
+    g.fillStyle = "#c2382b"; g.beginPath(); g.moveTo(201, 24); g.lineTo(228, 58); g.lineTo(212, 58); g.lineTo(212, 86); g.lineTo(190, 86); g.lineTo(190, 58); g.lineTo(174, 58); g.closePath(); g.fill();
+    g.font = "700 20px sans-serif"; g.fillStyle = "#1c1b19"; g.fillText("FRAGILE", 150, 128);
+    const label = textureFrom(c, { srgb: true, repeat: false, anisotropy: ctx.quality.anisotropy });
+    const labelMat = new THREE.MeshStandardMaterial({ map: label, roughness: .75, envMapIntensity: .5, name: "boxLabel" });
+    const tapeMat = new THREE.MeshStandardMaterial({ color: 0xd6c392, roughness: .3, metalness: 0, envMapIntensity: .8, name: "tape" });
+    ctx.owned.push(labelMat, tapeMat, label);
+    ctx.boxKit = { labelMat, tapeMat, labelGeo: new THREE.PlaneGeometry(1, .625), stripGeo: new THREE.BoxGeometry(1, 1, 1) };
+  }
+  const { labelMat, tapeMat, labelGeo, stripGeo } = ctx.boxKit;
+  B.box(w, h, d, m.cardboard, position, [0, rotY, 0], { bevel: .004, tile: .5 });
+  const at = (x, y, z, yaw = 0) => {
+    const a = rotY + yaw, ox = x * Math.cos(rotY) + z * Math.sin(rotY), oz = -x * Math.sin(rotY) + z * Math.cos(rotY);
+    return { pos: [position[0] + ox, position[1] + y, position[2] + oz], rot: [0, a, 0] };
+  };
+  const top = at(0, h / 2 + .0016, 0);
+  B.add(stripGeo, tapeMat, top.pos, top.rot, { cast: false, scale: [w * .15, .0032, d + .004] });
+  // the labelled face: half-extent depends on whether it is a long or a short side
+  const half = Math.abs(Math.cos(face)) * d / 2 + Math.abs(Math.sin(face)) * w / 2;
+  const fx = Math.sin(face), fz = Math.cos(face);
+  const tape = at(fx * (half + .0016), h * .3, fz * (half + .0016), face);
+  B.add(stripGeo, tapeMat, tape.pos, tape.rot, { cast: false, scale: [w * .15, h * .42, .0032] });
+  const label = at(fx * (half + .0026) + fz * w * .2, -h * .02, fz * (half + .0026) - fx * w * .2, face);
+  B.add(labelGeo, labelMat, label.pos, label.rot, { cast: false, scale: [Math.min(w, d) * .5, Math.min(w, d) * .5, 1] });
+}

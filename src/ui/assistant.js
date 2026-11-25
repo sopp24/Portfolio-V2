@@ -18,6 +18,7 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
   let isOpen = false;
   let talkTimer = 0;
   let announcedOffline = false;
+  let opener = null; // focus returns here when the panel closes
 
   function renderStatus() {
     statusEl.classList.toggle("is-ai", mode === "ai");
@@ -75,11 +76,14 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
     try {
       const result = await client.ask(history.slice(-8), { signal: abort.signal });
       thinking.remove();
+      // the header must always tell the truth about the last answer: AI only when this reply really came from the AI
+      mode = result.mode === "ai" ? "ai" : "offline";
       if (result.mode === "catalogue" && !announcedOffline) {
         announcedOffline = true;
         bubble("bot", result.degraded ? t("chat.degradedNote") : t("chat.offlineNote"), { note: true });
       }
-      if (result.mode === "ai") { mode = "ai"; renderStatus(); }
+      if (result.mode === "ai") announcedOffline = false; // re-arm: a later fallback is announced again
+      renderStatus();
       const el = bubble("bot", result.reply);
       addActions(el, result.actions);
       history.push({ role: "assistant", content: result.reply });
@@ -106,6 +110,7 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
   async function open() {
     if (isOpen) return;
     isOpen = true;
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.hidden = false;
     sfx("chat-open");
     if (!log.childElementCount) reset();
@@ -123,6 +128,8 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
     isOpen = false; panel.hidden = true;
     if (abort) abort.abort();
     world.setShopkeeper({ talking: false });
+    if (opener && opener.isConnected && !opener.hidden && opener !== document.body && !panel.contains(opener)) opener.focus({ preventScroll: true });
+    opener = null;
   }
 
   form.addEventListener("submit", (event) => { event.preventDefault(); send(input.value); });

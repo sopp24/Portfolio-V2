@@ -112,6 +112,8 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
     if (disposed || event.metaKey || event.ctrlKey || event.altKey) return;
     const tag = event.target?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || event.target?.isContentEditable) return;
+    // never hijack the arrow keys (page scroll, list navigation) while a panel, dialog or the 2D directory is in use
+    if (!enabled || event.target?.closest?.("dialog, #mode-2d, #liner-panel, #assistant, #site-header, .record-dock")) return;
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) { keys.add(event.key); glide = null; event.preventDefault(); }
     if (event.key === "+" || event.key === "=") { targetFov = clamp(targetFov - 4, CAMERA.zoomMinFov * fovScale, CAMERA.zoomMaxFov * fovScale); }
     if (event.key === "-" || event.key === "_") { targetFov = clamp(targetFov + 4, CAMERA.zoomMinFov * fovScale, CAMERA.zoomMaxFov * fovScale); }

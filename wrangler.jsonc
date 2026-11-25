@@ -8,12 +8,14 @@
   "workers_dev": true,
   "vars": {
     // Exact-match origins (no trailing slash). Keep only your real site in production.
-    "ALLOWED_ORIGINS": "https://sopp24.github.io,http://localhost:8080",
+    "ALLOWED_ORIGINS": "https://sopp24.github.io",
     // "anthropic" (default) or "openai" (any OpenAI Chat Completions-compatible API, see AI_BASE_URL).
     "AI_PROVIDER": "anthropic",
     // Model identifier. Check the provider's current model list before changing it.
     "AI_MODEL": "claude-haiku-5-5",
-    "MAX_OUTPUT_TOKENS": "450",
+    // Thinking effort for current Claude models ("low" keeps answers fast and cheap; leave it out for models that reject it, e.g. Haiku 4.5).
+    "AI_EFFORT": "low",
+    "MAX_OUTPUT_TOKENS": "900",
     "RATE_LIMIT_PER_MINUTE": "8",
     "DAILY_REQUEST_BUDGET": "1500"
   }

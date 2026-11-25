@@ -95,7 +95,7 @@ export function buildLighting(ctx) {
   scene.fog = new THREE.Fog(0xcfbf9a, 9, 48);
 
   // ---------------------------------------------------------------- sun
-  const sun = new THREE.DirectionalLight(SUN.color, 5.5);
+  const sun = new THREE.DirectionalLight(SUN.color, 4.7);
   const target = new THREE.Object3D();
   target.position.set(0, 0, -.5);
   sun.target = target;
@@ -285,7 +285,7 @@ export function buildLighting(ctx) {
     for (const s of rails) s.intensity = s.userData.base * level;
     ctx.lights.counter.intensity = 1.5 * level;
     if (ctx.lights.lamp) ctx.lights.lamp.intensity = 1.4 * level;
-    if (ctx.lights.floorLamp) ctx.lights.floorLamp.intensity = 7 * level;
+    if (ctx.lights.floorLamp) ctx.lights.floorLamp.intensity = 2.4 * level;
     m.tube.color.setRGB(.96, 1, .98).multiplyScalar(.25 + 3.4 * level);
     m.bulb.color.setRGB(1, .86, .62).multiplyScalar(.2 + 3.8 * level);
     const neonOn = state.neon;

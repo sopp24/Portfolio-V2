@@ -3,11 +3,12 @@
 // and doubles as the crawlable, keyboard-friendly, low-power version.
 import { $, h } from "./dom.js";
 import { t, L, getLanguage } from "../core/i18n.js";
-import { drawProjectCover, ensureFonts } from "../scene/artwork.js";
 
 const coverCache = new Map();
 async function coverUrl(project, index) {
   if (coverCache.has(project.id)) return coverCache.get(project.id);
+  // loaded on demand so the 2D collection still works when three.js (pulled in by the artwork module) cannot load
+  const { drawProjectCover, ensureFonts } = await import("../scene/artwork.js");
   await ensureFonts();
   const canvas = drawProjectCover(project, index, 512);
   const url = canvas.toDataURL("image/jpeg", .86);
@@ -23,7 +24,7 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
 
   function sleeve(project, index) {
     const img = h("img", { alt: "", loading: "lazy", width: "512", height: "512" });
-    coverUrl(project, index).then((src) => { img.src = src; });
+    coverUrl(project, index).then((src) => { img.src = src; }).catch(() => { img.remove(); const c = (project.artwork || [])[0]; if (c) img.parentElement?.style.setProperty("background", c); });
     const button = h("button", { type: "button", class: "sleeve", "aria-label": `${t("dir.open")} — ${L(project.title)}`, onclick: () => onOpenProject(project, index) },
       h("span", { class: "sleeve-art" }, h("span", { class: "disc" }), img),
       h("span", { class: "sleeve-title", text: L(project.title) }),

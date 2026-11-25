@@ -81,7 +81,7 @@ export function createPostFX({ renderer, scene, camera, quality, width, height, 
     } catch (error) { console.warn("GTAO unavailable, continuing without it.", error); }
   }
   if (quality.bloom) {
-    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), .22, .55, 1.05);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), .22, .55, 1.15);
     composer.addPass(bloom);
     state.bloom = bloom;
   }
@@ -106,7 +106,7 @@ export function createPostFX({ renderer, scene, camera, quality, width, height, 
       if (state.bokeh) {
         const amount = state.dof;
         state.bokeh.enabled = amount > .02;
-        state.bokeh.uniforms.aperture.value = .0026 * amount;
+        state.bokeh.uniforms.aperture.value = .0017 * amount;
       }
       composer.render(dt);
     },

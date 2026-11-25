@@ -27,15 +27,19 @@ export function createMenu({ world, audio, radio, isTouch, onGo, onLanguage, ens
     opt.quality.value = stored && ["high", "medium", "low"].includes(stored) ? stored : "auto";
   }
 
+  let opener = null; // focus goes back to what opened the menu (WCAG 2.4.3)
   function show() {
     if (open) return;
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     open = true; menu.hidden = false; sync();
     $("#menu-close").focus({ preventScroll: true });
   }
   function hide() {
     if (!open) return;
     open = false; menu.hidden = true;
-    (document.activeElement instanceof HTMLElement) && document.activeElement.blur();
+    if (opener && opener.isConnected && !opener.hidden && opener !== document.body) opener.focus({ preventScroll: true });
+    else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    opener = null;
   }
   function toggle() { open ? hide() : show(); }
 

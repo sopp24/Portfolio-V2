@@ -21,26 +21,12 @@ import { createInteraction } from "./interaction.js";
 import { createFloorReflection } from "./reflection.js";
 import { createLookControls } from "../controls/look.js";
 import { ensureRecordDetail } from "./records.js";
+import { MUSIC_PROJECTS } from "../data/music.js";
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 const idle = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 800 }) : setTimeout(fn, 60));
 
-export const MUSIC_PROJECTS = [
-  { id: "davis-miles", slug: "davis-miles", year: null, categories: ["audiovisual-music"], artwork: ["#1f4e79", "#f1b35a", "#0e1c2b"],
-    title: { fr: "Davis Miles", en: "Davis Miles" },
-    short: { fr: "Création musicale personnelle d’Adam. Les détails de ce projet seront complétés après confirmation.", en: "A personal music project by Adam. Details will be added once confirmed." },
-    context: { fr: "Projet musical personnel faisant partie du parcours musical d’Adam.", en: "A personal music project that is part of Adam’s musical path." },
-    challenge: null, role: { fr: "Création et production musicale personnelles. Détails à confirmer.", en: "Personal music creation and production. Details to be confirmed." },
-    work: { fr: ["Écriture", "Composition", "Production", "Mix", "Promotion"], en: ["Writing", "Composition", "Production", "Mixing", "Promotion"] },
-    skills: ["Composition", "MAO", "Mix"], skillsEn: ["Songwriting", "Music production", "Mixing"], collaborators: [], outcome: null, visualStatus: "provisional" },
-  { id: "story", slug: "story", year: null, categories: ["audiovisual-music"], artwork: ["#d1452c", "#161412", "#f1ece0"],
-    title: { fr: "STORY.", en: "STORY." },
-    short: { fr: "Création musicale personnelle d’Adam. Les détails de ce projet seront complétés après confirmation.", en: "A personal music project by Adam. Details will be added once confirmed." },
-    context: { fr: "Projet musical personnel faisant partie du parcours musical d’Adam.", en: "A personal music project that is part of Adam’s musical path." },
-    challenge: null, role: { fr: "Création et production musicale personnelles. Détails à confirmer.", en: "Personal music creation and production. Details to be confirmed." },
-    work: { fr: ["Écriture", "Composition", "Production", "Mix", "Promotion"], en: ["Writing", "Composition", "Production", "Mixing", "Promotion"] },
-    skills: ["Composition", "MAO", "Mix"], skillsEn: ["Songwriting", "Music production", "Mixing"], collaborators: [], outcome: null, visualStatus: "provisional" }
-];
+export { MUSIC_PROJECTS };
 
 export async function createWorld({ canvas, projects, categories, applications, profile, language = "fr", onProgress = () => {}, tier = null }) {
   const listeners = new Map();
@@ -171,7 +157,9 @@ export async function createWorld({ canvas, projects, categories, applications, 
     onHover: (info) => emit("hover", info),
     onSelect: (info) => emit("select", info),
     onHeldChange: (info) => emit("held", info),
-    onSound: (name) => emit("sound", name)
+    onSound: (name) => emit("sound", name),
+    // a record held close to the camera would be blown out by the point lights standing right behind the visitor
+    onHold: (amount) => { for (const l of ctx.lights.bounce || []) l.intensity = (l.userData.base ??= l.intensity) * (1 - .88 * amount); }
   });
   progress("controls");
 

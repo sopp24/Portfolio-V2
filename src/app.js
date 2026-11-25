@@ -16,7 +16,7 @@ import { createDirectory } from "./ui/directory2d.js";
 import { renderProjectSheet, renderAbout, renderCv, renderContact, renderPoster } from "./ui/panels.js";
 import { createAudioEngine } from "./audio/engine.js";
 import { createShopkeeperClient, readEndpointFromDocument } from "./ai/client.js";
-import { MUSIC_PROJECTS } from "./scene/world.js";
+import { MUSIC_PROJECTS } from "./data/music.js";
 
 const params = new URLSearchParams(location.search);
 const isTouch = isTouchDevice();
@@ -43,6 +43,8 @@ export async function boot() {
   const client = createShopkeeperClient({ endpoint: readEndpointFromDocument(), getLanguage });
   let world = null;
   let inStore = false;
+  let contextLost = false; // set when WebGL reports a lost context: the 3D store can no longer be re-entered without a reload
+  let presentTimer = 0;
   let panels = null;
 
   // ------------------------------------------------------------------ audio helpers
@@ -60,6 +62,9 @@ export async function boot() {
   const infoContent = $("#info-content");
   function openInfo(node) {
     infoContent.replaceChildren(node);
+    // the dialog is named after whichever heading the content provides (project sheets use #liner-title)
+    const heading = infoContent.querySelector("h1[id], h2[id]");
+    info.setAttribute("aria-labelledby", heading ? heading.id : "info-title");
     if (!info.open) info.showModal();
     info.scrollTop = 0;
   }
@@ -69,16 +74,23 @@ export async function boot() {
 
   const liner = $("#liner-panel");
   let linerRef = null;
+  let sheetOpener = null;
   function showSheet(held) {
     const entity = findEntity(held.kind, held.id);
     if (!entity) return;
+    if (liner.hidden) sheetOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     linerRef = { kind: held.kind, id: held.id };
     const index = held.kind === "project" ? PROJECTS.indexOf(entity) : 20 + MUSIC_PROJECTS.indexOf(entity);
     $("#liner-content").replaceChildren(renderProjectSheet(entity, CATEGORIES, { index, kind: held.kind }));
     liner.hidden = false; liner.scrollTop = 0;
     world && world.setPresentShift(window.innerWidth > 860 ? -.2 : 0);
   }
-  function hideSheet() { liner.hidden = true; linerRef = null; world && world.setPresentShift(0); }
+  function hideSheet() {
+    const wasOpen = !liner.hidden;
+    liner.hidden = true; linerRef = null; world && world.setPresentShift(0);
+    if (wasOpen && sheetOpener && sheetOpener.isConnected && !sheetOpener.hidden) sheetOpener.focus({ preventScroll: true });
+    sheetOpener = null;
+  }
   $("#liner-close").addEventListener("click", hideSheet);
 
   const showAbout = () => openInfo(renderAbout(PROFILE, { onCv: showCv, onContact: showContact, onAsk: () => { info.close(); assistant && assistant.open(); } }));
@@ -91,7 +103,7 @@ export async function boot() {
     onOpenProject: (project, index) => openInfo(wrapSheet(renderProjectSheet(project, CATEGORIES, { index }))),
     onAbout: showAbout, onCv: showCv, onContact: showContact,
     onBack: () => hideDirectory(),
-    onEnter3d: () => { location.search = ""; },
+    onEnter3d: () => { if (contextLost) location.reload(); else location.search = ""; },
     canEnter3d: () => !!world,
     onLanguage: (code) => changeLanguage(code)
   });
@@ -107,8 +119,10 @@ export async function boot() {
     directory.show({ message });
     $("#skip-link").hidden = true;
   }
+  $("#skip-link").addEventListener("click", (e) => { e.preventDefault(); showDirectory(); });
   function hideDirectory() {
     directory.hide();
+    $("#skip-link").hidden = false;
     if (!world) return;
     world.setPaused(false);
     if (inStore) { hud.setVisible(true); world.setActive(true); } else intro.show({ returning: isReturningVisitor() });
@@ -162,7 +176,8 @@ export async function boot() {
       assistant.close();
       const kind = action.type === "app" ? "app" : "project";
       world.focus(kind, action.id);
-      setTimeout(() => { if (inStore && !world.getHeld()) world.presentProject(action.id); }, 1500);
+      clearTimeout(presentTimer);
+      presentTimer = setTimeout(() => { if (inStore && !world.getHeld() && !directory.isVisible() && !info.open && $("#site-header").hidden) world.presentProject(action.id); }, 1500);
     }
   });
   menu = createMenu({
@@ -182,7 +197,7 @@ export async function boot() {
   world.on("held", (h) => dock.update(h));
   world.on("select", (sel) => handleSelect(sel));
   world.on("quality", (q) => { if (q.reason === "auto") toast(t("toast.quality", { tier: q.tier || "" })); });
-  world.on("context-lost", () => { toast(t("toast.contextLost")); showDirectory(t("toast.contextLost")); });
+  world.on("context-lost", () => { contextLost = true; toast(t("toast.contextLost")); showDirectory(t("toast.contextLost")); });
   world.on("cue", (name) => {
     if (name === "lights-on") sfx("lights-on");
     if (name === "neon-on") sfx("neon-on");
@@ -212,8 +227,9 @@ export async function boot() {
   }
   async function toggleMusic() {
     if (!audio.music.isEnabled()) { await ensureAudio({ music: true }); radio.expand(); toast(t("secret.turntableOn")); sfx("needle-drop"); return; }
+    const wasPlaying = audio.music.isPlaying(); // the player's state changes asynchronously: announce the action, not a guess
     audio.music.toggle();
-    toast(audio.music.isPlaying() ? t("secret.turntableOff") : t("secret.turntableOn"));
+    toast(wasPlaying ? t("secret.turntableOff") : t("secret.turntableOn"));
   }
 
   // ------------------------------------------------------------------ enter / leave
@@ -227,8 +243,9 @@ export async function boot() {
     pendingDirect = direct;
     world.openStore({ instant: direct || reducedMotion });
     if (sound) radio.expand();
-    const sync = () => { $("#opt-sfx").checked = !!sound; $("#opt-ambience").checked = !!sound; $("#opt-music").checked = !!sound; };
-    sync();
+    // the engine is the source of truth: "enter without sound" really disables SFX and ambience, not just the checkboxes
+    audio.setSfxEnabled(!!sound); audio.setAmbienceEnabled(!!sound);
+    $("#opt-sfx").checked = !!sound; $("#opt-ambience").checked = !!sound; $("#opt-music").checked = !!sound;
   }
   function leaveStore() {
     if (!inStore) return;
@@ -244,8 +261,8 @@ export async function boot() {
     const tag = e.target && e.target.tagName;
     const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
     if (e.key === "Escape") {
-      if (directory.isVisible()) { if (world) hideDirectory(); return; }
-      if (info.open) return; // native dialog closes itself
+      if (info.open) return; // the native dialog closes itself (checked first so Esc never also leaves the 2D directory)
+      if (directory.isVisible()) { if (world && !contextLost) hideDirectory(); return; }
       if (!inStore) return;
       if (assistant.isOpen()) return assistant.close();
       if (!$("#site-header").hidden) return menu.hide();
@@ -255,13 +272,15 @@ export async function boot() {
       return;
     }
     if (!inStore || typing || info.open) return;
+    // letter shortcuts must not fire while a control (chip, menu or dock button, link) has the focus
+    if (e.target && e.target.closest && e.target.closest("button, a, [role=dialog], #assistant, #site-header")) return;
     const held = world.getHeld();
     if (held && held.kind !== "app") {
       if (e.key === "f" || e.key === "F") world.flipRecord();
       if (e.key === "o" || e.key === "O") world.toggleSleeve();
       if (e.key === "d" || e.key === "D") showSheet(held);
     }
-    if (held && (e.key === "r" || e.key === "R" || e.key === "Backspace")) world.releaseHeld();
+    if (held && (e.key === "r" || e.key === "R")) world.releaseHeld();
   });
 
   // ------------------------------------------------------------------ language refresh

@@ -161,7 +161,7 @@ export function ensureRecordDetail(record, lang, quality) {
   }
   // BoxGeometry orients each face's UVs for a viewer outside it, so no mirroring is needed.
   for (const [mat, map] of [[record.backMat, entry.back], [record.innerLeftMat, entry.left], [record.innerRight, entry.right]]) {
-    mat.map = map; mat.color.set(0xffffff); mat.needsUpdate = true;
+    mat.map = map; mat.color.set(0xd9d3c6); mat.needsUpdate = true; // slightly below pure white so lit paper never clips
   }
   record.detailLang = lang;
 }

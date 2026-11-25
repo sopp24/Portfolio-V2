@@ -1,6 +1,7 @@
 // Radio card for the official YouTube player. YouTube's policy requires the embedded player to be
 // visible at >= 200x200 px, so it lives in this card; "hide" is a user choice that moves the card
-// off-screen (playback continues) and is documented as such in docs/ACCESSIBILITY_PERFORMANCE.md.
+// off-screen AND pauses the music, so the player is never playing while hidden.
+// The hidden card is `inert` (no focusable controls).
 import { $ } from "./dom.js";
 import { t } from "../core/i18n.js";
 
@@ -11,7 +12,8 @@ export function createRadio({ audio, isTouch }) {
   const muteBtn = $("#radio-mute");
   const volume = $("#radio-volume");
   const status = $("#radio-status");
-  let collapsed = !!isTouch;      // collapsed by default on phones (screen real estate); user can open it
+  let collapsed = false;          // visible whenever music is enabled (YouTube requires a visible player)
+  void isTouch;
   let enabled = false;
 
   audio.music.mount($("#radio-player"));
@@ -31,13 +33,14 @@ export function createRadio({ audio, isTouch }) {
     card.hidden = !enabled;
     open.hidden = !enabled || !collapsed;
     card.classList.toggle("is-offscreen", collapsed);
-    card.setAttribute("aria-hidden", collapsed ? "true" : "false");
+    card.inert = collapsed;
   }
 
   playBtn.addEventListener("click", () => audio.music.toggle());
   muteBtn.addEventListener("click", () => { audio.music.setMuted(!audio.music.isMuted()); render(); });
   volume.addEventListener("input", () => audio.music.setVolume(Number(volume.value) / 100));
-  $("#radio-collapse").addEventListener("click", () => { collapsed = true; render(); });
+  $("#radio-collapse").addEventListener("click", () => { if (audio.music.isPlaying()) audio.music.pause(); collapsed = true; render(); });
+  audio.music.setVolume(Number(volume.value) / 100); // the slider and the player start from the same value
   open.addEventListener("click", () => { collapsed = false; render(); });
   audio.on("change", render);
 

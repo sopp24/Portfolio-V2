@@ -140,10 +140,10 @@ function applicationReply(app, lang) {
 }
 
 const INTENTS = [
-  ["degree", /(master|\bm2\b|diplome|degree|etablissement|institution|universit|ecole|school|college|intitule|graduat)/],
+  ["degree", /(\bmaster\b|\bm2\b|diplome|\bdegree\b|etablissement|\binstitution\b|\buniversit|\becole\b|\bschool\b|\bcollege\b|intitule|graduat)/],
   ["cv", /(\bcv\b|curriculum|\bresume\b|telecharg|download)/],
-  ["contact", /(contact|joindre|ecrire|reach|e-?mail|\bmail\b|courriel|linkedin|instagram|reseaux|social|telephone|phone|numero)/],
-  ["availability", /(disponib|availab|international|etranger|abroad|overseas|relocat|embauch|septembre|september|quand|\bwhen\b|start date|demarr|commenc)/]
+  ["contact", /(\bcontact|joindre|ecrire a|\breach\b|e-?mail|\bmail\b|courriel|linkedin|instagram|reseaux sociaux|\bsocial (media|networks?)\b|telephone|\bphone\b|numero de)/],
+  ["availability", /(disponib|availab|etranger|abroad|overseas|relocat|embauch|septembre|september|start date|date de debut|demarrer)/]
 ];
 
 const LATE_INTENTS = [
@@ -151,7 +151,7 @@ const LATE_INTENTS = [
   ["apps", /(application|\bapps?\b|\brack\b|sopp agents|outils|\btools?\b|tester|\btest\b)/],
   ["music", /(musi|guitar|piano|\bchant|\bmao\b|\bmix\b|\bsing|\bsong|stream|\bdaw\b|compos)/],
   ["experience", /(experience|\bstages?\b|stagiaire|internship|professionnel|emploi|\bjob\b|travaille|worked|work history|employeur|entreprise|company|bmw|lifestyle)/],
-  ["best", /(meilleur|plus interessant|\bbest\b|most interesting|favori|favorite|recommand|conseill|suggest|par ou commencer|where to start|commencer)/],
+  ["best", /(meilleur|plus interessant|\bbest\b|most interesting|favori|favorite|recommand|conseill|suggest|par ou commencer|where to start|where (should i|do i) start)/],
   ["skills", /(competence|\bskills?\b|savoir faire|sait faire|maitrise|expertise|capable|strengths|\bforces?\b|can he do)/],
   ["categories", /(categorie|\brayons?\b|\bbacs?\b|\bbins?\b|\bcategor|shelves|domaines|areas)/],
   ["background", /(parcours|formation|etudes|background|education|career|cursus)/],
@@ -161,11 +161,12 @@ const LATE_INTENTS = [
 
 export function detectIntent(text, kb) {
   const t = norm(text);
-  for (const [name, pattern] of INTENTS) if (pattern.test(t)) return { name };
+  // a named project or application always wins: "when was ExpoData?" is about the project, not about availability
   const projects = matchProjects(text, kb);
   if (projects.length) return { name: "project", projects };
   const apps = matchApplications(text, kb);
   if (apps.length) return { name: "application", apps };
+  for (const [name, pattern] of INTENTS) if (pattern.test(t)) return { name };
   for (const [name, pattern] of LATE_INTENTS) if (pattern.test(t)) return { name };
   return { name: "unknown" };
 }
@@ -248,8 +249,8 @@ export function answerLocally(question, { language = "fr", kb = getDefaultKnowle
       const hist = kb.music?.historical;
       const names = (kb.music?.projects || []).filter(item => item.status !== "confirmed").map(item => item.name);
       reply = fr
-        ? `La musique fait partie de son identité : ${list(practices, lang)}. Il y a aussi son album personnel « Winehouse », qui a son propre post promotionnel.${hist ? ` D'après l'ancien portfolio (à confirmer) : environ ${hist.yearsOfPractice} ans de pratique et ${hist.streamsOrUses} de streams ou d'utilisations${names.length ? `, avec ${list(names, lang)}` : ""}${names.length && /\.$/.test(names[names.length - 1]) ? "" : "."}` : ""}`
-        : `Music is part of his identity: ${list(practices, lang)}. There is also his personal album "Winehouse", which has its own promotional post.${hist ? ` According to his previous portfolio (still to be confirmed): about ${hist.yearsOfPractice} years of practice and ${hist.streamsOrUses} streams or uses${names.length ? `, including ${list(names, lang)}` : ""}${names.length && /\.$/.test(names[names.length - 1]) ? "" : "."}` : ""}`;
+        ? `La musique fait partie de son identité : ${list(practices, lang)}. Il y a aussi son album personnel « Winehouse », qui a son propre post promotionnel.${hist ? ` D'après l'ancien portfolio (à confirmer) : environ ${hist.yearsOfPractice} ans de pratique et ${pick(hist.streamsOrUses, lang)} de streams ou d'utilisations${names.length ? `, avec ${list(names, lang)}` : ""}${names.length && /\.$/.test(names[names.length - 1]) ? "" : "."}` : ""}`
+        : `Music is part of his identity: ${list(practices, lang)}. There is also his personal album "Winehouse", which has its own promotional post.${hist ? ` According to his previous portfolio (still to be confirmed): about ${hist.yearsOfPractice} years of practice and ${pick(hist.streamsOrUses, lang)} streams or uses${names.length ? `, including ${list(names, lang)}` : ""}${names.length && /\.$/.test(names[names.length - 1]) ? "" : "."}` : ""}`;
       actions = [{ type: "project", id: "winehouse-promo" }, { type: "about" }];
       break;
     }

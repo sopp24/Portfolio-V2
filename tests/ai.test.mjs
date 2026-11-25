@@ -245,7 +245,8 @@ test("worker: anthropic happy path, markers parsed, validated and stripped", asy
   assert.equal(call.headers["x-api-key"], SECRET);
   assert.equal(call.headers["anthropic-version"], "2023-06-01");
   assert.equal(call.body.model, "claude-haiku-5-5");
-  assert.equal(call.body.max_tokens, 450);
+  assert.equal(call.body.max_tokens, 900);
+  assert.equal(call.body.output_config, undefined, "effort is only sent when AI_EFFORT is configured");
   assert.equal(call.body.messages[0].role, "user", "leading assistant turn must be dropped");
   assert.equal(call.body.system.length, 2);
   assert.ok(call.body.system[1].cache_control);
@@ -269,7 +270,7 @@ test("worker: openai-compatible provider needs AI_MODEL and uses AI_BASE_URL", a
   assert.equal(upstream[0].url, "https://llm.example/v1/chat/completions");
   assert.equal(upstream[0].headers.Authorization, "Bearer " + SECRET);
   assert.equal(upstream[0].body.model, "my-model");
-  assert.equal(upstream[0].body.max_tokens, 450);
+  assert.equal(upstream[0].body.max_tokens, 900);
   assert.equal(upstream[0].body.messages[0].role, "system");
   assert.match(upstream[0].body.messages[0].content, /Never invent/);
   assert.match(upstream[0].body.messages[0].content, /English/);
@@ -277,7 +278,7 @@ test("worker: openai-compatible provider needs AI_MODEL and uses AI_BASE_URL", a
   env = baseEnv({ AI_PROVIDER: "openai", AI_MODEL: "my-model" });
   await worker.fetch(chat(q()), env);
   assert.equal(upstream[1].url, "https://api.openai.com/v1/chat/completions");
-  assert.equal(upstream[1].body.max_completion_tokens, 450);
+  assert.equal(upstream[1].body.max_completion_tokens, 900);
   assert.equal(upstream[1].body.store, false);
   // Non-https base URL is refused as "not configured" (never called)
   upstream.length = 0;
@@ -405,11 +406,11 @@ test("client: AI answer, history trimming, language hint", async () => {
   assert.deepEqual(result.actions, [{ type: "project", id: "wero" }]);
 });
 
-test("client: failures fall back to catalogue with a typed errorCode; one retry on 5xx/network only", async () => {
+test("client: failures fall back to catalogue with a typed errorCode; one retry on 504/network only", async () => {
   let calls = 0;
   let client = createShopkeeperClient({ endpoint: "https://w.example", fetchImpl: async () => { calls++; return jsonResponse({ error: "upstream_error" }, 502); } });
   let result = await client.ask([{ role: "user", content: "Comment le contacter ?" }]);
-  assert.equal(calls, 2);
+  assert.equal(calls, 1, "a provider error (502) is not retried: it would only burn the rate limit");
   assert.equal(result.mode, "catalogue");
   assert.equal(result.degraded, true);
   assert.equal(result.errorCode, "upstream_error");
@@ -454,4 +455,41 @@ test("client: checkHealth distinguishes ai / offline", async () => {
   assert.equal(await notConfigured.checkHealth(), "offline");
   const down = createShopkeeperClient({ endpoint: "https://w.example", fetchImpl: async () => { throw new TypeError("x"); } });
   assert.equal(await down.checkHealth(), "offline");
+});
+
+// ------------------------------------------------------------------------------------------------ catalogue-mode intent collisions
+
+test("local FAQ: a named project wins over generic intent words (when / school / social / international)", () => {
+  const cases = [
+    ["Quand a été fait le Portfolio V1 ?", /Portfolio V1/i],
+    ["Quand a eu lieu ExpoData ?", /EXPODATA/i],
+    ["Is Wero a university project?", /WERO/i],
+    ["Le post Winehouse, quels réseaux sociaux ?", /WINEHOUSE/i],
+    ["Rock School Barbey", /SMAC/i],
+    ["Dis-moi tout sur RAPMAP", /RAPMAP/i]
+  ];
+  for (const [question, expected] of cases) {
+    const { reply } = answerLocally(question, { language: /\b(is)\b/i.test(question) ? "en" : "fr" });
+    assert.match(reply, expected, question);
+    assert.doesNotMatch(reply, /ouvert à travailler à l'étranger|Master 2 et sera|e-mail d'Adam/i, question);
+  }
+});
+
+test("local FAQ: generic questions still reach availability / degree / contact", () => {
+  assert.match(answerLocally("Quelles sont tes disponibilités ?", { language: "fr" }).reply, /septembre/i);
+  assert.match(answerLocally("Is Adam available in September?", { language: "en" }).reply, /September/);
+  assert.match(answerLocally("Quel est le master d'Adam ?", { language: "fr" }).reply, /Master 2/);
+  assert.doesNotMatch(answerLocally("Par où commencer ?", { language: "fr" }).reply, /étranger/);
+});
+
+test("worker: AI_EFFORT is forwarded as output_config.effort (adaptive thinking must not eat the answer budget)", async () => {
+  const env = baseEnv({ AI_EFFORT: "low" });
+  mockUpstream(anthropicOk("Une réponse courte."));
+  const response = await worker.fetch(chat(q()), env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(upstream[0].body.output_config, { effort: "low" });
+  const bad = baseEnv({ AI_EFFORT: "turbo" });
+  mockUpstream(anthropicOk("Ok."));
+  await worker.fetch(chat(q()), bad);
+  assert.equal(upstream[upstream.length - 1].body.output_config, undefined, "unknown values are never forwarded");
 });

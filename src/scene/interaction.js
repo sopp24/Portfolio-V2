@@ -17,7 +17,7 @@ function findPick(object) {
   return null;
 }
 
-export function createInteraction({ scene, camera, canvas, pickRoots, records, apps, quality, getLanguage, postfx, look, onHover, onSelect, onHeldChange, onSound, reducedMotion }) {
+export function createInteraction({ scene, camera, canvas, pickRoots, records, apps, quality, getLanguage, postfx, look, onHover, onSelect, onHeldChange, onSound, onHold, reducedMotion }) {
   const raycaster = new THREE.Raycaster();
   raycaster.far = 40;
   const ndc = new THREE.Vector2();
@@ -302,10 +302,13 @@ export function createInteraction({ scene, camera, canvas, pickRoots, records, a
         if (h.record) { h.record.flap.rotation.y = 0; h.record.disc.position.copy(h.record.discHome); h.record.disc.rotation.z = 0; }
         held = null;
         postfx?.setDof?.(0);
+        onHold?.(0);
         notify();
       }
     }
-    postfx?.setDof?.(held ? (held.state === "returning" ? Math.max(0, 1 - held.t * 1.6) : easeOut(Math.min(1, held.t * 1.4 + (held.state === "held" ? 1 : 0)))) : 0);
+    const holdAmount = held ? (held.state === "returning" ? Math.max(0, 1 - held.t * 1.6) : easeOut(Math.min(1, held.t * 1.4 + (held.state === "held" ? 1 : 0)))) : 0;
+    postfx?.setDof?.(holdAmount);
+    onHold?.(holdAmount);
   }
 
   // ------------------------------------------------------------------------------------------

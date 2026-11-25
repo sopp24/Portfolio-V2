@@ -61,7 +61,7 @@ Edit `CATEGORIES` in `src/data/projects.js` (`id`, `fr`, `en`). Keep exactly six
 ## 6. Email and links
 
 In `src/data/profile.js`:
-- `contact.email`: set to the confirmed address. `emailCandidate` (`adam.s@outlook.fr`, from the old portfolio) is **never displayed**.
+- `contact.email`: set to the confirmed address. The candidate address from the old portfolio is deliberately **not** in the repository until the owner confirms it.
 - `contact.links[]`: set `url` (must be `https://…`) for `linkedin`, `instagram`, `spotify`, `youtube`; add entries `{ id, label, url }` for others. Links with `url: null` are hidden. GitHub is pre-filled (`https://github.com/sopp24`, derived from the verified app repositories).
 
 ## 7. Master 2 and availability

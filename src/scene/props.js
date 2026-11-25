@@ -5,7 +5,7 @@ import { ROOM, COUNTER } from "./layout.js";
 import { rng, createCanvas, textureFrom, woodBox, composeMatrix, roundRectPath, wrapText } from "./util.js";
 import { SLEEVE, createRecord, getGrooveSet } from "./records.js";
 import { atlasPlane, drawAppCase } from "./assets.js";
-import { addSign, addContactShadow, localizedTexture } from "./kit.js";
+import { addSign, addContactShadow, addCardboardBox, localizedTexture } from "./kit.js";
 import { FONT, drawSignBoard, tex } from "./artwork.js";
 
 const PI = Math.PI;
@@ -259,6 +259,15 @@ export function buildAppsRack(ctx, applications) {
   B.add(new THREE.BoxGeometry(.04, 2.45, w - .06), charcoal, [x - .005, 1.7, zc]);
   for (let r = 0; r <= rows; r++) B.box(.26, .04, w, m.oak, [x - .12, baseY + r * rowGap, zc], [0, 0, 0], { bevel: .006, grain: "z" });
   for (const sz of [-w / 2 + .02, w / 2 - .02]) B.box(.26, 2.45, .04, m.oak, [x - .12, 1.7, zc + sz], [0, 0, 0], { bevel: .006, grain: "y" });
+  // storage cabinet under the rack (instead of a dark void): painted doors with brass pulls
+  B.box(.34, .9, w - .04, m.paintedGreen, [x - .13, .45, zc], [0, 0, 0], { bevel: .008 });
+  const doors = 4, doorW = (w - .14) / doors;
+  for (let i = 0; i < doors; i++) {
+    const dz = zc - w / 2 + .07 + doorW * (i + .5);
+    B.box(.012, .74, doorW - .035, m.paintedGreen, [x - .303, .45, dz], [0, 0, 0], { bevel: .004 });
+    B.box(.014, .1, .012, m.brass, [x - .318, .55, dz + (i % 2 ? -1 : 1) * (doorW / 2 - .06)], [0, 0, 0], { bevel: .003 });
+  }
+  B.box(.36, .035, w - .02, m.oak, [x - .13, .915, zc], [0, 0, 0], { bevel: .006, grain: "z" });
   // header: neon-style board
   addSign(ctx, {
     draw: (lang) => {
@@ -560,8 +569,8 @@ export function buildListeningCorner(ctx) {
 export function buildClutter(ctx) {
   const m = ctx.materials, B = ctx.batcher;
   // cardboard boxes by the counter (back right)
-  B.box(.5, .36, .38, m.cardboard, [3.2, .18, -4.7], [0, .15, 0], { bevel: .004, tile: .5 });
-  B.box(.44, .3, .34, m.cardboard, [3.18, .51, -4.68], [0, -.1, 0], { bevel: .004, tile: .5 });
+  addCardboardBox(ctx, .5, .36, .38, [3.2, .18, -4.7], .15, -Math.PI / 2);
+  addCardboardBox(ctx, .44, .3, .34, [3.18, .51, -4.68], -.1, -Math.PI / 2);
   // crate with records on the floor near the gondola
   const crate = new THREE.Group();
   crate.position.set(-2.55, 0, -.2);
@@ -576,13 +585,13 @@ export function buildClutter(ctx) {
   // low bench with record crates + floor lamp on the street-side left wall
   B.box(.5, .08, 1.7, m.oak, [-3.38, .46, 2.55], [0, 0, 0], { bevel: .01 });
   for (const dz of [-.75, .75]) for (const dx of [-.18, .18]) B.box(.06, .42, .06, m.oak, [-3.38 + dx, .21, 2.55 + dz], [0, 0, 0], { bevel: .005, grain: "y" });
-  B.box(.4, .3, .5, m.cardboard, [-3.38, .65, 2.1], [0, .1, 0], { bevel: .004, tile: .5 });
-  B.box(.36, .26, .44, m.cardboard, [-3.36, .63, 2.9], [0, -.15, 0], { bevel: .004, tile: .5 });
+  addCardboardBox(ctx, .4, .3, .5, [-3.38, .65, 2.1], .1, Math.PI / 2);
+  addCardboardBox(ctx, .36, .26, .44, [-3.36, .63, 2.9], -.15, Math.PI / 2);
   const fl = new THREE.Group();
   fl.position.set(-3.25, 0, 3.95);
   mesh(new THREE.CylinderGeometry(.14, .16, .03, 20), m.blackMetal, { position: [0, .015, 0], parent: fl });
   mesh(new THREE.CylinderGeometry(.012, .012, 1.55, 8), m.brass, { position: [0, .8, 0], parent: fl });
-  const shadeMat = new THREE.MeshStandardMaterial({ color: 0xf1dcae, roughness: .9, side: THREE.DoubleSide, emissive: 0xffc878, emissiveIntensity: .9 });
+  const shadeMat = new THREE.MeshStandardMaterial({ color: 0xf1dcae, roughness: .9, side: THREE.DoubleSide, emissive: 0xffc878, emissiveIntensity: .38 });
   ctx.owned.push(shadeMat);
   mesh(new THREE.CylinderGeometry(.16, .26, .3, 24, 1, true), shadeMat, { position: [0, 1.62, 0], parent: fl, cast: false });
   ctx.scene.add(fl);

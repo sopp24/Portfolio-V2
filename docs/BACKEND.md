@@ -68,7 +68,8 @@ Every response is `Cache-Control: no-store`. `actions` come from `[[project:<id>
 | `AI_MODEL` | var | `claude-haiku-5-5` for `anthropic`; **none** for `openai` | Model id. For `openai` it is mandatory (no invented default); without it the Worker reports `not_configured`. Check the provider's current model list before changing it. |
 | `AI_BASE_URL` | var | provider default | Override for OpenAI-compatible servers or a proxy. **https only** (http allowed for `localhost`), otherwise treated as not configured. |
 | `ALLOWED_ORIGINS` | var | `https://sopp24.github.io` | Comma-separated exact origins. |
-| `MAX_OUTPUT_TOKENS` | var | `450` (clamped 50–1000) | Cost + verbosity cap. |
+| `AI_EFFORT` | var | `low` in `wrangler.jsonc` (unset = not sent) | Sent as `output_config.effort` to the Anthropic provider. Current Claude models think by default and thinking tokens count towards `max_tokens`, so a low effort keeps short answers from being cut off. Leave it unset for models that reject `effort` (e.g. Haiku 4.5). |
+| `MAX_OUTPUT_TOKENS` | var | `900` (clamped 50–2000) | Cost + verbosity cap. |
 | `RATE_LIMIT_PER_MINUTE` | var | `8` | Per-IP token bucket. |
 | `DAILY_REQUEST_BUDGET` | var | `1500` | Global soft cap per UTC day. |
 | `DISABLE_LOGS` | var | unset | `1` silences the status-code logs. |
@@ -98,7 +99,7 @@ cp .dev.vars.example .dev.vars    # git-ignored; put a real key only here
 npx wrangler dev --port 8787
 npm run dev                        # static site on http://localhost:8080 in another terminal
 ```
-Set `<meta name="assistant-endpoint" content="http://127.0.0.1:8787">` locally (don't commit it) and keep `http://localhost:8080` in `ALLOWED_ORIGINS`.
+Set `<meta name="assistant-endpoint" content="http://127.0.0.1:8787">` locally (don't commit it) and put `ALLOWED_ORIGINS=http://localhost:8080` in your git-ignored `.dev.vars` (the deployed `wrangler.jsonc` only lists the Pages origin).
 
 Tests (no key, no network — the provider is mocked):
 ```bash

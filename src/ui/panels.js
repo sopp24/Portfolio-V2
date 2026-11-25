@@ -92,7 +92,7 @@ export function renderAbout(profile, { onCv, onContact, onAsk } = {}) {
   music.append(h("div", null, h("p", { text: t("about.musicIntro") }), h("h3", { text: t("about.practices"), style: "margin-top:.9rem" }), h("div", { class: "chips" }, list(profile.music.practices).map((p) => h("span", { class: "chip", text: p })))));
   const releases = h("div", null, h("h3", { text: t("about.releases") }), h("ul", null, profile.music.projects.map((p) => h("li", null, p.name, " ", p.confirmed ? "" : h("span", { class: "chip chip-warn", text: t("about.toConfirm") })))));
   if (profile.music.historical && profile.music.historical.yearsOfPractice) {
-    releases.append(h("p", { class: "pending", style: "margin-top:.8rem", text: t("about.historicalMusic", { years: profile.music.historical.yearsOfPractice, streams: profile.music.historical.streamsOrUses }) }));
+    releases.append(h("p", { class: "pending", style: "margin-top:.8rem", text: t("about.historicalMusic", { years: profile.music.historical.yearsOfPractice, streams: L(profile.music.historical.streamsOrUses) }) }));
   }
   music.append(releases);
   root.append(section(t("about.music"), music));

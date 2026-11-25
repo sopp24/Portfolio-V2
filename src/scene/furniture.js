@@ -5,7 +5,7 @@ import { ROOM, GONDOLA, COUNTER, FRONT } from "./layout.js";
 import { rng, composeMatrix, woodBox, createCanvas, textureFrom } from "./util.js";
 import { SLEEVE, createRecord } from "./records.js";
 import { atlasPlane } from "./assets.js";
-import { addSign, addBin, addContactShadow, localizedTexture } from "./kit.js";
+import { addSign, addBin, addContactShadow, addCardboardBox, localizedTexture } from "./kit.js";
 import { FONT, drawSignBoard } from "./artwork.js";
 
 const TAB_LABELS = {
@@ -60,7 +60,8 @@ export function buildGondola(ctx, projects, categories) {
   const rand = rng(99);
   for (let i = 0; i < 5; i++) {
     const w = rand.range(.32, .4);
-    B.box(w, rand.range(.22, .3), .33, m.cardboard, [cx - span / 2 + .35 + i * (span / 5), .24 + .015 + .13, frontZ + .02 + rand.range(-.04, .04)], [0, rand.range(-.06, .06), 0], { bevel: .004, tile: .5 });
+    const bh = rand.range(.22, .3);
+    addCardboardBox(ctx, w, bh, .33, [cx - span / 2 + .35 + i * (span / 5), .24 + .015 + bh / 2, frontZ + .02 + rand.range(-.04, .04)], rand.range(-.06, .06), 0);
   }
 
   const filler = ctx.filler;
@@ -270,22 +271,31 @@ export function buildShelving(ctx) {
   for (let i = 0; i <= 6; i++) B.box(unitDepth, .025, zMax - zMin, m.oak, [x, .35 + i * .34, (zMin + zMax) / 2], [0, 0, 0], { bevel: .004, grain: "z" });
   for (const z of [zMin, (zMin + zMax) / 2, zMax]) B.box(unitDepth, 2.4, .03, m.oak, [x, 1.2, z], [0, 0, 0], { bevel: .004, grain: "y" });
   const palette = ["#e9d7a2", "#c3402f", "#2d6a4f", "#1d3b4a", "#f2d16b", "#8a5a31", "#d9822b", "#3b6ea5", "#1b1b1b", "#d6e5d1", "#7d2a2a", "#e84a5f"];
-  // CD spines (jewel cases) on the upper shelves, cassettes on the lower
-  const spineGeo = new THREE.BoxGeometry(.011, .125, .142);
-  const cassetteGeo = new THREE.BoxGeometry(.016, .1, .068);
+  // CD spines (jewel cases) on the upper shelves, cassettes on the lower. Cases are thin along z (the shelf
+  // direction) and deep along x, standing spine-out towards the room (-x). Heights, depths and the odd
+  // leaning case vary, and most spines carry a pale label strip.
+  const cdGeo = new THREE.BoxGeometry(.142, .125, .011);
+  const tapeGeo = new THREE.BoxGeometry(.068, .1, .016);
+  const labelGeo = new THREE.BoxGeometry(.0012, .05, .0088);
   const mats = palette.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: .45, metalness: .0, envMapIntensity: .8 }));
-  ctx.owned.push(...mats);
+  const labelMats = ["#f4ecd8", "#fbfbf6", "#e9c46a"].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: .6, envMapIntensity: .5 }));
+  ctx.owned.push(...mats, ...labelMats);
   for (let shelf = 0; shelf < 6; shelf++) {
     const y = .35 + shelf * .34 + .0125;
     const cassette = shelf < 2;
     let z = zMin + .05;
     while (z < zMax - .04) {
+      if (rand() < .015) { z += .035 + rand() * .06; continue; } // a gap where a disc is out being played
       const w = cassette ? .016 : .011;
       const mat = mats[Math.floor(rand() * mats.length)];
-      const h = cassette ? .1 : .125;
-      const tilt = rand() < .04 ? rand.range(-.2, .2) : 0;
-      B.add(cassette ? cassetteGeo : spineGeo, mat, [x + .02, y + h / 2, z], [0, 0, tilt * .0], { cast: false });
-      z += w + .0005;
+      const h = (cassette ? .1 : .125) * (.94 + rand() * .06);
+      const depth = cassette ? .068 : .142;
+      const lean = rand() < .03 ? rand.range(-.18, .18) : 0;
+      const front = x - .035; // spine face sits near the shelf's front edge
+      const sx = 1, sy = h / (cassette ? .1 : .125);
+      B.add(cassette ? tapeGeo : cdGeo, mat, [front, y + h / 2, z], [0, 0, lean * .35], { cast: false, scale: [sx, sy, 1] });
+      if (!cassette && rand() < .72) B.add(labelGeo, labelMats[Math.floor(rand() * labelMats.length)], [front - depth / 2 - .0004, y + h * .62, z], [0, 0, lean * .35], { cast: false, scale: [1, sy, 1] });
+      z += w + .0006;
     }
   }
   return { zMin, zMax };
