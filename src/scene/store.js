@@ -854,7 +854,11 @@ export function createStoreScene(canvas, projects, categories, applications) {
     alpha: false
   });
   const coarse = window.matchMedia("(pointer: coarse)").matches;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.2 : 1.65));
+  const memory = Number(navigator.deviceMemory) || 0;
+  const cores = Number(navigator.hardwareConcurrency) || 0;
+  const lowPowerDevice = (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4);
+  const pixelRatioCap = coarse ? (lowPowerDevice ? 1 : 1.2) : (lowPowerDevice ? 1.25 : 1.65);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
