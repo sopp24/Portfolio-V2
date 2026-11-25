@@ -575,6 +575,33 @@ function createCounterAndListeningCorner(scene, materials) {
   );
   registerDisplay.position.set(-.55, 1.34, .132);
   counter.add(registerDisplay);
+  // A tiny lucky-cat charm is a hidden, clickable in-store easter egg.
+  const easterEgg = new THREE.Group();
+  easterEgg.position.set(.78, 1.15, .18);
+  easterEgg.userData.isEasterEgg = true;
+  const catBody = new THREE.Mesh(new THREE.SphereGeometry(.082, 12, 10), materials.label);
+  catBody.scale.set(.82, 1.12, .78);
+  catBody.position.y = .09;
+  easterEgg.add(catBody);
+  const catHead = new THREE.Mesh(new THREE.SphereGeometry(.073, 12, 10), materials.label);
+  catHead.position.set(0, .225, .014);
+  easterEgg.add(catHead);
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(.034, .075, 5), materials.label);
+    ear.position.set(side * .046, .292, .012);
+    easterEgg.add(ear);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(.008, 8, 6), materials.dark);
+    eye.position.set(side * .025, .232, .081);
+    easterEgg.add(eye);
+  }
+  const catCollar = new THREE.Mesh(new THREE.TorusGeometry(.056, .009, 6, 14), materials.rim);
+  catCollar.position.set(0, .163, .015);
+  easterEgg.add(catCollar);
+  const raisedPaw = new THREE.Mesh(new THREE.SphereGeometry(.032, 10, 8), materials.label);
+  raisedPaw.position.set(.086, .23, .018);
+  raisedPaw.rotation.z = -.28;
+  easterEgg.add(raisedPaw);
+  counter.add(easterEgg);
   scene.add(counter);
 
   // A compact turntable with a slowly rotating record.
@@ -624,7 +651,7 @@ function createCounterAndListeningCorner(scene, materials) {
     speaker.add(center);
   }
   scene.add(speaker);
-  return { platter: record };
+  return { platter: record, easterEgg };
 }
 
 function createShopkeeper(scene, materials) {
@@ -870,7 +897,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   }
 
   return {
-    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, shopkeeper, openDoors, closeDoors, update, resize,
+    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, openDoors, closeDoors, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
