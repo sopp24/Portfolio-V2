@@ -141,8 +141,11 @@ export function createCameraController(camera, canvas) {
     camera.rotation.y = baseYaw + currentYaw;
     camera.rotation.x = basePitch + currentPitch;
     camera.rotation.z = 0;
-    camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-5.5 * Math.min(delta, .05)));
-    camera.updateProjectionMatrix();
+    const nextFov = camera.fov + (targetFov - camera.fov) * (1 - Math.exp(-5.5 * Math.min(delta, .05)));
+    if (Math.abs(nextFov - camera.fov) > .001) {
+      camera.fov = nextFov;
+      camera.updateProjectionMatrix();
+    }
   }
 
   canvas.addEventListener("pointermove", handlePointerMove);
