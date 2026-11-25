@@ -369,24 +369,3 @@ export const PROJECTS = [
     visualStatus: "provisional"
   }
 ];
-
-export const PROFILE = {
-  name: "Adam Soppelsa",
-  currentDegree: null,
-  institution: null,
-  availability: null,
-  cvUrl: null,
-  email: null,
-  socialLinks: [],
-  historical: {
-    degree: "BUT Information numérique dans les organisations",
-    internships: [
-      { year: 2023, company: "BMW et BMW Motorrad", location: "La Rochelle" },
-      { year: 2024, company: "The Lifestyle Company", location: null }
-    ],
-    musicExperienceYears: 12,
-    musicStreamsOrUses: "13 millions",
-    musicProjects: ["Davis Miles", "STORY."]
-  },
-  note: "Les informations historiques et les champs actuels doivent être validés avant publication. Ne pas afficher les champs nulls."
-};

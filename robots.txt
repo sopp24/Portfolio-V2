@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sopp24.github.io/Portfolio-V2/sitemap.xml

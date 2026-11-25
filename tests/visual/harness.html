@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../../assets/fonts/fonts.css">
+<style>html,body{margin:0;height:100%;background:#111;overflow:hidden}canvas{width:100vw;height:100vh;display:block}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.min.js","three-addons":"../../vendor/three-addons.min.js"}}</script>
+</head><body><canvas id="world"></canvas>
+<script type="module">
+import { createWorld } from "../../src/scene/world.js";
+import { PROJECTS, CATEGORIES } from "../../src/data/projects.js";
+import { APPLICATIONS } from "../../src/data/applications.js";
+import { PROFILE } from "../../src/data/profile.js";
+window.__logs = [];
+window.addEventListener("error", (e) => window.__logs.push("ERR " + e.message + " @" + e.filename + ":" + e.lineno));
+window.addEventListener("unhandledrejection", (e) => window.__logs.push("REJ " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
+try {
+  const t0 = performance.now();
+  window.__world = await createWorld({ canvas: document.getElementById("world"), projects: PROJECTS, categories: CATEGORIES, applications: APPLICATIONS, profile: PROFILE, language: new URLSearchParams(location.search).get("lang") || "fr", onProgress: (p, l) => { window.__progress = [p, l]; } });
+  window.__loadMs = performance.now() - t0;
+  window.__ready = true;
+} catch (e) { window.__logs.push("FATAL " + (e.stack || e.message)); window.__ready = "error"; }
+</script></body></html>
