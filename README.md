@@ -1,6 +1,6 @@
 # Adam Soppelsa — Projects Store
 
-A 3D portfolio designed as a compact independent record store from the 1990s. The visitor stays in one fixed position and looks around the shop; projects are represented as vinyl records and web applications have their own rack.
+A 3D portfolio designed as a compact independent record store from the 1990s. The visitor stays in one fixed position and looks around the shop; projects are represented as vinyl records. The eight web applications currently have a separate section in the 2D collection; their physical 3D rack is planned next.
 
 ## Current direction
 
@@ -42,6 +42,8 @@ The applications rack contains the eight applications listed in the SOPP Agents 
 
 - Desktop mouse position: look around and aim with the center reticle; click the targeted sleeve to extract it.
 - Mouse wheel: zoom without moving the camera.
+- Selected record: F flips Side A / Side B; O opens or closes the sleeve; Escape or R returns it to its exact crate position.
+- On-screen record controls: flip, open/close, view project details and return to the bin.
 - Selected record: F flips Side A / Side B; O opens or closes the sleeve; Escape or R returns it to its exact crate position.
 - On-screen record controls: flip, open/close, view project details and return to the bin.
 - Smartphone: one-finger drag to look around, pinch to zoom, tap the targeted sleeve to extract it.
