@@ -26,7 +26,8 @@ Three.js is loaded from the jsDelivr ESM import map in index.html. Project data 
 - styles.css — responsive visual system.
 - main.js — lightweight module entry.
 - src/app.js — experience lifecycle, intro states, language, 2D directory and UI.
-- src/scene/store.js — procedural record-store environment and shared materials.
+- src/scene/store.js — procedural record-store environment, physical sleeves/discs and shared materials.
+- src/scene/record-interaction.js — center-gaze raycasting, record extraction, flip/open/return animation.
 - src/controls/camera.js — fixed-position mouse, touch, pinch-zoom and gyroscope controls.
 - src/data/projects.js — structured bilingual project catalogue and editable profile placeholders.
 - src/data/applications.js — verified SOPP Agents application links.
@@ -39,9 +40,11 @@ The applications rack contains the eight applications listed in the SOPP Agents 
 
 ## Controls currently implemented
 
-- Desktop mouse position: look around.
+- Desktop mouse position: look around and aim with the center reticle; click the targeted sleeve to extract it.
 - Mouse wheel: zoom without moving the camera.
-- Smartphone: one-finger drag to look around, pinch to zoom.
+- Selected record: F flips Side A / Side B; O opens or closes the sleeve; Escape or R returns it to its exact crate position.
+- On-screen record controls: flip, open/close, view project details and return to the bin.
+- Smartphone: one-finger drag to look around, pinch to zoom, tap the targeted sleeve to extract it.
 - Gyroscope: permission-based activation from the settings header.
 - Escape: show / hide the compact header on desktop.
 - Recenter: restore the default camera orientation and zoom.
