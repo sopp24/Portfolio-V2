@@ -203,3 +203,7 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
   .app-card-title { font-size: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+@media (min-width: 761px) { .mobile-menu { display: none !important; } }
+.closed-status.is-open { color: #9dc38f; }
+.closed-status.is-open span { background: #82af70; box-shadow: 0 0 12px rgba(130,175,112,.45); }
