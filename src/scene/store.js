@@ -4,6 +4,43 @@ const ROOM = { width: 12.4, depth: 15.2, height: 4.65, frontZ: 7.55, backZ: -7.5
 const posterTextureCache = new Map();
 const wallCoverGeometryCache = new Map();
 
+const sharedGeometryCache = new Map();
+
+function sharedGeometry(type, args, factory) {
+  const key = type + ":" + args.map(value => Number.isFinite(value) ? Number(value).toString() : String(value)).join("|");
+  let geometry = sharedGeometryCache.get(key);
+  if (!geometry) {
+    geometry = factory();
+    sharedGeometryCache.set(key, geometry);
+  }
+  return geometry;
+}
+
+function boxGeometry(...args) {
+  return sharedGeometry("box", args, () => boxGeometry(...args));
+}
+function planeGeometry(...args) {
+  return sharedGeometry("plane", args, () => planeGeometry(...args));
+}
+function cylinderGeometry(...args) {
+  return sharedGeometry("cylinder", args, () => cylinderGeometry(...args));
+}
+function sphereGeometry(...args) {
+  return sharedGeometry("sphere", args, () => sphereGeometry(...args));
+}
+function torusGeometry(...args) {
+  return sharedGeometry("torus", args, () => torusGeometry(...args));
+}
+function circleGeometry(...args) {
+  return sharedGeometry("circle", args, () => circleGeometry(...args));
+}
+function coneGeometry(...args) {
+  return sharedGeometry("cone", args, () => coneGeometry(...args));
+}
+function capsuleGeometry(...args) {
+  return sharedGeometry("capsule", args, () => capsuleGeometry(...args));
+}
+
 const PROJECT_COLORS = [
   ["#bd5c3b", "#e0b474", "#182e38"],
   ["#d0a24e", "#6d3c34", "#ead8b8"],
@@ -171,7 +208,7 @@ function sleeveTexture(project, index) {
 }
 
 function addBox(parent, dimensions, position, material, options = {}) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...dimensions), material);
+  const mesh = new THREE.Mesh(boxGeometry(...dimensions), material);
   mesh.position.set(...position);
   mesh.castShadow = options.castShadow ?? true;
   mesh.receiveShadow = options.receiveShadow ?? true;
@@ -198,7 +235,7 @@ function createSign(scene, label, position, width, height, rotationY = 0) {
     ctx.fillText(label, 384, 94, 680);
   });
   const sign = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, height),
+    planeGeometry(width, height),
     new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
   );
   sign.position.set(...position);
@@ -267,7 +304,7 @@ function createInteractivePoster(scene, x, y, z, rotationY, title, index, materi
     }
   };
   const image = new THREE.Mesh(
-    new THREE.PlaneGeometry(.82, 1.22),
+    planeGeometry(.82, 1.22),
     new THREE.MeshBasicMaterial({ map: createPosterTexture(index, title), side: THREE.DoubleSide })
   );
   image.position.z = .012;
@@ -289,7 +326,7 @@ function addWallCover(scene, x, y, z, rotationY, title, index, width = .58, heig
   const key = width.toFixed(3) + "x" + height.toFixed(3);
   let geometry = wallCoverGeometryCache.get(key);
   if (!geometry) {
-    geometry = new THREE.PlaneGeometry(width, height);
+    geometry = planeGeometry(width, height);
     wallCoverGeometryCache.set(key, geometry);
   }
   const art = new THREE.Mesh(
@@ -349,43 +386,43 @@ function createRecord(project, index, position, materials) {
   group.userData.provisionalArtwork = true;
   group.userData.isRecord = true;
 
-  const sleeveBody = new THREE.Mesh(new THREE.BoxGeometry(.65, .72, .045), materials.cardboard);
+  const sleeveBody = new THREE.Mesh(boxGeometry(.65, .72, .045), materials.cardboard);
   sleeveBody.castShadow = true; sleeveBody.receiveShadow = true; group.add(sleeveBody);
 
   const back = new THREE.Mesh(
-    new THREE.PlaneGeometry(.626, .696),
+    planeGeometry(.626, .696),
     new THREE.MeshBasicMaterial({ map: backSleeveTexture(project, index), side: THREE.DoubleSide })
   );
   back.position.z = -.024; back.rotation.y = Math.PI; back.scale.x = -1; group.add(back);
 
   const flap = new THREE.Group();
   flap.position.set(-.325, 0, .025); group.add(flap);
-  const flapBoard = new THREE.Mesh(new THREE.BoxGeometry(.65, .72, .014), materials.cardboard);
+  const flapBoard = new THREE.Mesh(boxGeometry(.65, .72, .014), materials.cardboard);
   flapBoard.position.x = .325; flapBoard.castShadow = true; flap.add(flapBoard);
   const front = new THREE.Mesh(
-    new THREE.PlaneGeometry(.626, .696),
+    planeGeometry(.626, .696),
     new THREE.MeshBasicMaterial({ map: sleeveTexture(project, index), side: THREE.DoubleSide })
   );
   front.position.set(.325, 0, .009); front.scale.x = -1; flap.add(front);
 
   const discAssembly = new THREE.Group();
   discAssembly.position.set(.16, .02, .055); group.add(discAssembly);
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(.285, .285, .012, 40), materials.vinyl);
+  const disc = new THREE.Mesh(cylinderGeometry(.285, .285, .012, 40), materials.vinyl);
   disc.rotation.x = Math.PI / 2; disc.castShadow = false; disc.receiveShadow = true; discAssembly.add(disc);
   for (const radius of [.17, .205, .24]) {
-    const groove = new THREE.Mesh(new THREE.TorusGeometry(radius, .0018, 3, 40), materials.rim);
+    const groove = new THREE.Mesh(torusGeometry(radius, .0018, 3, 40), materials.rim);
     groove.position.z = .0072; discAssembly.add(groove);
   }
-  const label = new THREE.Mesh(new THREE.CircleGeometry(.075, 28), materials.label);
+  const label = new THREE.Mesh(circleGeometry(.075, 28), materials.label);
   label.position.z = .0075; discAssembly.add(label);
   const labelText = new THREE.Mesh(
-    new THREE.CircleGeometry(.055, 28),
+    circleGeometry(.055, 28),
     new THREE.MeshBasicMaterial({ color: PROJECT_COLORS[index % PROJECT_COLORS.length][0] })
   );
   labelText.position.z = .008; discAssembly.add(labelText);
-  const spindle = new THREE.Mesh(new THREE.CircleGeometry(.012, 12), materials.spindle);
+  const spindle = new THREE.Mesh(circleGeometry(.012, 12), materials.spindle);
   spindle.position.z = .0085; discAssembly.add(spindle);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(.285, .004, 4, 40), materials.rim);
+  const rim = new THREE.Mesh(torusGeometry(.285, .004, 4, 40), materials.rim);
   rim.position.z = .007; discAssembly.add(rim);
 
   group.userData.flap = flap;
@@ -419,7 +456,7 @@ function createRecordCrate(scene, category, categoryProjects, materials, x, z, r
     ctx.fillText(String(categoryProjects.length).padStart(2, "0") + " PRESSING" + (categoryProjects.length > 1 ? "S" : "") + "  /  SIDE A", 320, 80);
   });
   const label = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.06, .30),
+    planeGeometry(2.06, .30),
     new THREE.MeshBasicMaterial({ map: ticket })
   );
   label.position.set(0, 1.01, -depth / 2 - .012);
@@ -499,7 +536,7 @@ function createApplicationRack(scene, applications, materials, applicationRoots)
     ctx.fillText("SOPP AGENTS  /  WEB APPLICATIONS", 384, 68, 720);
   });
   const headerMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.82, .42),
+    planeGeometry(2.82, .42),
     new THREE.MeshBasicMaterial({ map: header })
   );
   headerMesh.position.set(0, 3.30, .105);
@@ -516,13 +553,13 @@ function createApplicationRack(scene, applications, materials, applicationRoots)
     card.userData.homeScale = card.scale.clone();
 
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(.62, .82, .09),
+      boxGeometry(.62, .82, .09),
       new THREE.MeshStandardMaterial({ color: 0x443e34, roughness: .78 })
     );
     body.castShadow = true;
     card.add(body);
     const front = new THREE.Mesh(
-      new THREE.PlaneGeometry(.586, .786),
+      planeGeometry(.586, .786),
       new THREE.MeshBasicMaterial({ map: applicationCardTexture(application, index), side: THREE.DoubleSide })
     );
     front.position.z = .052;
@@ -577,13 +614,13 @@ function createGoldenPass(scene, materials) {
     ctx.fillText("ONE OF ONE  •  KEEP GOOD MUSIC ALIVE", 256, 173);
   });
   const backing = new THREE.Mesh(
-    new THREE.BoxGeometry(.58, .025, .28),
+    boxGeometry(.58, .025, .28),
     materials.trim
   );
   backing.position.y = .012;
   root.add(backing);
   const face = new THREE.Mesh(
-    new THREE.PlaneGeometry(.56, .245),
+    planeGeometry(.56, .245),
     new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
   );
   face.rotation.x = -Math.PI / 2;
@@ -591,7 +628,7 @@ function createGoldenPass(scene, materials) {
   face.userData.isCollectiblePart = true;
   root.add(face);
 
-  const eyelet = new THREE.Mesh(new THREE.TorusGeometry(.018, .004, 5, 12), materials.metal);
+  const eyelet = new THREE.Mesh(torusGeometry(.018, .004, 5, 12), materials.metal);
   eyelet.position.set(-.245, .029, -.09);
   eyelet.rotation.x = -Math.PI / 2;
   root.add(eyelet);
@@ -617,7 +654,7 @@ function createFrontWindow(scene, materials) {
   for (const x of [-4.18, -2.15, 2.15, 4.18]) {
     addBox(scene, [.09, 3.38, .20], [x, 2.72, z], frame);
   }
-  const windowPanel = new THREE.Mesh(new THREE.PlaneGeometry(11.9, 3.28), glass);
+  const windowPanel = new THREE.Mesh(planeGeometry(11.9, 3.28), glass);
   windowPanel.position.set(0, windowY, z - .10);
   scene.add(windowPanel);
 
@@ -647,7 +684,7 @@ function createFrontWindow(scene, materials) {
     map: reflectionTexture, transparent: true, opacity: .46,
     depthWrite: false, side: THREE.DoubleSide, toneMapped: false
   });
-  const reflection = new THREE.Mesh(new THREE.PlaneGeometry(11.82, 3.18), reflectionMaterial);
+  const reflection = new THREE.Mesh(planeGeometry(11.82, 3.18), reflectionMaterial);
   reflection.position.set(0, windowY, z - .108);
   reflection.renderOrder = 2;
   reflection.castShadow = false;
@@ -659,7 +696,7 @@ function createFrontWindow(scene, materials) {
   leftPivot.position.set(-.95, .10, z - .17);
   const leftDoor = addBox(leftPivot, [.92, 2.78, .10], [.46, 1.39, 0], frame);
   leftDoor.material = frame;
-  const leftGlass = new THREE.Mesh(new THREE.PlaneGeometry(.80, 2.52), glass);
+  const leftGlass = new THREE.Mesh(planeGeometry(.80, 2.52), glass);
   leftGlass.position.set(.46, 1.40, .061);
   leftPivot.add(leftGlass);
   scene.add(leftPivot);
@@ -667,7 +704,7 @@ function createFrontWindow(scene, materials) {
   const rightPivot = new THREE.Group();
   rightPivot.position.set(.95, .10, z - .17);
   const rightDoor = addBox(rightPivot, [.92, 2.78, .10], [-.46, 1.39, 0], frame);
-  const rightGlass = new THREE.Mesh(new THREE.PlaneGeometry(.80, 2.52), glass);
+  const rightGlass = new THREE.Mesh(planeGeometry(.80, 2.52), glass);
   rightGlass.position.set(-.46, 1.40, .061);
   rightPivot.add(rightGlass);
   scene.add(rightPivot);
@@ -689,7 +726,7 @@ function createCounterAndListeningCorner(scene, materials) {
   addBox(counter, [.48, .25, .025], [-.55, 1.32, .115], materials.screen);
   addBox(counter, [.38, .13, .24], [.62, 1.18, -.09], materials.metal);
   const registerDisplay = new THREE.Mesh(
-    new THREE.PlaneGeometry(.31, .09),
+    planeGeometry(.31, .09),
     new THREE.MeshBasicMaterial({ color: 0x9bc0a3 })
   );
   registerDisplay.position.set(-.55, 1.34, .132);
@@ -698,27 +735,27 @@ function createCounterAndListeningCorner(scene, materials) {
   const easterEgg = new THREE.Group();
   easterEgg.position.set(.78, 1.15, .18);
   easterEgg.userData.isEasterEgg = true;
-  const catBody = new THREE.Mesh(new THREE.SphereGeometry(.082, 12, 10), materials.label);
+  const catBody = new THREE.Mesh(sphereGeometry(.082, 12, 10), materials.label);
   catBody.scale.set(.82, 1.12, .78);
   catBody.position.y = .09;
   easterEgg.add(catBody);
-  const catHead = new THREE.Mesh(new THREE.SphereGeometry(.073, 12, 10), materials.label);
+  const catHead = new THREE.Mesh(sphereGeometry(.073, 12, 10), materials.label);
   catHead.position.set(0, .225, .014);
   easterEgg.add(catHead);
   for (const side of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.034, .075, 5), materials.label);
+    const ear = new THREE.Mesh(coneGeometry(.034, .075, 5), materials.label);
     ear.position.set(side * .046, .292, .012);
     easterEgg.add(ear);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(.008, 8, 6), materials.dark);
+    const eye = new THREE.Mesh(sphereGeometry(.008, 8, 6), materials.dark);
     eye.position.set(side * .025, .232, .081);
     easterEgg.add(eye);
   }
-  const catCollar = new THREE.Mesh(new THREE.TorusGeometry(.056, .009, 6, 14), materials.rim);
+  const catCollar = new THREE.Mesh(torusGeometry(.056, .009, 6, 14), materials.rim);
   catCollar.position.set(0, .163, .015);
   easterEgg.add(catCollar);
   const pawRig = new THREE.Group();
   pawRig.position.set(.086, .23, .018);
-  const raisedPaw = new THREE.Mesh(new THREE.SphereGeometry(.032, 10, 8), materials.label);
+  const raisedPaw = new THREE.Mesh(sphereGeometry(.032, 10, 8), materials.label);
   pawRig.add(raisedPaw);
   easterEgg.add(pawRig);
   easterEgg.userData.pawRig = pawRig;
@@ -729,19 +766,19 @@ function createCounterAndListeningCorner(scene, materials) {
   const deck = new THREE.Group();
   deck.position.set(-.22, 1.13, 0);
   addBox(deck, [1.05, .13, .82], [0, .06, 0], materials.dark);
-  const platter = new THREE.Mesh(new THREE.CylinderGeometry(.31, .31, .035, 48), materials.metal);
+  const platter = new THREE.Mesh(cylinderGeometry(.31, .31, .035, 48), materials.metal);
   platter.position.set(0, .155, 0);
   deck.add(platter);
-  const record = new THREE.Mesh(new THREE.CylinderGeometry(.275, .275, .012, 48), materials.vinyl);
+  const record = new THREE.Mesh(cylinderGeometry(.275, .275, .012, 48), materials.vinyl);
   record.position.set(0, .18, 0);
   deck.add(record);
-  const label = new THREE.Mesh(new THREE.CircleGeometry(.065, 24), materials.label);
+  const label = new THREE.Mesh(circleGeometry(.065, 24), materials.label);
   label.rotation.x = -Math.PI / 2;
   label.position.set(0, .188, 0);
   deck.add(label);
   const arm = new THREE.Group();
   arm.position.set(.34, .22, -.25);
-  const armBar = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .38, 8), materials.metal);
+  const armBar = new THREE.Mesh(cylinderGeometry(.012, .012, .38, 8), materials.metal);
   armBar.rotation.z = Math.PI / 2.8;
   armBar.position.x = -.08;
   arm.add(armBar);
@@ -753,7 +790,7 @@ function createCounterAndListeningCorner(scene, materials) {
   stool.position.set(-4.55, 0, 4.82);
   addBox(stool, [.62, .12, .62], [0, .65, 0], materials.wood);
   for (const dx of [-.22, .22]) for (const dz of [-.22, .22]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(.025, .035, .65, 8), materials.metal);
+    const leg = new THREE.Mesh(cylinderGeometry(.025, .035, .65, 8), materials.metal);
     leg.position.set(dx, .31, dz);
     stool.add(leg);
   }
@@ -762,11 +799,11 @@ function createCounterAndListeningCorner(scene, materials) {
   speaker.position.set(-5.32, 0, 1.1);
   addBox(speaker, [.42, 1.22, .55], [0, .61, 0], materials.dark);
   for (const y of [.35, .88]) {
-    const cone = new THREE.Mesh(new THREE.CylinderGeometry(.125, .125, .035, 24), materials.metal);
+    const cone = new THREE.Mesh(cylinderGeometry(.125, .125, .035, 24), materials.metal);
     cone.rotation.z = Math.PI / 2;
     cone.position.set(.225, y, .02);
     speaker.add(cone);
-    const center = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .04, 16), materials.label);
+    const center = new THREE.Mesh(cylinderGeometry(.035, .035, .04, 16), materials.label);
     center.rotation.z = Math.PI / 2;
     center.position.set(.25, y, .02);
     speaker.add(center);
@@ -784,34 +821,34 @@ function createShopkeeper(scene, materials) {
   const bodyRig = new THREE.Group();
   bodyRig.position.y = 1.32;
   figure.add(bodyRig);
-  const cardigan = new THREE.Mesh(new THREE.CapsuleGeometry(.29, .62, 5, 10), materials.cardigan);
+  const cardigan = new THREE.Mesh(capsuleGeometry(.29, .62, 5, 10), materials.cardigan);
   bodyRig.add(cardigan);
-  const shirt = new THREE.Mesh(new THREE.BoxGeometry(.28, .42, .10), materials.shirt);
+  const shirt = new THREE.Mesh(boxGeometry(.28, .42, .10), materials.shirt);
   shirt.position.set(0, .13, .235);
   bodyRig.add(shirt);
-  const apron = new THREE.Mesh(new THREE.BoxGeometry(.44, .54, .045), materials.apron);
+  const apron = new THREE.Mesh(boxGeometry(.44, .54, .045), materials.apron);
   apron.position.set(0, -.13, .255);
   bodyRig.add(apron);
 
   const headRig = new THREE.Group();
   headRig.position.set(0, 1.92, 0);
   figure.add(headRig);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.205, 20, 16), materials.skin);
+  const head = new THREE.Mesh(sphereGeometry(.205, 20, 16), materials.skin);
   head.position.set(0, .10, .03);
   headRig.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(.214, 18, 12, 0, Math.PI * 2, 0, Math.PI * .50), materials.hair);
+  const hair = new THREE.Mesh(sphereGeometry(.214, 18, 12, 0, Math.PI * 2, 0, Math.PI * .50), materials.hair);
   hair.position.set(0, .16, .02);
   headRig.add(hair);
   for (const x of [-.09, .09]) {
-    const lens = new THREE.Mesh(new THREE.TorusGeometry(.052, .008, 6, 18), materials.metal);
+    const lens = new THREE.Mesh(torusGeometry(.052, .008, 6, 18), materials.metal);
     lens.position.set(x, .10, .222);
     headRig.add(lens);
   }
-  const bridge = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .12, 6), materials.metal);
+  const bridge = new THREE.Mesh(cylinderGeometry(.006, .006, .12, 6), materials.metal);
   bridge.rotation.z = Math.PI / 2;
   bridge.position.set(0, .10, .23);
   headRig.add(bridge);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(.027, 8, 8), materials.skin);
+  const nose = new THREE.Mesh(sphereGeometry(.027, 8, 8), materials.skin);
   nose.position.set(0, .06, .245);
   headRig.add(nose);
 
@@ -819,11 +856,11 @@ function createShopkeeper(scene, materials) {
   for (const side of [-1, 1]) {
     const armRig = new THREE.Group();
     armRig.position.set(side * .29, 1.61, .02);
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(.085, .42, 4, 8), materials.cardigan);
+    const arm = new THREE.Mesh(capsuleGeometry(.085, .42, 4, 8), materials.cardigan);
     arm.position.set(side * .035, -.27, 0);
     arm.rotation.z = side * -.22;
     armRig.add(arm);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), materials.skin);
+    const hand = new THREE.Mesh(sphereGeometry(.07, 10, 8), materials.skin);
     hand.position.set(side * .04, -.53, .04);
     armRig.add(hand);
     figure.add(armRig);
@@ -891,7 +928,9 @@ export function createStoreScene(canvas, projects, categories, applications) {
     shirt: new THREE.MeshStandardMaterial({ color: 0xe0d5bf, roughness: .95 }),
     skin: new THREE.MeshStandardMaterial({ color: 0xc49a79, roughness: .88 }),
     hair: new THREE.MeshStandardMaterial({ color: 0x9b9b8d, roughness: .96 }),
-    apron: new THREE.MeshStandardMaterial({ color: 0x80694b, roughness: .95 })
+    apron: new THREE.MeshStandardMaterial({ color: 0x80694b, roughness: .95 }),
+    applicationCard: new THREE.MeshStandardMaterial({ color: 0x443e34, roughness: .78 }),
+    bulb: new THREE.MeshBasicMaterial({ color: 0xffe6b4 })
   };
 
   // Daylight enters through the front glass. Warm interior bounce keeps the room inviting.
@@ -901,7 +940,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   sun.position.set(-1.6, 7.5, 8.2);
   sun.target.position.set(0, 0, -1.8);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(lowPowerDevice ? 512 : 1024, lowPowerDevice ? 512 : 1024);
   sun.shadow.camera.left = -8;
   sun.shadow.camera.right = 8;
   sun.shadow.camera.top = 8;
@@ -913,7 +952,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   scene.add(fill);
 
   // Room shell: one compact shop, not a multi-room warehouse.
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.width, ROOM.depth), materials.floor);
+  const floor = new THREE.Mesh(planeGeometry(ROOM.width, ROOM.depth), materials.floor);
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, .015, .05);
   floor.receiveShadow = true;
@@ -922,7 +961,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   addBox(scene, [ROOM.width, ROOM.height, .20], [0, ROOM.height / 2, ROOM.backZ], materials.plaster);
   addBox(scene, [.20, ROOM.height, ROOM.depth], [-ROOM.width / 2, ROOM.height / 2, .05], materials.plaster);
   addBox(scene, [.20, ROOM.height, ROOM.depth], [ROOM.width / 2, ROOM.height / 2, .05], materials.plaster);
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.width, ROOM.depth), new THREE.MeshStandardMaterial({ color: 0xd8cdb9, roughness: .95 }));
+  const ceiling = new THREE.Mesh(planeGeometry(ROOM.width, ROOM.depth), new THREE.MeshStandardMaterial({ color: 0xd8cdb9, roughness: .95 }));
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, ROOM.height, .05);
   scene.add(ceiling);
@@ -998,7 +1037,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
     fixture.position.set(x, 4.40, .35);
     addBox(fixture, [.52, .08, .56], [0, 0, 0], materials.metal);
     const bulb = new THREE.Mesh(
-      new THREE.SphereGeometry(.095, 12, 10),
+      sphereGeometry(.095, 12, 10),
       new THREE.MeshBasicMaterial({ color: 0xffe6b4 })
     );
     bulb.position.y = -.12;
