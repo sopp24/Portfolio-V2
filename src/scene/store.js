@@ -701,7 +701,7 @@ export function createStoreScene(canvas, projects) {
   // Two central wooden listening bins form the main project collection.
   const recordRoots = [];
   createRecordCrate(scene, projects, materials, -1.45, .88, 0, recordRoots);
-  createRecordCrate(scene, projects, materials, 1.45, 5.88, 5, recordRoots);
+  createRecordCrate(scene, projects, materials, 1.45, .88, 5, recordRoots);
 
   // Checkout, vintage register, turntable and listening corner.
   const listening = createCounterAndListeningCorner(scene, materials);
