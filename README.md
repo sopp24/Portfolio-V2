@@ -148,3 +148,12 @@ A single Golden Pass is tucked flat onto the upper face of a right-wall shelf. V
 The render loop is suspended while the browser tab is hidden and restarted with a fresh clock when the visitor returns. This avoids spending GPU time in a background tab and prevents hidden time from being applied to scene animations. The renderer's pixel-ratio ceiling now adapts to coarse-pointer devices and available hardware-memory / core-count hints. Camera projection updates run only while the field of view is actually changing.
 
 Keyboard shortcuts no longer intercept typing in editable fields or browser-modified key combinations. Sound and gyroscope controls expose their pressed state to assistive technology. If WebGL initialization fails or the context is lost, the renderer loop and interaction listeners are stopped before the visitor is moved to the 2D collection. The existing reduced-motion stylesheet rules remain active.
+
+
+### Phase 11 — 3D scene performance pass
+
+Repeated primitive geometries (boxes, planes, cylinders, spheres, toruses, circles, cones and capsules) are now reused through a parameter-keyed cache. This avoids allocating duplicate vertex/index buffers for the repeated shelf, crate, sleeve, disc, poster and display shapes. The application-card body and hanging-bulb materials are shared as well; artwork textures remain individual where their content differs.
+
+The center-gaze picker now runs at 30 Hz rather than every render frame. Before each raycast it refreshes only the interactive roots and their transform hierarchies, rather than forcing a matrix update across the entire store. Low-power devices also receive a 512² directional shadow map and a single central local light; the full-resolution shadow map and three warm local light pools remain on more capable devices. The visual layout, object models, textures, camera position and interactions are unchanged.
+
+These are source-level optimizations. The repository has passed static syntax and structure checks, but no device-level frame-time or GPU-memory benchmark has been claimed.
