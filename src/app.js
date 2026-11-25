@@ -58,7 +58,11 @@ const COPY = {
     openSleeve: "OUVRIR LA POCHETTE",
     closeSleeve: "REFERMER LA POCHETTE",
     details: "FICHE DU PROJET",
-    returnRecord: "REMETTRE DANS LE BAC"
+    returnRecord: "REMETTRE DANS LE BAC",
+    appPanelEyebrow: "SOPP AGENTS / APPLICATION WEB",
+    appHoverPrompt: "REGARDER PUIS CLIQUER POUR CONSULTER",
+    appSelectedPrompt: "APPLICATION SÉLECTIONNÉE · LIENS EXTERNES",
+    returnApp: "RETOUR AU RACK"
   },
   en: {
     closed: "CLOSED",
@@ -109,7 +113,11 @@ const COPY = {
     openSleeve: "OPEN THE SLEEVE",
     closeSleeve: "CLOSE THE SLEEVE",
     details: "PROJECT DETAILS",
-    returnRecord: "RETURN TO THE CRATE"
+    returnRecord: "RETURN TO THE CRATE",
+    appPanelEyebrow: "SOPP AGENTS / WEB APPLICATION",
+    appHoverPrompt: "LOOK AT THE CARD, THEN CLICK TO EXPLORE",
+    appSelectedPrompt: "APPLICATION SELECTED · EXTERNAL LINKS",
+    returnApp: "BACK TO THE RACK"
   }
 };
 
@@ -147,10 +155,14 @@ function renderRecordPanel(state = recordPanelState) {
   const hint = $("control-hint");
   const copy = COPY[language];
   const mode = recordPanelState.mode || "none";
-
+  const isApplication = mode === "application-hover" || mode === "application-selected";
+  const isHover = mode === "hover" || mode === "application-hover";
+  const isSelected = mode === "selected";
+  const isReturning = mode === "returning";
   const visible = isOpen && !directoryVisible;
-  reticle.hidden = !visible || mode === "selected" || mode === "returning";
-  reticle.classList.toggle("is-target", mode === "hover");
+
+  reticle.hidden = !visible || isSelected || isReturning || mode === "application-selected";
+  reticle.classList.toggle("is-target", isHover);
 
   if (!visible || mode === "none") {
     panel.hidden = true;
@@ -159,23 +171,38 @@ function renderRecordPanel(state = recordPanelState) {
   }
 
   panel.hidden = false;
-  panel.classList.toggle("is-hovering", mode === "hover");
-  panel.classList.toggle("is-returning", mode === "returning");
+  panel.classList.toggle("is-hovering", isHover);
+  panel.classList.toggle("is-returning", isReturning);
+  panel.classList.toggle("is-application", isApplication);
+
   const project = recordPanelState.project;
-  $("record-panel-eyebrow").textContent = copy.panelEyebrow;
-  $("record-title").textContent = project?.title?.[language] || "SIDE A";
-  $("record-summary").textContent = mode === "hover"
-    ? copy.hoverPrompt
-    : mode === "returning"
-      ? copy.returningPrompt
-      : copy.selectedPrompt;
-  $("record-actions").hidden = mode !== "selected";
+  const application = recordPanelState.application;
+  $("record-panel-eyebrow").textContent = isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
+  $("record-title").textContent = isApplication
+    ? (application?.name || "SOPP AGENTS")
+    : (project?.title?.[language] || "SIDE A");
+  $("record-summary").textContent = isApplication
+    ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
+    : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
+
+  $("record-actions").hidden = !isSelected;
+  $("application-actions").hidden = mode !== "application-selected";
+
   $("record-flip-button").textContent = recordPanelState.isFlipped ? copy.showFront : copy.flip;
   $("record-open-button").textContent = recordPanelState.isOpen ? copy.closeSleeve : copy.openSleeve;
   $("record-open-button").disabled = !!recordPanelState.isFlipped;
   $("record-details-button").textContent = copy.details;
   $("record-details-button").hidden = !recordPanelState.isOpen;
   $("record-return-button").textContent = copy.returnRecord;
+
+  if (application) {
+    $("application-open-link").href = application.url;
+    $("application-open-link").textContent = copy.appOpen + " ↗";
+    $("application-repo-link").href = application.repository;
+    $("application-repo-link").textContent = copy.repoOpen + " ↗";
+    $("application-return-button").textContent = copy.returnApp;
+  }
+
   hint.hidden = true;
 }
 
@@ -426,7 +453,8 @@ function bindInterface() {
   $("record-flip-button").addEventListener("click", () => recordInteraction?.flipSelected());
   $("record-open-button").addEventListener("click", () => recordInteraction?.toggleSleeve());
   $("record-details-button").addEventListener("click", () => recordInteraction?.showProjectDetails());
-  $("record-return-button").addEventListener("click", () => recordInteraction?.returnSelected());
+  $("record-return-button").addEventListener("click", () => recordInteraction?.returnSelectedRecord());
+  $("application-return-button").addEventListener("click", () => recordInteraction?.returnSelectedApplication());
   $("project-dialog").addEventListener("click", event => {
     if (event.target === $("project-dialog")) $("project-dialog").close();
   });
@@ -438,7 +466,8 @@ function bindInterface() {
     }
     if (event.key === "Escape" && recordInteraction?.hasSelection()) {
       event.preventDefault();
-      recordInteraction.returnSelected();
+      if (recordInteraction.hasRecordSelection()) recordInteraction.returnSelectedRecord();
+      else if (recordInteraction.hasApplicationSelection()) recordInteraction.returnSelectedApplication();
       return;
     }
     if (event.key === "Escape" && isOpen && !directoryVisible) {
@@ -452,7 +481,8 @@ function bindInterface() {
       recordInteraction?.toggleSleeve();
     }
     if ((event.key === "0" || event.key.toLowerCase() === "r") && isOpen && !directoryVisible) {
-      if (recordInteraction?.hasSelection()) recordInteraction.returnSelected();
+      if (recordInteraction?.hasRecordSelection()) recordInteraction.returnSelectedRecord();
+      else if (recordInteraction?.hasApplicationSelection()) recordInteraction.returnSelectedApplication();
       else cameraController?.reset();
     }
   });
@@ -478,13 +508,14 @@ function boot() {
   $("intro-direct").hidden = !safeStorageGet("adam-projects-store.visited");
 
   try {
-    store = createStoreScene($("world"), PROJECTS);
+    store = createStoreScene($("world"), PROJECTS, CATEGORIES, APPLICATIONS);
     cameraController = createCameraController(store.camera, $("world"));
     recordInteraction = createRecordInteraction({
       scene: store.scene,
       camera: store.camera,
       canvas: $("world"),
       records: store.recordRoots,
+      applications: store.applicationRoots,
       onPanelChange: renderRecordPanel,
       onOpenProject: openProjectDetails
     });
