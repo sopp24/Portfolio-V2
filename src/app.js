@@ -50,6 +50,7 @@ const COPY = {
     webglError: "La 3D n’est pas disponible sur cet appareil. La collection reste consultable en 2D.",
     projectFallback: "Les pochettes sont des visuels provisoires. Les créations définitives seront ajoutées ensuite.",
     hoverPrompt: "REGARDER PUIS CLIQUER POUR SORTIR LE VINYLE",
+    panelEyebrow: "SIDE A / PRESSAGE SÉLECTIONNÉ",
     selectedPrompt: "VINYLE EXTRAIT · MANIPULEZ LA POCHETTE",
     returningPrompt: "REMISE EN RAYON EN COURS…",
     flip: "VOIR LE VERSO",
@@ -100,6 +101,7 @@ const COPY = {
     webglError: "3D is not available on this device. You can still browse the collection in 2D.",
     projectFallback: "Sleeve artwork is provisional. Final project visuals will be added later.",
     hoverPrompt: "LOOK AT A RECORD, THEN CLICK TO PULL IT OUT",
+    panelEyebrow: "SIDE A / SELECTED PRESSING",
     selectedPrompt: "RECORD EXTRACTED · HANDLE THE SLEEVE",
     returningPrompt: "RETURNING TO THE CRATE…",
     flip: "VIEW SIDE B",
@@ -160,6 +162,7 @@ function renderRecordPanel(state = recordPanelState) {
   panel.classList.toggle("is-hovering", mode === "hover");
   panel.classList.toggle("is-returning", mode === "returning");
   const project = recordPanelState.project;
+  $("record-panel-eyebrow").textContent = copy.panelEyebrow;
   $("record-title").textContent = project?.title?.[language] || "SIDE A";
   $("record-summary").textContent = mode === "hover"
     ? copy.hoverPrompt
@@ -170,6 +173,7 @@ function renderRecordPanel(state = recordPanelState) {
   $("record-flip-button").textContent = recordPanelState.isFlipped ? copy.showFront : copy.flip;
   $("record-open-button").textContent = recordPanelState.isOpen ? copy.closeSleeve : copy.openSleeve;
   $("record-open-button").disabled = !!recordPanelState.isFlipped;
+  $("record-details-button").textContent = copy.details;
   $("record-details-button").hidden = !recordPanelState.isOpen;
   $("record-return-button").textContent = copy.returnRecord;
   hint.hidden = true;
