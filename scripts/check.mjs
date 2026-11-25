@@ -210,7 +210,12 @@ section("(e) Payload sizes");
     for (const f of files) { const s = (await stat(f)).size; total += s; rows.push([rel(f), s]); }
     console.log(`${dir.padEnd(8)} ${String(files.length).padStart(3)} files  ${fmt(total)}`);
     if (dir === "vendor" || dir === "assets") rows.sort((a, b) => b[1] - a[1]).slice(0, 4).forEach(([f, s]) => console.log(`           ${f}  ${fmt(s)}`));
-    if (dir === "assets" && total > 3 * 1048576) warn(`assets/ is ${fmt(total)}: consider optimising`);
+    if (dir === "assets") {
+      // the hi-LOD characters are only fetched on the high quality tier: judge the default payload without them
+      const hi = rows.filter(([f]) => /\.hi\.(bin|json)$/.test(f)).reduce((n, [, size]) => n + size, 0);
+      console.log(`           (of which ${fmt(hi)} are hi-LOD characters, fetched on the high tier only)`);
+      if (total - hi > 3 * 1048576) warn(`assets/ is ${fmt(total - hi)} without the hi-LOD characters: consider optimising`);
+    }
   }
 }
 

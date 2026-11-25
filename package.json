@@ -6,6 +6,7 @@
   "description": "Adam Soppelsa — Projects Store: an immersive 3D record-store portfolio (static site, GitHub Pages).",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
+    "bake:characters": "node scripts/characters/bake.mjs",
     "dev": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs && node scripts/sync-static.mjs --check",
     "sync": "node scripts/sync-static.mjs",
@@ -21,6 +22,7 @@
     "@fontsource/poppins": "5.3.0",
     "@fontsource/special-elite": "5.3.0",
     "esbuild": "^0.25.0",
+    "meshoptimizer": "^1.3.0",
     "three": "0.187.0"
   }
 }

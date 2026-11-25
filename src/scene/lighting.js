@@ -113,7 +113,7 @@ export function buildLighting(ctx) {
   // ---------------------------------------------------------------- warm track spots
   const spotDefs = [
     { pos: [-2.0, 3.16, .9], at: [-1.9, .95, .1], intensity: 10, angle: .6 },
-    { pos: [2.5, 3.16, -2.4], at: [2.5, 1.15, -3.7], intensity: 24, angle: .5 },
+    { pos: [2.5, 3.16, -2.4], at: [2.5, 1.15, -3.7], intensity: 16, angle: .5 },
     { pos: [-2.4, 3.16, 3.9], at: [-3.0, 1.0, 4.2], intensity: 16, angle: .7 },
     { pos: [-.2, 3.16, .9], at: [-.3, .95, .1], intensity: 10, angle: .6 },
     { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 10, angle: .55 },

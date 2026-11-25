@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>character harness</title>
+<style>html,body{margin:0;height:100%;background:#202226;overflow:hidden}canvas{width:100vw;height:100vh;display:block}</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.min.js","three-addons":"../../vendor/three-addons.min.js"}}</script>
+</head><body><canvas id="c"></canvas>
+<script type="module">
+import * as THREE from "three";
+import { createEnvironment } from "../../src/scene/environment.js";
+const q = new URLSearchParams(location.search);
+window.__logs = [];
+window.addEventListener("error", (e) => window.__logs.push("ERR " + e.message));
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(innerWidth, innerHeight, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = +(q.get("exp") || 1);
+renderer.shadowMap.enabled = true;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x202226);
+scene.environment = createEnvironment(renderer); scene.environmentIntensity = +(q.get("env") || .5);
+const cam = (q.get("cam") || "0,1.68,.7").split(",").map(Number), tgt = (q.get("target") || "0,1.66,0").split(",").map(Number);
+const camera = new THREE.PerspectiveCamera(+(q.get("fov") || 28), innerWidth / innerHeight, .05, 50);
+camera.position.set(...cam); camera.lookAt(...tgt);
+const key = new THREE.DirectionalLight(0xffe0c0, +(q.get("key") || 3.2)); key.position.set(1.2, 2.6, 1.6); key.castShadow = true; scene.add(key);
+const rim = new THREE.DirectionalLight(0x9ab8ff, 1.2); rim.position.set(-1.5, 2, -1.2); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffd0b0, .5); fill.position.set(-1.2, 1.2, 1.4); scene.add(fill);
+import { loadCharacter } from "../../src/scene/character.js";
+const ch = await loadCharacter(q.get("id") || "visitor-a", { lod: q.get("lod") || "lo", base: "../../assets/characters/" });
+scene.add(ch.root);
+const only = q.get("parts") ? q.get("parts").split(",") : null;
+if (only) for (const [name, mesh] of Object.entries(ch.meshes)) mesh.visible = only.includes(name);
+const pose = q.get("pose");
+if (pose === "talk") ch.state.talk = 1;
+window.__ch = ch;
+const look = new THREE.Vector3(...(q.get("look") || "0.6,1.7,3").split(",").map(Number));
+window.__ready = true;
+let last = performance.now(), t = 0;
+function frame() { const now = performance.now(); const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt; ch.animateFace(dt, t, { lookAt: look, look: 1, talk: pose === 'talk' ? 1 : 0 }); renderer.render(scene, camera); requestAnimationFrame(frame); }
+frame();
+</script></body></html>

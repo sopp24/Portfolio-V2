@@ -134,8 +134,8 @@ export async function createWorld({ canvas, projects, categories, applications, 
   progress("props");
   await nextFrame();
 
-  const shopkeeper = buildShopkeeper(ctx);
-  const customers = buildCustomers(ctx);
+  const shopkeeper = await buildShopkeeper(ctx);
+  const customers = await buildCustomers(ctx);
   progress("people");
 
   const staticRoot = new THREE.Group();
@@ -453,8 +453,9 @@ export async function createWorld({ canvas, projects, categories, applications, 
       if (!root) root = interaction.findRoot(null, id);
       if (!root) return false;
       const point = root.getWorldPosition(new THREE.Vector3());
-      point.y += root.userData.pick.kind === "shopkeeper" ? 1.5 : .2;
-      look.lookAtPoint(point, { fov: 40, hold: 4.5 });
+      const isKeeper = root.userData.pick.kind === "shopkeeper";
+      point.y += isKeeper ? 1.42 : .2;
+      look.lookAtPoint(point, { fov: isKeeper ? 27 : 40, hold: isKeeper ? 600 : 4.5 });
       interaction.pulse(root.userData.pick.kind, id, 5);
       return true;
     },
