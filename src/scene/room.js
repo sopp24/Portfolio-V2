@@ -295,6 +295,7 @@ export function buildRoom(ctx) {
   sky.renderOrder = -10;
   sky.position.set(0, 0, 0);
   scene.add(sky);
+  exterior.traverse((o) => { if (o.isMesh) o.castShadow = false; });
   scene.add(exterior);
 
   // ---------------------------------------------------------------- door/sign animation hook

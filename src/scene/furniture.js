@@ -99,6 +99,8 @@ export function buildGondola(ctx, projects, categories) {
       const plate = new THREE.Mesh(new THREE.PlaneGeometry(.7, .0875), plateMat);
       plate.position.set(bx, tier.y + .055, tier.z + binDepth / 2 + .001);
       ctx.scene.add(plate);
+      ctx.sticker(4 + (recordIndex % 4), [bx + binWidth / 2 - .1, tier.y + .05, tier.z + binDepth / 2 + .003], [0, 0, 0], .1);
+      ctx.sticker(12 + (recordIndex % 4), [bx - binWidth / 2 + .1, tier.y + .05, tier.z + binDepth / 2 + .003], [0, 0, 0], .1);
     });
   }
 
@@ -116,6 +118,7 @@ export function buildGondola(ctx, projects, categories) {
         B.add(new THREE.CylinderGeometry(.004, .004, ROOM.height - y - .1, 5), m.steel, [bx + sx, y + (ROOM.height - y) / 2 - .02, z - .01], [0, 0, 0], { cast: false });
       }
       B.box(1.2, .02, .03, m.pine, [bx, y + .11, z - .012], [0, 0, 0], { bevel: .004 });
+      B.box(1.2, .22, .035, m.paintedGreen, [bx, y, z - .02], [0, 0, 0], { bevel: .006 });
     });
   });
   return out;

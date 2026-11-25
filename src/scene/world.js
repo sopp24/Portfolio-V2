@@ -15,8 +15,10 @@ import {
 } from "./props.js";
 import { buildShopkeeper, updateShopkeeper, buildCustomers, updateCustomers } from "./people.js";
 import { buildLighting } from "./lighting.js";
+import { buildDetails } from "./details.js";
 import { createPostFX } from "./postfx.js";
 import { createInteraction } from "./interaction.js";
+import { createFloorReflection } from "./reflection.js";
 import { createLookControls } from "../controls/look.js";
 import { ensureRecordDetail } from "./records.js";
 
@@ -73,7 +75,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   const musicProjects = MUSIC_PROJECTS;
   const ctx = {
     scene, quality, lang: language, camera, renderer,
-    owned: [], localized: [], pickRoots: [], lights: {}, neonMaterials: [], updaters: [], decorMaterial: null
+    owned: [], localized: [], pickRoots: [], lights: {}, neonMaterials: [], neonLights: [], updaters: [], decorMaterial: null
   };
   progress("renderer");
 
@@ -128,6 +130,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   const about = buildAboutCorner(ctx, profile, musicProjects);
   buildListeningCorner(ctx);
   buildClutter(ctx);
+  buildDetails(ctx);
   progress("props");
   await nextFrame();
 
@@ -149,6 +152,8 @@ export async function createWorld({ canvas, projects, categories, applications, 
   const pickRoots = ctx.pickRoots;
   void wall; void docs; void cat;
 
+  const reflection = createFloorReflection({ renderer, scene, camera, material: materials.floor, hide: [room.floor, lighting.shafts, lighting.dust].filter(Boolean) });
+  reflection.setEnabled(!!quality.reflections);
   // --------------------------------------------------------------------------------- post + controls + interaction
   let postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio });
   progress("postfx");
@@ -352,6 +357,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
       else placeCameraExterior(elapsed);
     }
     for (const fn of room.updaters) fn(dt, elapsed);
+    for (const fn of ctx.updaters) fn(dt, elapsed);
     lighting.update(dt, elapsed);
     interaction.update(dt, elapsed);
     camera.getWorldPosition(camPos);
@@ -360,6 +366,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
     ctx.pickRoots.forEach((root) => root.userData.update?.(dt, elapsed, propState));
     updateShopkeeper(shopkeeper, dt, elapsed, { cameraPosition: camPos, greeting: state.greeting, talking: state.talking, beat: state.musicPlaying ? 1 : 0 });
     updateCustomers(customers, dt, elapsed);
+    reflection.update();
     postfx.render(dt, elapsed);
     adapt(dt);
   }
@@ -396,6 +403,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
     if (!next || next.id === quality.id) return;
     quality = next;
     ctx.quality = next;
+    reflection.setEnabled(!!next.reflections);
     ratio = Math.min(deviceRatio, quality.dprCap);
     postfx.dispose();
     postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio });

@@ -4,15 +4,15 @@
 export const TIERS = {
   high: {
     id: "high", textureSize: 1024, coverSize: 1024, shadowMap: 2048, dprCap: 2, msaa: 4,
-    ao: true, bloom: true, grade: true, dof: true, shafts: true, dust: 420, spots: 4, anisotropy: 8, spotShadows: 1
+    ao: true, reflections: true, bloom: true, grade: true, dof: true, shafts: true, dust: 420, spots: 4, anisotropy: 8, spotShadows: 1
   },
   medium: {
     id: "medium", textureSize: 1024, coverSize: 768, shadowMap: 1024, dprCap: 1.5, msaa: 0,
-    ao: false, bloom: true, grade: true, dof: false, shafts: true, dust: 220, spots: 3, anisotropy: 4, spotShadows: 0
+    ao: false, reflections: false, bloom: true, grade: true, dof: false, shafts: true, dust: 220, spots: 3, anisotropy: 4, spotShadows: 0
   },
   low: {
     id: "low", textureSize: 512, coverSize: 512, shadowMap: 1024, dprCap: 1.25, msaa: 0,
-    ao: false, bloom: false, grade: true, dof: false, shafts: true, dust: 90, spots: 1, anisotropy: 2, spotShadows: 0
+    ao: false, reflections: false, bloom: false, grade: true, dof: false, shafts: true, dust: 90, spots: 1, anisotropy: 2, spotShadows: 0
   }
 };
 

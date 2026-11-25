@@ -589,7 +589,7 @@ export function buildClutter(ctx) {
   ctx.lights.floorLamp = new THREE.PointLight(0xffc27a, 2.2, 5.5, 2);
   ctx.lights.floorLamp.position.set(-3.1, 1.6, 3.95);
   ctx.scene.add(ctx.lights.floorLamp);
-  buildPlant(ctx, -3.3, 0, 1.25, 1.5, 4);
+  buildPlant(ctx, -3.3, 0, 4.4, 1.5, 4);
   // wall clock above the door (inside)
   const clock = new THREE.Group();
   clock.position.set(1.25, 2.92, ROOM.zFront - .12);

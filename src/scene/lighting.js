@@ -74,8 +74,8 @@ function neonTexture() {
     g.shadowBlur = 0; g.lineWidth = 3; g.strokeStyle = "#ffffff"; g.globalAlpha = .9; g.strokeText(text, 1024, y);
     g.restore();
   };
-  tube("SIDE A", 200, 330, "#ff7ea8", "#ff2f7d");
-  tube("RECORDS", 410, 130, "#7fffe6", "#16d9b3");
+  tube("SIDE A", 165, 290, "#ff7ea8", "#ff2f7d");
+  tube("RECORDS", 395, 165, "#7fffe6", "#16d9b3");
   return textureFrom(c, { srgb: true, repeat: false, anisotropy: 4 });
 }
 function openNeonTexture() {
@@ -112,11 +112,11 @@ export function buildLighting(ctx) {
 
   // ---------------------------------------------------------------- warm track spots
   const spotDefs = [
-    { pos: [-2.0, 3.16, .9], at: [-1.9, .95, .1], intensity: 13, angle: .6 },
+    { pos: [-2.0, 3.16, .9], at: [-1.9, .95, .1], intensity: 10, angle: .6 },
     { pos: [2.5, 3.16, -2.4], at: [2.5, 1.15, -3.7], intensity: 24, angle: .5 },
     { pos: [-2.4, 3.16, 3.9], at: [-3.0, 1.0, 4.2], intensity: 16, angle: .7 },
-    { pos: [-.2, 3.16, .9], at: [-.3, .95, .1], intensity: 13, angle: .6 },
-    { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 13, angle: .55 },
+    { pos: [-.2, 3.16, .9], at: [-.3, .95, .1], intensity: 10, angle: .6 },
+    { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 10, angle: .55 },
     { pos: [-2.6, 3.16, -2.2], at: [-3.5, 1.6, -1.2], intensity: 16, angle: .55 },
     { pos: [.4, 3.16, 3.9], at: [1.0, 1.0, 4.4], intensity: 14, angle: .8 }
   ].slice(0, quality.spots + 3);
@@ -289,10 +289,11 @@ export function buildLighting(ctx) {
     m.tube.color.setRGB(.96, 1, .98).multiplyScalar(.25 + 3.4 * level);
     m.bulb.color.setRGB(1, .86, .62).multiplyScalar(.2 + 3.8 * level);
     const neonOn = state.neon;
-    neonMat.emissiveIntensity = 3.2 * neonOn;
+    neonMat.emissiveIntensity = 5.2 * neonOn;
     neonLight.intensity = 3.2 * neonOn; neonLight2.intensity = 1.9 * neonOn;
     openMat.emissiveIntensity = 3.0 * neonOn; openLight.intensity = 2.2 * neonOn;
     for (const mat of ctx.neonMaterials || []) mat.emissiveIntensity = (mat.userData.neonBase ?? 1) * neonOn;
+    for (const l of ctx.neonLights || []) l.intensity = l.userData.base * neonOn;
   };
   out.setShopLights = (on, instant = false) => { state.target = on ? 1 : 0; if (instant) { state.level = state.target; apply(); } };
   out.setNeon = (on, instant = false) => { state.neonTarget = on ? 1 : 0; if (instant) { state.neon = state.neonTarget; apply(); } };

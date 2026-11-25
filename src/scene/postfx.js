@@ -11,11 +11,11 @@ const GradeShader = {
     uGrain: { value: .055 },
     uVignette: { value: .46 },
     uCA: { value: .0006 },
-    uSat: { value: 1.08 },
+    uSat: { value: 1.02 },
     uLift: { value: .018 },
     uAspect: { value: 1 },
     uFade: { value: 1 },
-    uWarm: { value: .085 },
+    uWarm: { value: .06 },
     uResolution: { value: new THREE.Vector2(1, 1) }
   },
   vertexShader: /* glsl */`
