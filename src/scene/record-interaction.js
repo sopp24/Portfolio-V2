@@ -16,6 +16,8 @@ export function createRecordInteraction({
   const pickTargets = [...records, ...applications, ...posters, ...(shopkeeper ? [shopkeeper] : []), ...(easterEgg ? [easterEgg] : []), ...(collectible ? [collectible] : [])];
   const flipQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
+  const pickInterval = 1 / 30;
+  let pickElapsed = pickInterval;
   let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null, hoveredEasterEgg = null, hoveredPoster = null, hoveredCollectible = null;
   let selectedRecord = null, selectedApplication = null;
   let returningRecord = false, destroyed = false;
@@ -275,7 +277,17 @@ export function createRecordInteraction({
     }
 
     if (!selectedRecord) {
-      if (active) pick();
+      if (active) {
+        // Center-gaze picking at 30 Hz is visually immediate while avoiding a full-scene
+        // matrix refresh and recursive raycast on every render frame.
+        pickElapsed += delta;
+        if (pickElapsed >= pickInterval) {
+          pickElapsed %= pickInterval;
+          pick();
+        }
+      } else {
+        pickElapsed = 0;
+      }
       return;
     }
 
@@ -309,6 +321,7 @@ export function createRecordInteraction({
 
   function setActive(value) {
     active = !!value;
+    pickElapsed = active ? pickInterval : 0;
     if (!active) {
       setHoveredRecord(null);
       setHoveredApplication(null);
