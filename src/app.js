@@ -67,7 +67,7 @@ const COPY = {
     shopkeeperPrompt: "VISE LE DISQUAIRE ET CLIQUE POUR DISCUTER",
     talkToShopkeeper: "PARLER AU DISQUAIRE ↗",
     assistantTitle: "PARLONS MUSIQUE ET PROJETS.",
-    assistantStatusOnline: "ASSISTANT IA CONNECTÉ",
+    assistantStatusOnline: "ASSISTANT IA CONFIGURÉ",
     assistantStatusOffline: "MODE CATALOGUE · IA NON CONNECTÉE",
     assistantWelcome: "Salut, bienvenue chez SIDE A. Je peux te guider à travers les projets d’Adam et les applications qu’il a développées. Qu’est-ce qui t’intéresse ?",
     assistantPlaceholder: "Pose ta question au disquaire…",
@@ -136,7 +136,7 @@ const COPY = {
     shopkeeperPrompt: "LOOK AT THE CLERK AND CLICK TO CHAT",
     talkToShopkeeper: "TALK TO THE CLERK ↗",
     assistantTitle: "LET’S TALK MUSIC AND PROJECTS.",
-    assistantStatusOnline: "AI ASSISTANT CONNECTED",
+    assistantStatusOnline: "AI ASSISTANT CONFIGURED",
     assistantStatusOffline: "CATALOGUE MODE · AI NOT CONNECTED",
     assistantWelcome: "Hey, welcome to SIDE A. I can guide you through Adam’s projects and the applications he has built. What are you curious about?",
     assistantPlaceholder: "Ask the record store clerk…",
@@ -538,42 +538,42 @@ function appendAssistantMessage(role, content, pending = false) {
 
 function localCatalogueReply(question) {
   const copy = COPY[language];
-  const normalized = question.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+  const normalized = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   if (/(application|applications|apps|outil|outils|tester|try)/.test(normalized)) {
-    const list = APPLICATIONS.slice(0, 8).map(item => "• " + item.name + " — " + item.description[language]).join("\\n");
-    return copy.assistantOfflinePrefix + "\\n\\n" + list;
+    const list = APPLICATIONS.slice(0, 8).map(item => "• " + item.name + " — " + item.description[language]).join("\n");
+    return copy.assistantOfflinePrefix + "\n\n" + list;
   }
   if (/(adam|parcours|about|profil|qui es|introdu|background|experience)/.test(normalized)) {
     const projects = PROFILE.historical?.degree ? PROFILE.historical.degree : "";
     const music = (PROFILE.historical?.musicProjects || []).join(", ");
-    return copy.assistantOfflinePrefix + "\\n\\n" +
+    return copy.assistantOfflinePrefix + "\n\n" +
       (language === "fr"
         ? "Le portfolio présente Adam Soppelsa à travers des projets de communication, de création numérique, de développement web et de gestion de projet."
         : "The portfolio introduces Adam Soppelsa through communication, digital creation, web development and project-management work.") +
-      (projects ? "\\n\\n" + (language === "fr" ? "Formation historique renseignée : " : "Previous qualification listed: ") + projects : "") +
-      (music ? "\\n\\n" + (language === "fr" ? "Projets musicaux : " : "Music projects: ") + music : "");
+      (projects ? "\n\n" + (language === "fr" ? "Formation historique renseignée : " : "Previous qualification listed: ") + projects : "") +
+      (music ? "\n\n" + (language === "fr" ? "Projets musicaux : " : "Music projects: ") + music : "");
   }
   if (/(musique|music|audio|artist|artiste)/.test(normalized)) {
-    return copy.assistantOfflinePrefix + "\\n\\n" +
+    return copy.assistantOfflinePrefix + "\n\n" +
       (PROFILE.historical?.musicProjects || []).join(" · ") +
-      (language === "fr" ? "\\nDeux projets musicaux personnels sont référencés dans les données du portfolio." : "\\nTwo personal music projects are listed in the portfolio data.");
+      (language === "fr" ? "\nDeux projets musicaux personnels sont référencés dans les données du portfolio." : "\nTwo personal music projects are listed in the portfolio data.");
   }
   const terms = normalized.split(/[^a-z0-9]+/).filter(term => term.length >= 4 && !["pour","avec","dans","cherche","projet","projets","looking","which","that","this","from","what"].includes(term));
   const matches = PROJECTS.map(project => {
     const searchable = [
       project.title.fr, project.title.en, project.short.fr, project.short.en,
       (project.skills || []).join(" "), (project.skillsEn || []).join(" ")
-    ].join(" ").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+    ].join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     return { project, score: terms.reduce((score, term) => score + (searchable.includes(term) ? 1 : 0), 0) };
   }).filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
   if (matches.length) {
-    return copy.assistantOfflinePrefix + "\\n\\n" + matches.map(({project}) =>
+    return copy.assistantOfflinePrefix + "\n\n" + matches.map(({project}) =>
       "• " + project.title[language] + " — " + project.short[language]
-    ).join("\\n");
+    ).join("\n");
   }
   return language === "fr"
-    ? copy.assistantOfflinePrefix + "\\n\\nJe peux présenter les projets, détailler les applications web ou t'orienter vers une catégorie. La conversation IA sera activée après le déploiement du serveur."
-    : copy.assistantOfflinePrefix + "\\n\\nI can introduce the projects, explain the web apps or guide you to a category. Full AI conversation will be enabled once the server is deployed.";
+    ? copy.assistantOfflinePrefix + "\n\nJe peux présenter les projets, détailler les applications web ou t'orienter vers une catégorie. La conversation IA sera activée après le déploiement du serveur."
+    : copy.assistantOfflinePrefix + "\n\nI can introduce the projects, explain the web apps or guide you to a category. Full AI conversation will be enabled once the server is deployed.";
 }
 
 async function sendAssistantMessage(rawMessage) {
@@ -596,6 +596,7 @@ async function sendAssistantMessage(rawMessage) {
       pending.remove();
       appendAssistantMessage("assistant", reply);
       assistantHistory.push({ role: "assistant", content: reply });
+      if (assistantHistory.length > 8) assistantHistory.splice(0, assistantHistory.length - 8);
       return;
     }
     const controller = new AbortController();
@@ -622,6 +623,8 @@ async function sendAssistantMessage(rawMessage) {
   } catch (error) {
     pending.remove();
     appendAssistantMessage("assistant", COPY[language].assistantError);
+    assistantHistory.push({ role: "assistant", content: COPY[language].assistantError });
+    if (assistantHistory.length > 8) assistantHistory.splice(0, assistantHistory.length - 8);
   } finally {
     assistantBusy = false;
     send.disabled = false;
@@ -676,6 +679,7 @@ function bindInterface() {
   });
 
   document.addEventListener("keydown", event => {
+    if ($("assistant-dialog").open) return;
     if (event.key === "Escape" && $("project-dialog").open) {
       $("project-dialog").close();
       return;
