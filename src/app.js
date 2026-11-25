@@ -572,6 +572,7 @@ function exitStore() {
   $("mobile-menu").hidden = true;
 
   cameraController?.disableGyroscope();
+  $("gyro-button").setAttribute("aria-pressed", "false");
   cameraController?.reset();
   store?.closeDoors?.();
   storeAudio?.playCue("departure");
