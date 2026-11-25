@@ -414,3 +414,131 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
   .profile-grid, .music-grid { grid-template-columns: 1fr 1fr; }
   .profile-card { grid-column: 1 / -1; padding: 16px; }
 }
+
+
+/* SIDE A shopkeeper assistant — warm counter-service conversation panel. */
+.shopkeeper-actions button {
+  border-color: rgba(145,184,170,.48);
+  background: rgba(122,158,143,.10);
+  color: #e2ead9;
+}
+.shopkeeper-actions button:hover {
+  border-color: #b9cfad;
+  background: rgba(122,158,143,.20);
+  color: #fff3da;
+}
+.assistant-dialog {
+  position: fixed;
+  inset: auto 22px 22px auto;
+  width: min(490px, calc(100% - 28px));
+  max-width: none;
+  max-height: min(760px, calc(100dvh - 36px));
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(78,65,47,.28);
+  background: #eee4d1;
+  color: #2d261e;
+  box-shadow: 0 24px 90px rgba(0,0,0,.42);
+}
+.assistant-dialog[open] { display: flex; flex-direction: column; }
+.assistant-dialog::backdrop { background: rgba(25,21,17,.66); backdrop-filter: blur(4px); }
+.assistant-header {
+  position: relative;
+  padding: 25px 62px 20px 24px;
+  border-bottom: 1px solid rgba(64,48,32,.16);
+  background: #e5d8c1;
+}
+.assistant-kicker { margin: 0 0 9px; color: #8d6747; font: 8px var(--mono); letter-spacing: .16em; }
+.assistant-header h2 { margin: 0; color: #30291f; font: clamp(27px, 4vw, 37px)/.95 "Perandory", Georgia, serif; }
+.assistant-status { margin: 10px 0 0; color: #746957; font: 8px var(--mono); letter-spacing: .09em; }
+.assistant-header .dialog-close { top: 17px; right: 17px; }
+.assistant-messages {
+  min-height: 170px;
+  max-height: min(42vh, 390px);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  overflow: auto;
+  padding: 20px 22px;
+  overscroll-behavior: contain;
+}
+.assistant-message {
+  width: fit-content;
+  max-width: 91%;
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(65,52,36,.13);
+  background: rgba(255,251,242,.74);
+  color: #493e30;
+  font: 12px/1.65 Arial, sans-serif;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-message.is-user {
+  align-self: flex-end;
+  border-color: rgba(87,105,83,.22);
+  background: #dbe0d0;
+}
+.assistant-message.is-assistant { align-self: flex-start; }
+.assistant-message.is-pending { color: #8b765a; font-style: italic; }
+.assistant-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 22px 15px;
+}
+.assistant-prompts button {
+  min-height: 30px;
+  border: 1px solid rgba(83,68,48,.24);
+  padding: 0 9px;
+  background: transparent;
+  color: #74573b;
+  cursor: pointer;
+  font: 7px var(--mono);
+  letter-spacing: .07em;
+}
+.assistant-prompts button:hover { border-color: #a77b45; color: #965a35; }
+.assistant-form {
+  display: flex;
+  gap: 8px;
+  padding: 15px 18px;
+  border-top: 1px solid rgba(64,48,32,.16);
+  background: #e5d8c1;
+}
+.assistant-form input {
+  min-width: 0;
+  min-height: 44px;
+  flex: 1 1 auto;
+  border: 1px solid rgba(64,48,32,.25);
+  padding: 0 12px;
+  background: #f6efe2;
+  color: #30291f;
+  font: 12px Arial, sans-serif;
+}
+.assistant-form button {
+  min-width: 94px;
+  border: 1px solid #b8864b;
+  padding: 0 12px;
+  background: #b8864b;
+  color: #241e17;
+  cursor: pointer;
+  font: 8px var(--mono);
+  letter-spacing: .08em;
+}
+.assistant-form button:disabled { opacity: .5; cursor: wait; }
+.assistant-footnote { margin: 0; padding: 0 20px 15px; color: #887a67; font: 8px/1.5 var(--mono); }
+@media (max-width: 600px) {
+  .assistant-dialog {
+    inset: auto 8px max(8px, env(safe-area-inset-bottom)) 8px;
+    width: auto;
+    max-height: min(720px, calc(100dvh - 16px));
+  }
+  .assistant-header { padding: 21px 58px 16px 17px; }
+  .assistant-messages { max-height: 39vh; padding: 15px; }
+  .assistant-prompts { padding: 0 15px 12px; }
+  .assistant-form { padding: 12px; }
+  .assistant-footnote { padding: 0 14px 12px; }
+  .shopkeeper-actions { width: 100%; }
+  .shopkeeper-actions button { width: 100%; min-height: 42px; }
+}
