@@ -17,7 +17,7 @@ export function createRecordInteraction({
   const flipQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
   const pickInterval = 1 / 30;
-  let pickElapsed = pickInterval;
+  let pickElapsed = 0;
   let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null, hoveredEasterEgg = null, hoveredPoster = null, hoveredCollectible = null;
   let selectedRecord = null, selectedApplication = null;
   let returningRecord = false, destroyed = false;
@@ -323,7 +323,7 @@ export function createRecordInteraction({
 
   function setActive(value) {
     active = !!value;
-    pickElapsed = active ? pickInterval : 0;
+    pickElapsed = 0;
     if (!active) {
       setHoveredRecord(null);
       setHoveredApplication(null);
