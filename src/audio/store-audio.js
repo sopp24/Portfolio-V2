@@ -116,6 +116,10 @@ export function createStoreAudio() {
         case "sleeve": tone(320, 205, .095, .014, "triangle"); break;
         case "return": tone(125, 78, .15, .022, "sine"); break;
         case "focus": tone(510, 680, .055, .006, "sine"); break;
+        case "greeting":
+          tone(392, 440, .16, .009, "sine");
+          tone(523, 587, .19, .007, "sine", .12);
+          break;
         case "easter":
           tone(660, 660, .12, .014, "sine");
           tone(880, 880, .18, .012, "sine", .10);
