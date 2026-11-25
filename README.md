@@ -1,69 +1,72 @@
-# Midnight Video — Portfolio V2
+# Adam Soppelsa — Projects Store
 
-A clean-room, browser-based recreation of the Midnight Video experience using Three.js, WebGL2, GLSL post-processing and WebXR. The geometry, generated covers and interface code in this repository are original; the site owner's private Letterboxd archive, API credentials, and original proprietary artwork are not included.
+A 3D portfolio designed as a compact independent record store from the 1990s. The visitor stays in one fixed position and looks around the shop; projects are represented as vinyl records and web applications have their own rack.
 
-## Run and publish
+## Current direction
 
-Serve `index.html` from a static web host. GitHub Pages works with the repository root. Three.js and post-processing modules are loaded from jsDelivr.
+- Portfolio identity: **Adam Soppelsa — Projects Store**
+- Store identity: **SIDE A / RECORDS**
+- Art direction: daylight, warm wood, plaster, metal, paper sleeves, gig posters and a collected independent-record-shop atmosphere.
+- Interaction principle: the store is the navigation. The visitor does not walk through the room.
+- Reference balance: record handling and object-based presentation informed by A24 — Ravi Klaassens; environmental immersion informed by Midnight Video — Cuchillo. The references guide usability, not copied artwork.
 
-## Controls
+## Run locally
 
-| Input | Action |
-|---|---|
-| ZQSD / WASD / arrows | Walk |
-| Mouse drag | Look / aim |
-| Mouse wheel | Walk forward / backward |
-| Shift | Run |
-| Space | Jump |
-| C | Crouch |
-| F | Flashlight |
-| E / click | Take or inspect a tape |
-| M | Movie index |
-| R | Survival Mode |
-| V | WebXR VR session |
-| H / ? | Help |
-| Esc | Pause / close panel |
+This is a static ES-module project. No bundler is required.
 
-Touch devices have a movement pad, run, jump, crouch, flashlight and examine controls. WebXR requires a compatible headset, browser and secure HTTPS origin.
+    python3 -m http.server 8080
 
-## Recreated systems
+Open http://localhost:8080/.
 
-- Endless aisle streaming: shelves, aisle categories, ceiling fluorescents, floor and side walls are recycled as the player walks in either direction. Each shelf header pairs its genre/category with a compact numbered aisle marker that updates as the section streams forward or backward.
-- Mixed face-out movie covers and readable VHS spines, with softly rounded reusable cassette moulds, subtle deterministic edge wear and a tiny RENTAL COPY inventory plate on spine textures, plus individual reusable GPU textures to limit memory growth as the catalogue streams.
-- Detailed streamed fluorescent fittings with shared housings, diffusers and subtle ceiling spill; each tube now has a slightly independent output drift and an extremely restrained warm/cool colour shift to keep the aisle lighting from feeling perfectly uniform.
-- Reusable rental ticket strips along the shelf edges, small shared metallic fasteners at the rail ends, and compact triangular steel support brackets under each shelf level, all using shared geometry/materials; hidden anomalies retain subtle hovering/rotation motion in Survival Mode.
-- Tapes slide out of the shelf when targeted, then open an inspection panel with a reversible front/back sleeve, synopsis, year, director, cast and catalogue information.
-- Searchable, filterable, sortable and paginated film index.
-- Letterboxd CSV import, duplicate removal, browser-side archive persistence (including compact cached TMDB details for enriched titles), progressive TMDB artwork lookup for face-out tapes on nearby shelves, and on-demand full metadata when a tape is inspected. Loaded poster art receives a restrained cinematic gradient, MIDNIGHT VIDEO title treatment and readable year/genre footer so covers remain legible at shelf distance.
-- Proximity-based interaction raycasting: only nearby shelf sections and fixed endcap targets are tested, instead of every cassette in the streamed store. Target selection includes a small distance hysteresis so neighbouring cassette meshes do not rapidly steal focus, keeping the highlight, prompt and extraction animation stable.
-- Full pause behaviour for the film/library panels, including frozen movement, look interaction, in-game clock and flashlight battery; movement keys and touch controls are cleared on focus loss or when the interface closes.
-- Recycled shelf sections reset any extracted cassette to its correct seated position and clear stale selection state before receiving the next catalogue segment.
-- Collision-aware first-person movement with a circular player footprint, corridor edge clearance, a solid counter obstacle, swept sub-steps to prevent tunnelling, and axis-separated sliding when brushing against objects. Keyboard, touch, XR and mouse-wheel movement share the same collision resolver.
-- Subtle speed-sensitive first-person head bob and lateral camera lean, smoothly blended with acceleration, reduced for crouching and reduced-motion preferences, and disabled in XR to avoid unnecessary headset motion.
-- Survival Mode with 38 varied anomalies placed in the aisles.
-- Dynamic desktop depth of field that follows the cassette under inspection, eased VHS extraction with a small forward slide, a slight lift and restrained multi-axis tilt/roll for a more tactile feel, plus a short inspection-panel entrance transition; depth of field is skipped on touch devices for smoother rendering.
-- First-person movement, jump, run, crouch and flashlight/battery; opt-in layered store ambience with a spatial TV hum, speed-sensitive footsteps, a quiet high-pitched mechanical cue when a VHS becomes the active target, and distinct tape/anomaly interaction sounds. VHS spines carry a small MIDNIGHT VIDEO header and individually seeded rental barcodes to give the shelves more believable physical detail without adding scene meshes.
-- Interactable in-world CRT: aim at the screen and press the interaction key (or use the XR trigger) to switch it on/off; a physical side-mounted power button and a red/green standby indicator reinforce the state, while the static texture and proximity-reactive green phosphor glow pause when the screen is off.
-- Counter return station: a compact metal-edged VHS deposit tray with a readable VIDEO RETURNS plate; aim at the slot and interact to receive the rewind reminder, with the same keyboard, touch and XR interaction flow as the other in-world objects. A small REWIND • BE KIND plaque on the customer-facing counter adds a final piece of rental-store wayfinding.
-- CRT grain/scanlines/chromatic fringe/barrel distortion, bloom, depth of field, fog and WebXR controller support, with failed headset/session requests cleanly returning the renderer to its desktop state.
-- Responsive desktop and touch layouts, including touch controls on coarse-pointer tablets in landscape and a compact multi-row action pad on narrow phones; touch camera drags are separated from tap-to-interact so a swipe cannot accidentally open a cassette.
+Three.js is loaded from the jsDelivr ESM import map in index.html. Project data and scene modules use relative paths so the site can run from a GitHub Pages repository subpath.
 
-## Load the original-sized personal archive
+## Architecture
 
-The reference is publicly described as using roughly 10,000 films from the creator's personal Letterboxd history and watchlist, with film metadata and artwork supplied through TMDB. That private source export and its API credentials are not publicly distributed.
+- index.html — accessible entry point, intro, menu, 2D directory and project dialog.
+- styles.css — responsive visual system.
+- main.js — lightweight module entry.
+- src/app.js — experience lifecycle, intro states, language, 2D directory and UI.
+- src/scene/store.js — procedural record-store environment and shared materials.
+- src/controls/camera.js — fixed-position mouse, touch, pinch-zoom and gyroscope controls.
+- src/data/projects.js — structured bilingual project catalogue and editable profile placeholders.
+- src/data/applications.js — verified SOPP Agents application links.
 
-To populate this repository with your own full collection:
+## Content integrity
 
-1. Export your Letterboxd data and open the Movie Index in the experience with `M`.
-2. Choose **IMPORT CSV** and select your Letterboxd `watched.csv`, `watchlist.csv`, or other export files. The importer deduplicates by title and release year.
-3. To load original movie artwork and metadata, provide your own TMDB API Read Access Token in the index panel. Once you enter the store, face-out tapes on nearby shelves are enriched progressively with real TMDB posters (two lookups at a time); full film details are fetched when you inspect a tape. Poster URLs are cached in the browser so they do not need to be looked up again after a reload.
-4. The Movie Index contains a TMDB Credits section with the approved logo and required attribution notice. TMDB's developer API is free for non-commercial use with attribution; commercial use requires a separate license.
+The ten project entries are structured independently from their 3D representation. Years that were not supplied remain null; roles that are not confirmed are described as such; historical profile information is marked for validation. The generated sleeve artwork is provisional and is not presented as original project deliverables.
 
-The default built-in sample catalogue is a small demo, not the creator's 10,000-film dataset. A personal CSV is required to reproduce that data layer faithfully.
+The applications rack contains the eight applications listed in the SOPP Agents repository. Each destination points to the corresponding live app and repository.
 
-## Project files
+## Controls currently implemented
 
-- `index.html` — full-screen experience and overlay panels
-- `styles.css` — interface, responsive behaviour and VHS sleeve styling
-- `main.js` — Three.js scene, controls, tape catalogue, imports and interactions
-- `Dirtyline 36daysoftype 2022.*` — original repository font assets retained
+- Desktop mouse position: look around.
+- Mouse wheel: zoom without moving the camera.
+- Smartphone: one-finger drag to look around, pinch to zoom.
+- Gyroscope: permission-based activation from the settings header.
+- Escape: show / hide the compact header on desktop.
+- Recenter: restore the default camera orientation and zoom.
+- 2D collection: accessible project and application index, including when WebGL is unavailable.
+
+The visitor's camera position never changes.
+
+## Development roadmap
+
+1. Complete the physical vinyl model: sleeve, disc, label, thickness, front/back and opening.
+2. Add raycast selection, hover response, tactile extraction and return-to-crate animations.
+3. Build category bins and the dedicated applications rack as navigable objects.
+4. Add the About corner, validated CV/contact links and the interactive shopkeeper.
+5. Connect the shopkeeper to a secure serverless AI backend. No API secret is allowed in the frontend.
+6. Add the official YouTube player, opt-in audio, effects, bilingual refinements and Easter eggs.
+7. Test desktop, tablet, phone, reduced-motion and WebGL fallback paths.
+
+## External services and pending information
+
+- YouTube live audio is not connected in this first build.
+- The AI shopkeeper is not connected to an AI provider yet.
+- The CV, current Master 2 title/institution, availability date, email and social links remain unconfigured until confirmed.
+- The current project artwork is procedural placeholder artwork and should be replaced by approved project visuals.
+- Historical music statistics and previous internships are retained as editable reference data, not shown as current verified claims.
+
+## Publish
+
+The project is compatible with GitHub Pages at the repository root. The application uses relative asset and module paths and does not require a build step.
