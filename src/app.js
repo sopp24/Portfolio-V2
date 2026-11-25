@@ -1,6 +1,6 @@
 
 import * as THREE from "three";
-import { PROJECTS, CATEGORIES } from "./data/projects.js";
+import { PROJECTS, CATEGORIES, PROFILE } from "./data/projects.js";
 import { APPLICATIONS } from "./data/applications.js";
 import { createStoreScene } from "./scene/store.js";
 import { createCameraController } from "./controls/camera.js";
@@ -309,6 +309,51 @@ function renderDirectory() {
     links.append(open, repo);
     card.append(stamp, name, category, description, links);
     appGrid.appendChild(card);
+  });
+
+  $("about-heading").textContent = language === "fr" ? "À PROPOS" : "ABOUT";
+  $("about-subtitle").textContent = language === "fr"
+    ? "Une sélection de projets, de pratiques et de curiosités."
+    : "A selection of projects, practices and curiosities.";
+  const profileContent = $("profile-content");
+  profileContent.replaceChildren();
+  const profileCard = makeNode("article", "directory-card profile-card");
+  profileCard.appendChild(makeNode("span", "app-stamp", "SIDE A  /  PROFILE"));
+  profileCard.appendChild(makeNode("h3", "app-card-title", PROFILE.name));
+  profileCard.appendChild(makeNode("p", "directory-card-summary", language === "fr"
+    ? "Création numérique, stratégie, communication, design et développement d’expériences web."
+    : "Digital creation, strategy, communication, design and web experience development."));
+  if (PROFILE.historical?.degree) {
+    profileCard.appendChild(makeNode("p", "profile-detail", PROFILE.historical.degree));
+  }
+  const links = makeNode("div", "app-card-links");
+  if (PROFILE.cvUrl) {
+    const cv = makeNode("a", "text-link", language === "fr" ? "CONSULTER LE CV ↗" : "VIEW RESUME ↗");
+    cv.href = PROFILE.cvUrl; cv.target = "_blank"; cv.rel = "noopener noreferrer"; links.appendChild(cv);
+  }
+  if (PROFILE.email) {
+    const email = makeNode("a", "text-link", language === "fr" ? "ÉCRIRE UN MESSAGE ↗" : "SEND AN EMAIL ↗");
+    email.href = "mailto:" + PROFILE.email; links.appendChild(email);
+  }
+  (PROFILE.socialLinks || []).forEach(item => {
+    if (!item?.url || !item?.label) return;
+    const link = makeNode("a", "text-link", item.label + " ↗");
+    link.href = item.url; link.target = "_blank"; link.rel = "noopener noreferrer"; links.appendChild(link);
+  });
+  if (links.childElementCount) profileCard.appendChild(links);
+  profileContent.appendChild(profileCard);
+
+  $("music-heading").textContent = language === "fr" ? "MUSIQUE / AUTRES PRESSAGES" : "MUSIC / OTHER PRESSINGS";
+  const musicContent = $("music-content");
+  musicContent.replaceChildren();
+  (PROFILE.historical?.musicProjects || []).forEach((name, index) => {
+    const card = makeNode("article", "directory-card music-card");
+    card.appendChild(makeNode("span", "app-stamp", "PERSONAL MUSIC PROJECT  /  " + String(index + 1).padStart(2, "0")));
+    card.appendChild(makeNode("h3", "app-card-title", name));
+    card.appendChild(makeNode("p", "directory-card-summary", language === "fr"
+      ? "Projet musical personnel — détails et sélections à découvrir."
+      : "Personal music project — details and selections to discover."));
+    musicContent.appendChild(card);
   });
 }
 
