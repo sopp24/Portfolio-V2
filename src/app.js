@@ -133,7 +133,7 @@ function openProjectDetails(project) {
     [copy.challenge, project.challenge[language]],
     [copy.role, project.role[language]],
     [copy.work, project.work[language]],
-    [copy.skills, project.skills],
+    [copy.skills, language === "en" ? (project.skillsEn || project.skills) : project.skills],
     [copy.collaborators, project.collaborators],
     [copy.outcome, project.outcome[language]]
   ];
@@ -162,6 +162,7 @@ function renderDirectory() {
   const categorySelect = $("directory-category");
   const selectedCategory = categorySelect.value;
 
+  $("directory-back").hidden = !store;
   $("directory-title").textContent = copy.directoryTitle;
   $("directory-subtitle").textContent = copy.directorySub;
   $("projects-heading").textContent = copy.projects;
@@ -264,13 +265,25 @@ function enterStore(direct = false) {
     store.openDoors();
     if (direct) cameraController?.reset();
   }
-  $("intro").classList.add("is-leaving");
+  const status = $("intro-status");
+  status.classList.add("is-open");
+  status.replaceChildren(makeNode("span"), document.createTextNode(" " + COPY[language].opened));
   safeStorageSet("adam-projects-store.visited", "1");
-  window.setTimeout(() => {
-    $("intro").hidden = true;
-    $("intro").classList.remove("is-leaving");
-    $("control-hint").hidden = false;
-  }, direct ? 180 : 760);
+  if (direct) {
+    $("intro").classList.add("is-leaving");
+    window.setTimeout(() => {
+      $("intro").hidden = true;
+      $("intro").classList.remove("is-leaving");
+      $("control-hint").hidden = false;
+    }, 220);
+  } else {
+    window.setTimeout(() => $("intro").classList.add("is-leaving"), 360);
+    window.setTimeout(() => {
+      $("intro").hidden = true;
+      $("intro").classList.remove("is-leaving");
+      $("control-hint").hidden = false;
+    }, 1120);
+  }
 }
 
 function showDirectory() {
@@ -368,6 +381,7 @@ function showFallback(error) {
   $("control-hint").hidden = true;
   $("mode-2d").hidden = false;
   $("fallback-note").hidden = false;
+  $("directory-back").hidden = true;
   renderDirectory();
 }
 
