@@ -892,6 +892,10 @@ function bindInterface() {
 
   document.addEventListener("keydown", event => {
     if ($("assistant-dialog").open) return;
+    const target = event.target;
+    const isEditingTarget = target instanceof HTMLElement && (
+      target.isContentEditable || !!target.closest("input, textarea, select, [contenteditable='true']")
+    );
     if (event.key === "Escape" && $("project-dialog").open) {
       $("project-dialog").close();
       return;
@@ -906,6 +910,8 @@ function bindInterface() {
       event.preventDefault();
       toggleHeader();
     }
+    // Don't trigger store shortcuts while the visitor is typing or using browser modifiers.
+    if (isEditingTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     if (isOpen && !directoryVisible && event.key.toLowerCase() === "f") {
       recordInteraction?.flipSelected();
     }
@@ -923,6 +929,12 @@ function bindInterface() {
 function showFallback(error) {
   console.warn("The 3D store could not be initialized. Opening the accessible collection.", error);
   webglAvailable = false;
+  store?.renderer?.setAnimationLoop(null);
+  recordInteraction?.destroy();
+  recordInteraction = null;
+  cameraController?.destroy();
+  cameraController = null;
+  $("world").hidden = true;
   $("loading").hidden = true;
   $("intro").hidden = true;
   $("mobile-menu").hidden = true;
@@ -967,8 +979,7 @@ function boot() {
     clock = new THREE.Clock();
     let firstFrame = true;
 
-    store.renderer.setAnimationLoop(() => {
-      if (document.hidden) return;
+    function renderSceneFrame() {
       const delta = Math.min(clock.getDelta(), .05);
       elapsed += delta;
       cameraController.update(delta);
@@ -979,16 +990,33 @@ function boot() {
         firstFrame = false;
         $("loading").hidden = true;
       }
-    });
+    }
 
-    window.addEventListener("resize", () => store?.resize(window.innerWidth, window.innerHeight));
-    $("world").addEventListener("webglcontextlost", event => {
+    function handleVisibilityChange() {
+      if (!store?.renderer || !clock) return;
+      if (document.hidden) {
+        store.renderer.setAnimationLoop(null);
+        return;
+      }
+      // Restart the clock so time spent in a background tab is not applied to animations.
+      clock.start();
+      store.renderer.setAnimationLoop(renderSceneFrame);
+    }
+
+    function handleStoreResize() {
+      if (store) store.resize(Math.max(1, window.innerWidth), Math.max(1, window.innerHeight));
+    }
+
+    function handleWebGLContextLost(event) {
       event.preventDefault();
+      store?.renderer?.setAnimationLoop(null);
       showFallback(new Error("WebGL context lost"));
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && store?.renderer) clock.start();
-    });
+    }
+
+    store.renderer.setAnimationLoop(document.hidden ? null : renderSceneFrame);
+    window.addEventListener("resize", handleStoreResize, { passive: true });
+    $("world").addEventListener("webglcontextlost", handleWebGLContextLost);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
   } catch (error) {
     showFallback(error);
   }
