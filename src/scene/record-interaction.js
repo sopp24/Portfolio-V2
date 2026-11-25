@@ -194,7 +194,6 @@ export function createRecordInteraction({
       rare.userData.found = true;
       setHoveredCollectible(null);
       emitPanel({ mode: "none" });
-      onSound("discovery");
       onFoundCollectible(rare);
     }
   }
