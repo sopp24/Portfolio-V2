@@ -304,7 +304,7 @@ function addCase(parent, position, rotationY, movie, movieIndex, catalogueIndex,
   if(Array.isArray(hitTargets))hitTargets.push(body,cover);else staticInteractables.push(body,cover);
   parent.add(root);return root;
 }
-let caseGeometry, spineCaseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial, shelfFastenerGeometry, shelfFastenerMaterial;
+let caseGeometry, spineCaseGeometry, caseMaterial, shelfMaterial, pegboardMaterial, wallMaterial, metalMaterial, pegMaterial, shelfFastenerGeometry, shelfFastenerMaterial, shelfBraceGeometry, shelfBraceMaterial;
 
 function assignSectionCatalogue(section) {
   const count=movieCatalogue.length;
@@ -346,6 +346,14 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
   levels.forEach((y,level)=>{
     addBox(parent,[8.35,.10,1.1],[0,y,0],shelfMaterial);
     addBox(parent,[8.3,.045,.055],[0,y+.075,.43],metalMaterial);
+    if(shelfBraceGeometry&&shelfBraceMaterial){
+      for(const x of [-3.98,3.98]){
+        const brace=new THREE.Mesh(shelfBraceGeometry,shelfBraceMaterial);
+        brace.position.set(x,y-.40,-.40);
+        brace.castShadow=false;brace.receiveShadow=false;
+        parent.add(brace);
+      }
+    }
     if(shelfFastenerGeometry&&shelfFastenerMaterial){
       for(const x of [-4.02,4.02]){
         const fastener=new THREE.Mesh(shelfFastenerGeometry,shelfFastenerMaterial);
@@ -470,6 +478,14 @@ function createWorld() {
   // Small shared countersunk-style fasteners add scale and assembly detail without per-shelf geometry churn.
   shelfFastenerGeometry=new THREE.CylinderGeometry(.022,.022,.012,10);
   shelfFastenerMaterial=new THREE.MeshStandardMaterial({color:0x899087,roughness:.38,metalness:.82});
+  // One shared triangular steel gusset is reused at the ends of every shelf level.
+  shelfBraceGeometry=new THREE.BufferGeometry();
+  shelfBraceGeometry.setAttribute("position",new THREE.Float32BufferAttribute([
+    -.026,0,0, .026,0,0, -.026,.31,.67, .026,.31,.67, -.026,.31,0, .026,.31,0
+  ],3));
+  shelfBraceGeometry.setIndex([0,2,4,1,5,3,0,1,3,0,3,2,0,4,5,0,5,1,4,2,3,4,3,5]);
+  shelfBraceGeometry.computeVertexNormals();
+  shelfBraceMaterial=new THREE.MeshStandardMaterial({color:0x515c54,roughness:.58,metalness:.62});
   pegMaterial=new THREE.MeshStandardMaterial({color:0x111713,roughness:.8});
   caseMaterial=new THREE.MeshStandardMaterial({color:0x20251f,roughness:.46,metalness:.035});
   // Reuse a softly rounded mould for every cassette instead of allocating per-tape bevels.
