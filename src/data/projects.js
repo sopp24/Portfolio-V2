@@ -36,6 +36,7 @@ export const PROJECTS = [
       en: ["Research into potential partners and identification of a brand sponsor", "Definition of the target audience and editorial direction", "Podcast concept and episode structure", "Pilot episode and editorial calendar", "Visual identity development", "Search visibility strategy for the content"]
     },
     skills: ["Stratégie éditoriale", "Podcast", "Communication musicale", "Identité visuelle", "SEO"],
+    skillsEn: ["Editorial strategy", "Podcast production", "Music communication", "Visual identity", "SEO"],
     collaborators: [],
     outcome: {
       fr: "Un concept de podcast structuré, accompagné d’un pilote et d’un calendrier éditorial.",
@@ -71,6 +72,7 @@ export const PROJECTS = [
       en: ["Creation of a square Instagram post", "Highlighting of the album artwork", "Presentation of the two previously released singles", "Integration of streaming platforms"]
     },
     skills: ["Création graphique", "Communication musicale", "Marketing digital", "Social media"],
+    skillsEn: ["Graphic design", "Music communication", "Digital marketing", "Social media"],
     collaborators: [],
     outcome: {
       fr: "Un support promotionnel pensé pour annoncer la sortie et faciliter l’accès à l’album.",
@@ -106,6 +108,7 @@ export const PROJECTS = [
       en: ["Analysis of the repositioning from Paylib to Wero", "Development of a multichannel communication strategy", "Creation of a campaign booklet", "Design of five messages adapted to different channels"]
     },
     skills: ["Stratégie de communication", "Conception éditoriale", "Marketing", "Travail d’équipe", "Gestion de projet"],
+    skillsEn: ["Communication strategy", "Editorial design", "Marketing", "Teamwork", "Project management"],
     collaborators: ["Abel M’SOILI"],
     outcome: {
       fr: "Un ensemble de supports de campagne cohérent, du livret aux messages multicanaux.",
@@ -141,6 +144,7 @@ export const PROJECTS = [
       en: ["Research of open datasets", "Data processing and analysis", "Creation of an infographic", "Writing of a data journalism article"]
     },
     skills: ["Datajournalisme", "Open data", "Analyse statistique", "Datavisualisation", "Rédaction"],
+    skillsEn: ["Data journalism", "Open data", "Statistical analysis", "Data visualization", "Writing"],
     collaborators: [],
     outcome: {
       fr: "Un article et une infographie qui mettent en perspective la satisfaction étudiante selon la localisation.",
@@ -176,6 +180,7 @@ export const PROJECTS = [
       en: ["Development of a two-part narrative", "Creation of visual intrigue and suspense", "Concept for the reissue teaser", "Artistic consistency between the two releases"]
     },
     skills: ["Storytelling", "Direction artistique", "Audiovisuel", "Marketing narratif", "Communication musicale"],
+    skillsEn: ["Storytelling", "Art direction", "Audiovisual production", "Narrative marketing", "Music communication"],
     collaborators: [],
     outcome: {
       fr: "Un concept de campagne qui relie deux projets musicaux par une histoire commune.",
@@ -211,6 +216,7 @@ export const PROJECTS = [
       en: ["Research and analysis of cultural data", "Data visualization design", "Study of distribution and creation-support schemes", "Development of evidence-based arguments"]
     },
     skills: ["Analyse de données culturelles", "Datavisualisation", "Recherche", "Travail collaboratif", "Argumentation"],
+    skillsEn: ["Cultural data analysis", "Data visualization", "Research", "Collaboration", "Evidence-based advocacy"],
     collaborators: ["Abel M’SOILI", "Tom Martin"],
     outcome: {
       fr: "Des visualisations consacrées aux dispositifs de diffusion et d’aide à la création des SMAC bordelaises.",
@@ -246,6 +252,7 @@ export const PROJECTS = [
       en: ["Design of a social media campaign", "Development of a week-long editorial programme", "Creation of a music album connected to the campaign"]
     },
     skills: ["Communication inclusive", "Sensibilisation", "Storytelling", "Musique", "Créativité"],
+    skillsEn: ["Inclusive communication", "Awareness campaign", "Storytelling", "Music", "Creative production"],
     collaborators: [],
     outcome: {
       fr: "Une campagne qui associe contenus sociaux, émission et création musicale autour d’un message commun.",
@@ -281,6 +288,7 @@ export const PROJECTS = [
       en: ["Use of open data about public swimming pools", "Design of a miniature Olympic-pool object", "Use of a swimmer to represent attendance", "Integration of light sensors", "Automatic refresh every ten minutes", "Creation of the logo and presentation"]
     },
     skills: ["Open data", "Objet connecté", "Datavisualisation", "Prototypage", "Design d’interaction"],
+    skillsEn: ["Open data", "Connected object", "Data visualization", "Prototyping", "Interaction design"],
     collaborators: [],
     outcome: {
       fr: "Un concept de POCL qui matérialise les données de fréquentation par la position d’un nageur miniature.",
@@ -316,6 +324,7 @@ export const PROJECTS = [
       en: ["Research and selection of open data", "Creation of a visualization about representation of people with disabilities in public and private bodies", "Contribution to Partnerships and Treasury", "Partnership development, including Emmaüs Connect", "Co-management of the project and budget", "Contribution to the exhibition opening"]
     },
     skills: ["Gestion de projet", "Partenariats", "Trésorerie", "Datavisualisation", "Événementiel", "Inclusivité numérique"],
+    skillsEn: ["Project management", "Partnerships", "Budget management", "Data visualization", "Events", "Digital inclusion"],
     collaborators: ["Louise Munier"],
     outcome: {
       fr: "Le vernissage a accueilli près d’une centaine de visiteurs, selon le portfolio historique.",
@@ -351,6 +360,7 @@ export const PROJECTS = [
       en: ["Definition of a red-and-black art direction", "Integration of a typographic identity", "Development of the menu and navigation", "Implementation of French / English switching", "Creation of work, about and contact pages"]
     },
     skills: ["HTML", "CSS", "JavaScript", "Intégration front-end", "Direction artistique", "Architecture de contenu"],
+    skillsEn: ["HTML", "CSS", "JavaScript", "Front-end integration", "Art direction", "Content architecture"],
     collaborators: [],
     outcome: {
       fr: "Un premier portfolio personnel bilingue, utilisé comme base de contenu pour cette nouvelle expérience.",
