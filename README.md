@@ -87,3 +87,8 @@ The current sleeve artwork and its Side B liner notes are procedural placeholder
 ### Phase 3 — Category bins and application rack
 
 The ten project records are now distributed once across six physical category bins. The first category tag in each project's data determines its physical home; all additional tags remain intact for multi-category filtering and project details. The separate right-wall SOPP Agents rack contains eight physical application cards. Center the gaze on a card and click/tap to select it; the information panel provides the real live-app URL and GitHub repository URL, and the card eases slightly out from the rack. Returning closes the panel and restores the card to its original position. New categories and applications can be added through the data modules and the existing loops without duplicating the scene structure.
+
+
+### Phase 4 — Personal corner and music collection
+
+The shop now includes a dedicated physical wall corner with an ABOUT / ADAM plaque and two framed sleeves representing the personal music projects Davis Miles and STORY. The 2D collection includes a bilingual About section and a separate music-project section. CV, email and social links are rendered only when real values are supplied in `PROFILE`; no placeholder destinations are published. Current degree and institution remain hidden while their profile fields are unconfirmed.
