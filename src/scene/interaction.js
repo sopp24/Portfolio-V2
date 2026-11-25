@@ -17,7 +17,9 @@ function findPick(object) {
   return null;
 }
 
-export function createInteraction({ scene, camera, canvas, pickRoots, records, apps, quality, getLanguage, postfx, look, onHover, onSelect, onHeldChange, onSound, onHold, reducedMotion }) {
+export function createInteraction({ scene, camera, canvas, pickRoots, records, apps, quality, getLanguage, postfx: postfxArg, getPostfx, look, onHover, onSelect, onHeldChange, onSound, onHold, reducedMotion }) {
+  // the post-processing chain is rebuilt on every quality-tier change: always go through the getter, never keep a stale reference
+  const fx = () => (getPostfx ? getPostfx() : postfxArg);
   const raycaster = new THREE.Raycaster();
   raycaster.far = 40;
   const ndc = new THREE.Vector2();
@@ -161,7 +163,7 @@ export function createInteraction({ scene, camera, canvas, pickRoots, records, a
     if (record) ensureRecordDetail(record, getLanguage(), quality);
     root.userData.hover = 0;
     onSound(record ? "vinyl-pull" : "click");
-    postfx?.setFocus?.(presentationDistance(0));
+    fx()?.setFocus?.(presentationDistance(0));
     notify();
   }
 
@@ -281,7 +283,7 @@ export function createInteraction({ scene, camera, canvas, pickRoots, records, a
     } else if (h.state === "held") {
       root.position.lerp(target, 1 - Math.exp(-14 * dt));
       root.quaternion.slerp(targetQuat, k);
-      postfx?.setFocus?.(root.position.distanceTo(camera.position));
+      fx()?.setFocus?.(root.position.distanceTo(camera.position));
     } else if (h.state === "returning") {
       h.t = Math.min(1, h.t + dt / (reducedMotion ? .35 : .85));
       const e = easeInOut(h.t);
@@ -301,13 +303,13 @@ export function createInteraction({ scene, camera, canvas, pickRoots, records, a
         root.position.copy(home.position); root.quaternion.copy(home.quaternion); root.scale.copy(home.scale);
         if (h.record) { h.record.flap.rotation.y = 0; h.record.disc.position.copy(h.record.discHome); h.record.disc.rotation.z = 0; }
         held = null;
-        postfx?.setDof?.(0);
+        fx()?.setDof?.(0);
         onHold?.(0);
         notify();
       }
     }
     const holdAmount = held ? (held.state === "returning" ? Math.max(0, 1 - held.t * 1.6) : easeOut(Math.min(1, held.t * 1.4 + (held.state === "held" ? 1 : 0)))) : 0;
-    postfx?.setDof?.(holdAmount);
+    fx()?.setDof?.(holdAmount);
     onHold?.(holdAmount);
   }
 

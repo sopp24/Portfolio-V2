@@ -298,6 +298,68 @@ export function buildRoom(ctx) {
   exterior.traverse((o) => { if (o.isMesh) o.castShadow = false; });
   scene.add(exterior);
 
+  // ---------------------------------------------------------------- street life: passers-by and the odd car, seen through the windows
+  {
+    const rr = rng(2024);
+    const skins = [0xe0b48f, 0xb98160, 0x7a4b32, 0xf0cba8];
+    const coats = [0x3d5a80, 0xb5483b, 0x2f6b4f, 0xd6b04a, 0x4a4a52, 0x8a5a83, 0xe9e2d0];
+    const trousers = [0x2b2d35, 0x4b3f35, 0x31405a];
+    const std = (color, roughness = .85) => { const mat = new THREE.MeshStandardMaterial({ color, roughness }); out.ownedMaterials?.push?.(mat); return mat; };
+    const limb = new THREE.CapsuleGeometry(.065, .6, 3, 8);
+    const arm = new THREE.CapsuleGeometry(.05, .5, 3, 8);
+    const torsoGeo = new THREE.CapsuleGeometry(.17, .46, 4, 10);
+    const headGeo = new THREE.SphereGeometry(.105, 12, 10);
+    const hairGeo = new THREE.SphereGeometry(.112, 12, 8, 0, Math.PI * 2, 0, Math.PI * .55);
+    const walkers = [];
+    for (let i = 0; i < 4; i++) {
+      const g = new THREE.Group();
+      const coat = std(coats[Math.floor(rr() * coats.length)]), pants = std(trousers[Math.floor(rr() * trousers.length)]), skin = std(skins[Math.floor(rr() * skins.length)], .6), hair = std([0x1d1a18, 0x4a3425, 0xb08a4e, 0x8d8d8a][Math.floor(rr() * 4)], .7);
+      const height = .93 + rr() * .12;
+      const torso = new THREE.Mesh(torsoGeo, coat); torso.position.y = 1.2;
+      const head = new THREE.Mesh(headGeo, skin); head.position.y = 1.74;
+      const cap = new THREE.Mesh(hairGeo, hair); cap.position.y = 1.76;
+      const pivots = [-1, 1].map((side) => {
+        const leg = new THREE.Group(); leg.position.set(side * .09, .9, 0);
+        const m1 = new THREE.Mesh(limb, pants); m1.position.y = -.4; leg.add(m1);
+        const swing = new THREE.Group(); swing.position.set(side * .23, 1.42, 0);
+        const m2 = new THREE.Mesh(arm, coat); m2.position.y = -.3; swing.add(m2);
+        g.add(leg, swing);
+        return { leg, swing, side };
+      });
+      g.add(torso, head, cap);
+      g.scale.setScalar(height);
+      g.visible = false;
+      exterior.add(g);
+      walkers.push({ g, pivots, x: 0, dir: 1, speed: 1.1, wait: 2 + rr() * 22, phase: rr() * 6, z: zF + 1.5 + rr() * 1.4 });
+    }
+    // a second car that drives past now and then
+    const traffic = car.clone(true);
+    const trafficMat = new THREE.MeshStandardMaterial({ color: 0xb2432f, roughness: .35, metalness: .3, envMapIntensity: 1.2 });
+    traffic.traverse((o) => { if (o.isMesh && o.material === carMat) o.material = trafficMat; });
+    traffic.visible = false; traffic.position.set(0, 0, zF + 9.2); traffic.rotation.y = 0;
+    exterior.add(traffic);
+    const car2 = { g: traffic, x: 0, dir: 1, speed: 7, wait: 12 + rr() * 20 };
+    const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    out.updaters.push((dt, elapsed = 0) => {
+      if (reduced) return;
+      for (const w of walkers) {
+        if (w.wait > 0) { w.wait -= dt; if (w.wait <= 0) { w.dir = rr() < .5 ? -1 : 1; w.speed = .9 + rr() * .5; w.x = -w.dir * 11; w.g.visible = true; w.g.rotation.y = w.dir > 0 ? Math.PI / 2 : -Math.PI / 2; } continue; }
+        w.x += w.dir * w.speed * dt;
+        const ph = (w.x * 3.2) + w.phase;
+        for (const { leg, swing, side } of w.pivots) { leg.rotation.x = Math.sin(ph + (side > 0 ? 0 : Math.PI)) * .55; swing.rotation.x = Math.sin(ph + (side > 0 ? Math.PI : 0)) * .4; }
+        w.g.position.set(w.x, Math.abs(Math.sin(ph)) * .025, w.z);
+        if (Math.abs(w.x) > 12) { w.g.visible = false; w.wait = 14 + rr() * 40; }
+      }
+      if (car2.wait > 0) { car2.wait -= dt; if (car2.wait <= 0) { car2.dir = rr() < .5 ? -1 : 1; car2.x = -car2.dir * 24; car2.g.visible = true; car2.g.rotation.y = car2.dir > 0 ? 0 : Math.PI; } }
+      else {
+        car2.x += car2.dir * car2.speed * dt;
+        car2.g.position.x = car2.x;
+        if (Math.abs(car2.x) > 25) { car2.g.visible = false; car2.wait = 30 + rr() * 50; }
+      }
+      void elapsed;
+    });
+  }
+
   // ---------------------------------------------------------------- door/sign animation hook
   let progress = 0, target = 0, signFlip = 0, signTarget = 0;
   out.openDoors = () => { target = 1; signTarget = 1; };

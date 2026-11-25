@@ -153,7 +153,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
     onTap: (p) => interaction?.handleTap(p)
   });
   interaction = createInteraction({
-    scene, camera, canvas, pickRoots, records, apps, quality, getLanguage: () => ctx.lang, postfx, look, reducedMotion,
+    scene, camera, canvas, pickRoots, records, apps, quality, getLanguage: () => ctx.lang, getPostfx: () => postfx, look, reducedMotion,
     onHover: (info) => emit("hover", info),
     onSelect: (info) => emit("select", info),
     onHeldChange: (info) => emit("held", info),
@@ -395,7 +395,6 @@ export async function createWorld({ canvas, projects, categories, applications, 
     ratio = Math.min(deviceRatio, quality.dprCap);
     postfx.dispose();
     postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio });
-    interaction && (interaction.postfx = postfx);
     lighting.sun.shadow.mapSize.set(quality.shadowMap, quality.shadowMap);
     lighting.sun.shadow.map?.dispose(); lighting.sun.shadow.map = null;
     applySize();
