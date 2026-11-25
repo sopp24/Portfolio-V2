@@ -177,10 +177,11 @@ export function hairLine({ front = 0.055, sideRecede = 0.022, side = 0.02, back 
 
 // Scalp hair mass. The thickness tapers to a few millimetres at the hairline so the hair feathers into the skin
 // instead of ending in a thick wall (which reads as a wig).
-export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0, 0.085, 0.02], feather = 0.022, flow = { center: [0.005, 0.1, -0.035], n: 46, amp: 0.0016 } } = {}) {
+export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0, 0.085, 0.02], feather = 0.022, flow = { center: [0.005, 0.1, -0.035], n: 46, amp: 0.0016 }, curl = null, extras = [] } = {}) {
   const base = union(0.03, ellipsoid(0, 0.03, -0.012, 0.071, 0.084, 0.093), ellipsoid(0, 0.028, 0.04, 0.06, 0.074, 0.058));
   let cap = base;
   if (topVolume > 0) cap = union(0.03, base, ellipsoid(topCenter[0], topCenter[1], topCenter[2], 0.062, 0.03 + topVolume - expand, 0.085));
+  if (extras.length) cap = union(0.03, cap, ...extras);
   const thin = 0.0032;
   return fromFn((x, y, z) => {
     const h = y - line(x, z);
@@ -192,7 +193,14 @@ export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0
       const w = noise3(x * 30, y * 30, z * 30) - 0.5;
       groove = flow.amp * Math.sin(a * flow.n + w * 5) * smoothstep(0.0, 0.03, h);
     }
-    return smax(cap.d(x, y, z) - (thin + (expand - thin) * t) - groove, -h, 0.004);
+    // curly hair: two octaves of value noise give rounded, clustered curls on the surface
+    let curls = 0;
+    if (curl) {
+      const n1 = noise3(x * curl.scale, y * curl.scale, z * curl.scale);
+      const n2 = noise3(x * curl.scale * 0.42 + 7.3, y * curl.scale * 0.42 + 1.7, z * curl.scale * 0.42 + 3.1);
+      curls = curl.amp * (1.15 * n1 * n1 + 0.9 * n2 - 0.85) * smoothstep(0.0, 0.02, h);
+    }
+    return smax(cap.d(x, y, z) - (thin + (expand - thin) * t) - groove - curls, -h, 0.004);
   }, base.c, base.r + 0.04);
 }
 
@@ -226,4 +234,63 @@ export function lockSet(locks, baseColor, { k = 0.006 } = {}) {
 export function clump(pts, widths, thick, color, { n = 10, center } = {}) {
   const path = bezier3(pts[0], pts[1], pts[2], pts[3], n);
   return { shape: ribbon(path, widths, thick, center), color };
+}
+
+// A corkscrew hair strand: a helix wrapped around a straight/drooping axis, tapering to a point.
+export function tendril(start, dir, length, r, { turns = 2.5, curl = 0.008, droop = 0.02, n = 26, color } = {}) {
+  const d = norm3(dir);
+  let u = cross3(d, [0, 1, 0]);
+  if (len3(u[0], u[1], u[2]) < 0.2) u = cross3(d, [1, 0, 0]);
+  u = norm3(u);
+  const v = cross3(d, u);
+  const pts = [], radii = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const ang = t * turns * Math.PI * 2;
+    const rr = curl * (0.35 + 0.65 * Math.min(1, t * 1.6));
+    const base = add3(start, scale3(d, length * t));
+    pts.push([
+      base[0] + u[0] * Math.cos(ang) * rr + v[0] * Math.sin(ang) * rr,
+      base[1] + u[1] * Math.cos(ang) * rr + v[1] * Math.sin(ang) * rr - droop * t * t,
+      base[2] + u[2] * Math.cos(ang) * rr + v[2] * Math.sin(ang) * rr
+    ]);
+    radii.push(r * (1 - 0.7 * t * t));
+  }
+  return { shape: strand(pts, radii, r * 0.4), color };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Shared garment: glossy leather bomber (ribbed collar / cuffs / hem, zip groove, pocket slits, creases)
+// plus a tee limited to the neck and front chest so nothing pokes through when an arm is raised.
+// ---------------------------------------------------------------------------------------------
+export function leatherJacketParts(q, { leather, rib, tee = [0.84, 0.83, 0.8], width = 0.92 } = {}) {
+  const noise = (x, y, z) => noise3(x * 18, y * 18, z * 18);
+  const parts = [];
+  const mass = torsoMass({ width, chest: 1.0, belly: 1.02, lowerCut: 0.985 });
+  const slL = sleeve(1, { r: [0.056, 0.049, 0.043], cuff: 0.006 }), slR = sleeve(-1, { r: [0.056, 0.049, 0.043], cuff: 0.006 });
+  const collar = torus([0, 1.486, -0.006], [0, 1, 0], 0.058, 0.021);
+  const hemBand = ellipsoid(0, 1.012, 0, 0.176 * width, 0.034, 0.118); // the gathered rib that makes a bomber jacket's hem
+  let jacket = union(0.05, mass, slL.shape, slR.shape, collar, hemBand);
+  jacket = subtract(jacket, capsule([0, 1.43, -0.008], [0, 1.64, -0.01], 0.043, 0.043), 0.008);
+  jacket = subtract(jacket, capsule([0, 1.462, 0.1], [0, 1.0, 0.116], 0.0021, 0.0021), 0.002); // zip groove
+  for (const s of [-1, 1]) {
+    jacket = subtract(jacket, capsule([s * 0.092, 1.1, 0.098], [s * 0.088, 1.04, 0.108], 0.0028, 0.0028), 0.002); // pocket slits
+    jacket = subtract(jacket, capsule([s * 0.098, 1.3, 0.094], [s * 0.104, 1.31, 0.092], 0.0022, 0.0022), 0.002);
+  }
+  jacket = displace(jacket, foldField({ amp: 0.0042, scale: 1.2 })); // leather creases, strongest at the elbows
+  const colorJ = (p) => {
+    const hem = 1 - smoothstep(1.0, 1.045, p[1]);
+    const wristD = Math.min(Math.hypot(p[0] - slL.wr[0], p[1] - slL.wr[1], p[2] - slL.wr[2]), Math.hypot(p[0] - slR.wr[0], p[1] - slR.wr[1], p[2] - slR.wr[2]));
+    const cuff = 1 - smoothstep(0.045, 0.075, wristD);
+    const col = p[1] > 1.46 ? 1 - smoothstep(0.012, 0.03, Math.hypot(Math.hypot(p[0], p[2] + 0.006) - 0.058, p[1] - 1.486)) : 0;
+    const r = Math.max(hem, cuff, col);
+    const g = (noise(p[0] * 3, p[1] * 3, p[2] * 3) - 0.5) * 0.05;
+    const base = [leather[0] + g, leather[1] + g * 0.3, leather[2] + g * 0.3];
+    return [base[0] + (rib[0] - base[0]) * r, base[1] + (rib[1] - base[1]) * r, base[2] + (rib[2] - base[2]) * r];
+  };
+  parts.push({ name: "jacket", material: "leather", shape: jacket, ...boundsFrom([[-0.34, 0.94, -0.17], [0.34, 1.64, 0.17]], 0.02), h: q.body.h, tris: q.body.tris, color: withAO(colorJ, jacket, { small: 0.014, large: 0.06, strength: 0.6 }), weights: bodyWeights(BODY_BONES), lockBorder: true });
+  const teeCore = intersect(intersect(mass, plane([0, 1.2, 0], [0, -1, 0]), 0.01), ellipsoid(0, 1.44, 0.07, 0.1, 0.12, 0.1), 0.01);
+  const teeShape = union(0.008, { c: teeCore.c, r: teeCore.r, d: (x, y, z) => teeCore.d(x, y, z) + 0.014 }, torus([0, 1.47, 0], norm3([0, 0.94, 0.3]), 0.046, 0.011));
+  parts.push({ name: "shirt", material: "cloth", shape: teeShape, ...boundsFrom([[-0.14, 1.2, -0.12], [0.14, 1.54, 0.14]], 0.02), h: q.small.h, tris: q.small.tris * 2, color: withAO(() => tee, teeShape, { strength: 0.3 }), weights: bodyWeights(["chest", "neck", "spine"]), lockBorder: false });
+  return parts;
 }

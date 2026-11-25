@@ -7,7 +7,7 @@ import {
 export const HEAD_DEFAULTS = {
   skin: [0.87, 0.64, 0.52], lipColor: [0.76, 0.38, 0.36], blush: 0.5,
   skull: 1, faceW: 1, jaw: 1, chin: 1, cheek: 1, nose: 1, noseLen: 1, noseTip: 1, brow: 1, lip: 1, lipFull: 1, ear: 1, eyeGap: 0.0345, eyeY: 0.016,
-  eyeR: 0.0135, age: 0, neck: 1, browSlope: 0, mouthW: 1, forehead: 1, hollow: 0
+  eyeR: 0.0135, liner: 0, age: 0, neck: 1, browSlope: 0, mouthW: 1, forehead: 1, hollow: 0
 };
 
 // Find the front surface z of `shape` at (x, y) by marching from zFrom toward zTo
@@ -130,6 +130,7 @@ export function buildHead(opts = {}) {
     if (dn < 0.004) c = tint(c, [0.2, 0.07, 0.06], (1 - smoothstep(-0.001, 0.004, dn)) * 0.85);
     const dsock = Math.min(...sockets.map((so) => so.d(p[0], p[1], p[2])));
     if (dsock < 0.003) c = tint(c, [0.74, 0.4, 0.38], 1 - smoothstep(-0.002, 0.003, dsock));
+    if (P.liner > 0) c = tint(c, [c[0] * 0.28, c[1] * 0.25, c[2] * 0.25], P.liner * (1 - smoothstep(0.0, 0.0075, dsock)));
     return c;
   };
 

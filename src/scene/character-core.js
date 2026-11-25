@@ -170,7 +170,7 @@ export function clothMaterial({ roughness = 0.9, detailScale = 120, bump = 1.2, 
 
 export function hairMaterial({ roughness = 0.5, clearcoat = 0.14 } = {}) {
   const m = new THREE.MeshPhysicalMaterial({
-    vertexColors: true, roughness, metalness: 0, clearcoat, clearcoatRoughness: 0.3, sheen: 0.4, sheenColor: new THREE.Color(0xffe0c0), sheenRoughness: 0.4, envMapIntensity: 1.0, name: "hair"
+    vertexColors: true, roughness, metalness: 0, clearcoat, clearcoatRoughness: 0.3, sheen: 0.22, sheenColor: new THREE.Color(0xd8c8c0), sheenRoughness: 0.5, envMapIntensity: 1.0, name: "hair"
   });
   return patchCharacterMaterial(m, { detailScale: 220, detailBump: 0.35, detailAlbedo: 0.08, sss: { wrap: 0.25, color: 0xffb080 }, key: "hair" });
 }
@@ -179,4 +179,10 @@ export function plainMaterial({ roughness = 0.6, metalness = 0 } = {}) {
   return patchCharacterMaterial(new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness, metalness, envMapIntensity: 0.7, name: "plain" }), { detailScale: 80, detailBump: 0.3, key: "plain" });
 }
 
-export const MATERIAL_FACTORY = { skin: skinMaterial, cloth: clothMaterial, knit: () => clothMaterial({ roughness: 0.95, detailScale: 90, bump: 2.0, sheen: 0.18 }), denim: () => clothMaterial({ roughness: 0.85, detailScale: 160, bump: 1.6 }), hair: hairMaterial, fur: () => hairMaterial({ roughness: 0.7, clearcoat: 0.03 }), plain: plainMaterial, shoe: () => plainMaterial({ roughness: 0.5 }), leather: () => plainMaterial({ roughness: 0.4 }) };
+// glossy hide (jackets): clearcoat for the wet-look highlights, fine grain bump
+export function leatherMaterial({ roughness = 0.34, clearcoat = 0.4 } = {}) {
+  const m = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness, metalness: 0, clearcoat, clearcoatRoughness: 0.26, sheen: 0.0, envMapIntensity: 1.25, name: "leather" });
+  return patchCharacterMaterial(m, { detailScale: 320, detailBump: 0.45, detailAlbedo: 0.04, key: "leather" });
+}
+
+export const MATERIAL_FACTORY = { skin: skinMaterial, cloth: clothMaterial, knit: () => clothMaterial({ roughness: 0.95, detailScale: 90, bump: 2.0, sheen: 0.18 }), denim: () => clothMaterial({ roughness: 0.85, detailScale: 160, bump: 1.6 }), hair: hairMaterial, fur: () => hairMaterial({ roughness: 0.7, clearcoat: 0.03 }), plain: plainMaterial, shoe: () => plainMaterial({ roughness: 0.5 }), leather: leatherMaterial };
