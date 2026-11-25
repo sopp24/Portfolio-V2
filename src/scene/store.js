@@ -334,7 +334,7 @@ function createRecord(project, index, position, materials) {
     new THREE.PlaneGeometry(.626, .696),
     new THREE.MeshBasicMaterial({ map: sleeveTexture(project, index), side: THREE.DoubleSide })
   );
-  front.position.set(.325, 0, .009); flap.add(front);
+  front.position.set(.325, 0, .009); front.scale.x = -1; flap.add(front);
 
   const discAssembly = new THREE.Group();
   discAssembly.position.set(.16, .02, .055); group.add(discAssembly);
@@ -380,7 +380,9 @@ function createRecordCrate(scene, projects, materials, x, z, offset, recordRoots
     ctx.fillText(offset === 0 ? "NEW ARRIVALS" : "FEATURED PRESSINGS", 256, 58);
   });
   const label = new THREE.Mesh(new THREE.PlaneGeometry(1.52, .22), new THREE.MeshBasicMaterial({ map: ticket }));
-  label.position.set(0, .99, .687);
+  label.position.set(0, .99, -.687);
+  label.rotation.y = Math.PI;
+  label.scale.x = -1;
   group.add(label);
 
   for (let i = 0; i < 5; i++) {
