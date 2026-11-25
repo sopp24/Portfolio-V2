@@ -1,6 +1,9 @@
 import * as THREE from "three";
 
 const ROOM = { width: 12.4, depth: 15.2, height: 4.65, frontZ: 7.55, backZ: -7.55 };
+const posterTextureCache = new Map();
+const wallCoverGeometryCache = new Map();
+
 const PROJECT_COLORS = [
   ["#bd5c3b", "#e0b474", "#182e38"],
   ["#d0a24e", "#6d3c34", "#ead8b8"],
@@ -205,8 +208,10 @@ function createSign(scene, label, position, width, height, rotationY = 0) {
 }
 
 function createPosterTexture(index, title) {
+  const key = String(index) + "|" + String(title);
+  if (posterTextureCache.has(key)) return posterTextureCache.get(key);
   const palette = PROJECT_COLORS[(index + 3) % PROJECT_COLORS.length];
-  return makeTexture(384, 512, (ctx) => {
+  const texture = makeTexture(384, 512, (ctx) => {
     const gradient = ctx.createLinearGradient(0, 0, 384, 512);
     gradient.addColorStop(0, palette[0]);
     gradient.addColorStop(.55, palette[1]);
@@ -244,26 +249,27 @@ function createPosterTexture(index, title) {
     ctx.font = "bold 13px monospace";
     ctx.fillText("INDEPENDENT RECORD STORE", 192, 466);
   });
+  posterTextureCache.set(key, texture);
+  return texture;
 }
 
 function addWallCover(scene, x, y, z, rotationY, title, index, width = .58, height = .70) {
-  const group = new THREE.Group();
-  group.position.set(x, y, z);
-  group.rotation.y = rotationY;
-  const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(width + .055, height + .055, .055),
-    new THREE.MeshStandardMaterial({ color: 0x493c2d, roughness: .8 })
-  );
-  frame.position.z = -.012;
-  group.add(frame);
+  const key = width.toFixed(3) + "x" + height.toFixed(3);
+  let geometry = wallCoverGeometryCache.get(key);
+  if (!geometry) {
+    geometry = new THREE.PlaneGeometry(width, height);
+    wallCoverGeometryCache.set(key, geometry);
+  }
   const art = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, height),
+    geometry,
     new THREE.MeshBasicMaterial({ map: createPosterTexture(index, title), side: THREE.DoubleSide })
   );
-  art.position.z = .019;
-  group.add(art);
-  scene.add(group);
-  return group;
+  art.position.set(x, y, z);
+  art.rotation.y = rotationY;
+  art.castShadow = false;
+  art.receiveShadow = false;
+  scene.add(art);
+  return art;
 }
 
 function createRecord(project, index, position, materials) {
@@ -411,7 +417,7 @@ function createCounterAndListeningCorner(scene, materials) {
 
   // A compact turntable with a slowly rotating record.
   const deck = new THREE.Group();
-  deck.position.set(3.98, 1.13, -3.23);
+  deck.position.set(-.22, 1.13, 0);
   addBox(deck, [1.05, .13, .82], [0, .06, 0], materials.dark);
   const platter = new THREE.Mesh(new THREE.CylinderGeometry(.31, .31, .035, 48), materials.metal);
   platter.position.set(0, .155, 0);
@@ -461,7 +467,7 @@ function createCounterAndListeningCorner(scene, materials) {
 
 function createShopkeeper(scene, materials) {
   const figure = new THREE.Group();
-  figure.position.set(4.18, 0, -4.33);
+  figure.position.set(4.15, 0, -2.35);
   figure.rotation.y = -Math.PI / 2.3;
 
   const cardigan = new THREE.Mesh(new THREE.CapsuleGeometry(.29, .62, 5, 10), materials.cardigan);
