@@ -170,10 +170,11 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
   }
 
   // Smoothly look toward a world-space point (used by the shopkeeper's recommendations).
-  function lookAtPoint(point, { fov = 44, hold = 3 } = {}) {
+  // `lift` (0..0.4) pushes the subject up on screen by that fraction of the viewport height, so it stays visible above a bottom sheet.
+  function lookAtPoint(point, { fov = 44, hold = 3, lift = 0 } = {}) {
     const d = point.clone().sub(camera.position);
     const yawTo = Math.atan2(-d.x, -d.z);
-    const pitchTo = Math.atan2(d.y, Math.hypot(d.x, d.z));
+    const pitchTo = Math.atan2(d.y, Math.hypot(d.x, d.z)) - lift * THREE.MathUtils.degToRad(fov);
     glide = { yaw: clamp(yawTo, -limits.yaw, limits.yaw), pitch: clamp(pitchTo, -limits.down, limits.up), fov, hold };
     targetFov = fov;
   }

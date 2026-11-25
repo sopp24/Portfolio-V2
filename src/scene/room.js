@@ -330,7 +330,7 @@ export function buildRoom(ctx) {
       g.scale.setScalar(height);
       g.visible = false;
       exterior.add(g);
-      walkers.push({ g, pivots, x: 0, dir: 1, speed: 1.1, wait: 2 + rr() * 22, phase: rr() * 6, z: zF + 1.5 + rr() * 1.4 });
+      walkers.push({ g, pivots, x: 0, dir: 1, speed: 1.1, wait: i === 0 ? .4 : 4 + i * 6 + rr() * 10, phase: rr() * 6, z: zF + 1.5 + rr() * 1.4, first: true });
     }
     // a second car that drives past now and then
     const traffic = car.clone(true);
@@ -343,7 +343,7 @@ export function buildRoom(ctx) {
     out.updaters.push((dt, elapsed = 0) => {
       if (reduced) return;
       for (const w of walkers) {
-        if (w.wait > 0) { w.wait -= dt; if (w.wait <= 0) { w.dir = rr() < .5 ? -1 : 1; w.speed = .9 + rr() * .5; w.x = -w.dir * 11; w.g.visible = true; w.g.rotation.y = w.dir > 0 ? Math.PI / 2 : -Math.PI / 2; } continue; }
+        if (w.wait > 0) { w.wait -= dt; if (w.wait <= 0) { w.dir = rr() < .5 ? -1 : 1; w.speed = .9 + rr() * .5; w.x = -w.dir * (w.first ? 3 : 11); w.first = false; w.g.visible = true; w.g.rotation.y = w.dir > 0 ? Math.PI / 2 : -Math.PI / 2; } continue; }
         w.x += w.dir * w.speed * dt;
         const ph = (w.x * 3.2) + w.phase;
         for (const { leg, swing, side } of w.pivots) { leg.rotation.x = Math.sin(ph + (side > 0 ? 0 : Math.PI)) * .55; swing.rotation.x = Math.sin(ph + (side > 0 ? Math.PI : 0)) * .4; }

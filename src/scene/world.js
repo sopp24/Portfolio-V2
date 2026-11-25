@@ -435,14 +435,14 @@ export async function createWorld({ canvas, projects, categories, applications, 
     presentProject: (id) => interaction.present(id),
     setActive: (v) => interaction.setActive(v && state.open && !state.transition),
     // point the camera at something and pulse it (used for the shopkeeper's recommendations)
-    focus(kind, id) {
+    focus(kind, id, { lift = 0 } = {}) {
       let root = interaction.findRoot(kind === "app" ? "app" : kind, id);
       if (!root) root = interaction.findRoot(null, id);
       if (!root) return false;
       const point = root.getWorldPosition(new THREE.Vector3());
       const isKeeper = root.userData.pick.kind === "shopkeeper";
       point.y += isKeeper ? 1.42 : .2;
-      look.lookAtPoint(point, { fov: isKeeper ? 27 : 40, hold: isKeeper ? 600 : 4.5 });
+      look.lookAtPoint(point, { fov: isKeeper ? 27 : 40, hold: isKeeper ? 600 : 4.5, lift });
       interaction.pulse(root.userData.pick.kind, id, 5);
       return true;
     },

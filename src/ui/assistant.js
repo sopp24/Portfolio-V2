@@ -115,7 +115,8 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
     sfx("chat-open");
     if (!log.childElementCount) reset();
     renderStatus();
-    world.focus("shopkeeper", "shopkeeper");
+    // on phones the chat is a bottom sheet: raise the shopkeeper into the visible upper third
+    world.focus("shopkeeper", "shopkeeper", { lift: window.matchMedia("(max-width: 860px) and (orientation: portrait)").matches ? .3 : 0 });
     world.setShopkeeper({ greeting: true });
     setTimeout(() => world.setShopkeeper({ greeting: false }), 2200);
     setTimeout(() => input.focus({ preventScroll: true }), 60);
