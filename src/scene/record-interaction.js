@@ -153,7 +153,6 @@ export function createRecordInteraction({
       event.preventDefault();
       setHoveredEasterEgg(null);
       emitPanel({ mode: "none" });
-      onSound("easter");
       onOpenEasterEgg();
     }
   }
