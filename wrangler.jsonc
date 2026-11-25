@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/schema.json",
+  "name": "side-a-shopkeeper",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-11-25",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_ORIGIN": "https://sopp24.github.io",
+    "OPENAI_MODEL": "gpt-6.2-astra"
+  }
+}
