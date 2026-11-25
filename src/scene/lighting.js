@@ -91,7 +91,8 @@ function openNeonTexture() {
 export function buildLighting(ctx) {
   const { scene, quality, materials: m } = ctx;
   const out = { updaters: [], lights: ctx.lights };
-  scene.environmentIntensity = .27;
+  scene.environmentIntensity = .32;
+  scene.fog = new THREE.Fog(0xcfbf9a, 9, 48);
 
   // ---------------------------------------------------------------- sun
   const sun = new THREE.DirectionalLight(SUN.color, 5.5);
@@ -111,12 +112,14 @@ export function buildLighting(ctx) {
 
   // ---------------------------------------------------------------- warm track spots
   const spotDefs = [
-    { pos: [-2.0, 3.16, .9], at: [-1.9, .95, .1], intensity: 20, angle: .6 },
-    { pos: [-.2, 3.16, .9], at: [-.3, .95, .1], intensity: 20, angle: .6 },
-    { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 18, angle: .55 },
+    { pos: [-2.0, 3.16, .9], at: [-1.9, .95, .1], intensity: 13, angle: .6 },
     { pos: [2.5, 3.16, -2.4], at: [2.5, 1.15, -3.7], intensity: 24, angle: .5 },
-    { pos: [-2.6, 3.16, -2.2], at: [-3.5, 1.6, -1.2], intensity: 16, angle: .55 }
-  ].slice(0, Math.max(2, quality.spots + 1));
+    { pos: [-2.4, 3.16, 3.9], at: [-3.0, 1.0, 4.2], intensity: 16, angle: .7 },
+    { pos: [-.2, 3.16, .9], at: [-.3, .95, .1], intensity: 13, angle: .6 },
+    { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 13, angle: .55 },
+    { pos: [-2.6, 3.16, -2.2], at: [-3.5, 1.6, -1.2], intensity: 16, angle: .55 },
+    { pos: [.4, 3.16, 3.9], at: [1.0, 1.0, 4.4], intensity: 14, angle: .8 }
+  ].slice(0, quality.spots + 3);
   const rails = [];
   spotDefs.forEach((def, i) => {
     const light = new THREE.SpotLight(0xffd29a, def.intensity, 11, def.angle, .75, 2);
@@ -162,7 +165,13 @@ export function buildLighting(ctx) {
   counterLamp.position.set(2.5, 1.9, -3.1);
   scene.add(counterLamp);
   ctx.lights.counter = counterLamp;
-  const fill = new THREE.HemisphereLight(0xfff0dc, 0x5a4a38, .09);
+  const fill = new THREE.HemisphereLight(0xfff0dc, 0x5a4a38, .12);
+  // warm daylight bounce near the storefront so the window side never goes black
+  const bounce = new THREE.PointLight(0xffe2b0, 14, 8, 2);
+  bounce.position.set(-1.2, 1.4, 3.9);
+  scene.add(bounce);
+  const bounce2 = bounce.clone(); bounce2.position.set(2.2, 1.4, 3.6); scene.add(bounce2);
+  ctx.lights.bounce = [bounce, bounce2];
   scene.add(fill);
   ctx.lights.fill = fill;
 
@@ -276,6 +285,7 @@ export function buildLighting(ctx) {
     for (const s of rails) s.intensity = s.userData.base * level;
     ctx.lights.counter.intensity = 1.5 * level;
     if (ctx.lights.lamp) ctx.lights.lamp.intensity = 1.4 * level;
+    if (ctx.lights.floorLamp) ctx.lights.floorLamp.intensity = 7 * level;
     m.tube.color.setRGB(.96, 1, .98).multiplyScalar(.25 + 3.4 * level);
     m.bulb.color.setRGB(1, .86, .62).multiplyScalar(.2 + 3.8 * level);
     const neonOn = state.neon;

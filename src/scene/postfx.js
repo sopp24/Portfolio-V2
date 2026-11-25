@@ -8,14 +8,14 @@ const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uTime: { value: 0 },
-    uGrain: { value: .045 },
-    uVignette: { value: .42 },
+    uGrain: { value: .055 },
+    uVignette: { value: .46 },
     uCA: { value: .0006 },
     uSat: { value: 1.08 },
     uLift: { value: .018 },
     uAspect: { value: 1 },
     uFade: { value: 1 },
-    uWarm: { value: .06 },
+    uWarm: { value: .085 },
     uResolution: { value: new THREE.Vector2(1, 1) }
   },
   vertexShader: /* glsl */`
@@ -81,7 +81,7 @@ export function createPostFX({ renderer, scene, camera, quality, width, height, 
     } catch (error) { console.warn("GTAO unavailable, continuing without it.", error); }
   }
   if (quality.bloom) {
-    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), .22, .55, 1.15);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), .22, .55, 1.05);
     composer.addPass(bloom);
     state.bloom = bloom;
   }

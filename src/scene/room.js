@@ -262,6 +262,35 @@ export function buildRoom(ctx) {
     bx += w + .15;
     out.texturesToDispose.push(tex);
   }
+  // parked car, lamp post and tree on the street (seen through the windows)
+  const carMat = new THREE.MeshStandardMaterial({ color: 0x2f7a78, roughness: .35, metalness: .3, envMapIntensity: 1.2 });
+  const creamMat = new THREE.MeshStandardMaterial({ color: 0xe6dcc0, roughness: .5 });
+  const darkGlass = new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .1, metalness: .6 });
+  const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: .9 });
+  const car = new THREE.Group();
+  car.position.set(-1.7, 0, zF + 5.6);
+  car.rotation.y = .04;
+  const add = (geo, mat, pos, rot) => { const mesh = new THREE.Mesh(geo, mat); mesh.position.set(...pos); if (rot) mesh.rotation.set(...rot); mesh.castShadow = true; mesh.receiveShadow = true; car.add(mesh); return mesh; };
+  add(woodBox(4.2, .62, 1.7, { bevel: .2, tile: 2 }), carMat, [0, .58, 0]);
+  add(woodBox(2.3, .55, 1.55, { bevel: .18, tile: 2 }), carMat, [-.1, 1.08, 0]);
+  add(woodBox(2.1, .4, 1.58, { bevel: .1, tile: 2 }), darkGlass, [-.1, 1.1, 0]);
+  add(woodBox(4.22, .06, 1.72, { bevel: .02, tile: 2 }), creamMat, [0, .45, 0]);
+  for (const x of [-1.4, 1.4]) for (const z of [-.85, .85]) add(new THREE.CylinderGeometry(.33, .33, .22, 24), tireMat, [x, .33, z], [Math.PI / 2, 0, 0]);
+  for (const z of [-.6, .6]) add(new THREE.SphereGeometry(.12, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(1, .92, .7).multiplyScalar(2.5) }), [2.1, .66, z]);
+  exterior.add(car);
+  const post = new THREE.Group();
+  post.position.set(3.4, 0, zF + 3.3);
+  const iron = new THREE.MeshStandardMaterial({ color: 0x1d2420, roughness: .5, metalness: .6 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.05, .08, 4.2, 10), iron); pole.position.y = 2.1; pole.castShadow = true; post.add(pole);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(.2, 14, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(1, .9, .65).multiplyScalar(2) })); lamp.position.y = 4.35; post.add(lamp);
+  exterior.add(post);
+  const tree = new THREE.Group();
+  tree.position.set(-5.2, 0, zF + 4.6);
+  tree.scale.setScalar(.7);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.12, .18, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 })); trunk.position.y = 1.3; trunk.castShadow = true; tree.add(trunk);
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x5f8a4a, roughness: .9 });
+  for (let i = 0; i < 6; i++) { const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(.9 + (i % 3) * .2, 1), leafMat); blob.position.set(Math.sin(i * 1.9) * .8, 3 + (i % 3) * .4, Math.cos(i * 2.3) * .8); blob.castShadow = true; tree.add(blob); }
+  exterior.add(tree);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(90, 24, 16), new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false, depthWrite: false, color: new THREE.Color(1.6, 1.6, 1.6) }));
   sky.renderOrder = -10;
   sky.position.set(0, 0, 0);

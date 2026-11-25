@@ -12,7 +12,7 @@ export const TIERS = {
   },
   low: {
     id: "low", textureSize: 512, coverSize: 512, shadowMap: 1024, dprCap: 1.25, msaa: 0,
-    ao: false, bloom: false, grade: true, dof: false, shafts: true, dust: 90, spots: 2, anisotropy: 2, spotShadows: 0
+    ao: false, bloom: false, grade: true, dof: false, shafts: true, dust: 90, spots: 1, anisotropy: 2, spotShadows: 0
   }
 };
 

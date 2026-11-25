@@ -573,6 +573,23 @@ export function buildClutter(ctx) {
   mesh(woodBox(.36, .27, .015, { bevel: .003 }), plastic, { position: [0, .135, -.165], parent: crate });
   for (const s of [-1, 1]) mesh(woodBox(.015, .27, .33, { bevel: .003 }), plastic, { position: [s * .18, .135, 0], parent: crate });
   ctx.scene.add(crate);
+  // low bench with record crates + floor lamp on the street-side left wall
+  B.box(.5, .08, 1.7, m.oak, [-3.38, .46, 2.55], [0, 0, 0], { bevel: .01 });
+  for (const dz of [-.75, .75]) for (const dx of [-.18, .18]) B.box(.06, .42, .06, m.oak, [-3.38 + dx, .21, 2.55 + dz], [0, 0, 0], { bevel: .005, grain: "y" });
+  B.box(.4, .3, .5, m.cardboard, [-3.38, .65, 2.1], [0, .1, 0], { bevel: .004, tile: .5 });
+  B.box(.36, .26, .44, m.cardboard, [-3.36, .63, 2.9], [0, -.15, 0], { bevel: .004, tile: .5 });
+  const fl = new THREE.Group();
+  fl.position.set(-3.25, 0, 3.95);
+  mesh(new THREE.CylinderGeometry(.14, .16, .03, 20), m.blackMetal, { position: [0, .015, 0], parent: fl });
+  mesh(new THREE.CylinderGeometry(.012, .012, 1.55, 8), m.brass, { position: [0, .8, 0], parent: fl });
+  const shadeMat = new THREE.MeshStandardMaterial({ color: 0xf1dcae, roughness: .9, side: THREE.DoubleSide, emissive: 0xffc878, emissiveIntensity: .9 });
+  ctx.owned.push(shadeMat);
+  mesh(new THREE.CylinderGeometry(.16, .26, .3, 24, 1, true), shadeMat, { position: [0, 1.62, 0], parent: fl, cast: false });
+  ctx.scene.add(fl);
+  ctx.lights.floorLamp = new THREE.PointLight(0xffc27a, 2.2, 5.5, 2);
+  ctx.lights.floorLamp.position.set(-3.1, 1.6, 3.95);
+  ctx.scene.add(ctx.lights.floorLamp);
+  buildPlant(ctx, -3.3, 0, 1.25, 1.5, 4);
   // wall clock above the door (inside)
   const clock = new THREE.Group();
   clock.position.set(1.25, 2.92, ROOM.zFront - .12);
