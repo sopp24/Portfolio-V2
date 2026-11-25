@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#201c17">
+  <meta name="assistant-endpoint" content="">
   <meta name="description" content="Adam Soppelsa — Projects Store. Un portfolio immersif inspiré d’un disquaire indépendant des années 90.">
   <meta property="og:title" content="Adam Soppelsa — Projects Store">
   <meta property="og:description" content="Take your time. Browse the collection. Find something worth remembering.">
@@ -97,6 +98,9 @@
         <a id="application-repo-link" href="#" target="_blank" rel="noopener noreferrer">DÉPÔT GITHUB ↗</a>
         <button id="application-return-button" class="record-return" type="button">RETOUR AU RACK</button>
       </div>
+      <div id="shopkeeper-actions" class="record-actions shopkeeper-actions" hidden>
+        <button id="shopkeeper-talk-button" type="button">PARLER AU DISQUAIRE ↗</button>
+      </div>
     </aside>
 
     <section id="mode-2d" class="mode-2d" hidden>
@@ -147,6 +151,28 @@
     <dialog id="project-dialog" class="project-dialog">
       <button id="dialog-close" class="dialog-close" type="button" aria-label="Close project details">×</button>
       <div id="project-dialog-content"></div>
+    </dialog>
+    <dialog id="assistant-dialog" class="assistant-dialog" aria-labelledby="assistant-title">
+      <div class="assistant-header">
+        <div>
+          <p class="assistant-kicker">SIDE A / COUNTER SERVICE</p>
+          <h2 id="assistant-title">PARLONS MUSIQUE ET PROJETS.</h2>
+          <p id="assistant-status" class="assistant-status">MODE CATALOGUE · IA NON CONNECTÉE</p>
+        </div>
+        <button id="assistant-close" class="dialog-close" type="button" aria-label="Close assistant">×</button>
+      </div>
+      <div id="assistant-messages" class="assistant-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <div class="assistant-prompts" aria-label="Suggested questions">
+        <button type="button" data-assistant-prompt data-question="Présente-moi le parcours et les domaines d’Adam.">PRÉSENTE-MOI ADAM</button>
+        <button type="button" data-assistant-prompt data-question="Je cherche un projet web ou une application à découvrir.">UN PROJET WEB</button>
+        <button type="button" data-assistant-prompt data-question="Quelles applications puis-je tester ?">LES APPLICATIONS</button>
+      </div>
+      <form id="assistant-form" class="assistant-form">
+        <label class="visually-hidden" for="assistant-input">Message</label>
+        <input id="assistant-input" name="message" type="text" maxlength="1200" autocomplete="off" placeholder="Pose ta question au disquaire…" required>
+        <button id="assistant-send" type="submit">ENVOYER ↗</button>
+      </form>
+      <p class="assistant-footnote">Les réponses s’appuient sur les informations publiées dans le portfolio. Évite de saisir des données personnelles.</p>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </main>
