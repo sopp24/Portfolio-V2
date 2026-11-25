@@ -64,6 +64,14 @@ const COPY = {
     appHoverPrompt: "REGARDER PUIS CLIQUER POUR CONSULTER",
     appSelectedPrompt: "APPLICATION SÉLECTIONNÉE · LIENS EXTERNES",
     returnApp: "RETOUR AU RACK",
+    exitStore: "QUITTER LA BOUTIQUE",
+    collectibleName: "BILLET D’OR",
+    collectiblePrompt: "UN BILLET RARE EST CACHÉ SUR UN RAYON… CLIQUE POUR LE RÉCUPÉRER",
+    collectibleButton: "RÉCUPÉRER LE BILLET D’OR ↗",
+    collectibleTitle: "LE BILLET D’OR EST À TOI.",
+    collectibleText: "Tu as trouvé le Golden Pass de SIDE A. Une pièce cachée du magasin, à garder comme souvenir de ta visite.",
+    collectibleFoundToast: "GOLDEN PASS DÉCOUVERT — 1 / 1",
+    leavingToast: "À BIENTÔT CHEZ SIDE A.",
     soundOn: "SON : ON",
     soundOff: "SON : OFF",
     soundUnavailable: "AUDIO INDISPONIBLE",
@@ -151,6 +159,14 @@ const COPY = {
     appHoverPrompt: "LOOK AT THE CARD, THEN CLICK TO EXPLORE",
     appSelectedPrompt: "APPLICATION SELECTED · EXTERNAL LINKS",
     returnApp: "BACK TO THE RACK",
+    exitStore: "LEAVE THE STORE",
+    collectibleName: "GOLDEN PASS",
+    collectiblePrompt: "A RARE TICKET IS HIDDEN ON A SHELF… CLICK TO COLLECT IT",
+    collectibleButton: "COLLECT THE GOLDEN PASS ↗",
+    collectibleTitle: "THE GOLDEN PASS IS YOURS.",
+    collectibleText: "You found the SIDE A Golden Pass. A hidden piece of the store to keep as a souvenir of your visit.",
+    collectibleFoundToast: "GOLDEN PASS FOUND — 1 / 1",
+    leavingToast: "SEE YOU AGAIN AT SIDE A.",
     soundOn: "SOUND: ON",
     soundOff: "SOUND: OFF",
     soundUnavailable: "AUDIO UNAVAILABLE",
@@ -197,6 +213,7 @@ let isOpen = false;
 let directoryVisible = false;
 let webglAvailable = false;
 let storeAudio = null;
+let isTransitioning = false;
 
 function safeStorageGet(key) {
   try { return localStorage.getItem(key); }
@@ -225,7 +242,8 @@ function renderRecordPanel(state = recordPanelState) {
   const isShopkeeper = mode === "shopkeeper-hover";
   const isEasterEgg = mode === "easter-hover";
   const isPoster = mode === "poster-hover";
-  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper || isEasterEgg || isPoster;
+  const isCollectible = mode === "collectible-hover";
+  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper || isEasterEgg || isPoster || isCollectible;
   const isSelected = mode === "selected";
   const isReturning = mode === "returning";
   const visible = isOpen && !directoryVisible;
@@ -247,26 +265,30 @@ function renderRecordPanel(state = recordPanelState) {
   const project = recordPanelState.project;
   const application = recordPanelState.application;
   const poster = recordPanelState.poster;
-  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isEasterEgg ? "SIDE A / HIDDEN PRESSING" : isPoster ? copy.posterEyebrow : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
+  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isEasterEgg ? "SIDE A / HIDDEN PRESSING" : isPoster ? copy.posterEyebrow : isCollectible ? "SIDE A / RARE FIND" : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
   $("record-title").textContent = isShopkeeper
     ? copy.shopkeeperName
     : isEasterEgg ? copy.easterName
       : isPoster ? (poster?.title?.[language] || "SIDE A")
-        : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
+        : isCollectible ? copy.collectibleName
+          : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
   $("record-summary").textContent = isShopkeeper
     ? copy.shopkeeperPrompt
     : isEasterEgg ? copy.easterPrompt
       : isPoster ? copy.posterPrompt
-        : isApplication
-          ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
-          : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
+        : isCollectible ? copy.collectiblePrompt
+          : isApplication
+            ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
+            : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
 
   $("record-actions").hidden = !isSelected;
   $("application-actions").hidden = mode !== "application-selected";
   $("shopkeeper-actions").hidden = !isShopkeeper;
   $("easter-actions").hidden = !isEasterEgg;
+  $("collectible-actions").hidden = !isCollectible;
   $("shopkeeper-talk-button").textContent = copy.talkToShopkeeper;
   $("easter-discover-button").textContent = copy.easterButton;
+  $("collectible-discover-button").textContent = copy.collectibleButton;
 
   $("record-flip-button").textContent = recordPanelState.isFlipped ? copy.showFront : copy.flip;
   $("record-open-button").textContent = recordPanelState.isOpen ? copy.closeSleeve : copy.openSleeve;
@@ -471,6 +493,7 @@ function setLanguage(nextLanguage) {
   $("header-eyebrow").textContent = copy.headerEyebrow;
   $("recenter-button").textContent = copy.recenter;
   $("browse-2d-button").textContent = copy.browse2d;
+  $("exit-store-button").textContent = copy.exitStore;
   $("header-close").textContent = copy.close;
   $("gyro-button").textContent = cameraController?.isGyroscopeEnabled() ? copy.gyroOff : copy.gyroOn;
   $("directory-back").textContent = copy.backToStore;
@@ -498,7 +521,7 @@ function setLanguage(nextLanguage) {
 }
 
 function enterStore(direct = false) {
-  if (isOpen) return;
+  if (isOpen || isTransitioning) return;
   isOpen = true;
   directoryVisible = false;
   $("mode-2d").hidden = true;
@@ -506,8 +529,10 @@ function enterStore(direct = false) {
   $("mobile-menu").hidden = false;
   if (store) {
     store.openDoors();
+    store.greetShopkeeper?.();
     recordInteraction?.setActive(true);
     if (direct) cameraController?.reset();
+    storeAudio?.playCue("arrival");
   }
   const status = $("intro-status");
   status.classList.add("is-open");
@@ -530,6 +555,39 @@ function enterStore(direct = false) {
       renderRecordPanel(recordPanelState);
     }, 1120);
   }
+}
+
+function exitStore() {
+  if (!isOpen || directoryVisible || isTransitioning) return;
+  isTransitioning = true;
+
+  // Close all visitor-facing panels before the entrance doors begin to swing shut.
+  if ($("assistant-dialog").open) $("assistant-dialog").close();
+  if ($("project-dialog").open) $("project-dialog").close();
+  if ($("listening-dialog").open) closeListeningRoom();
+  recordInteraction?.setActive(false);
+  renderRecordPanel({ mode: "none" });
+  $("control-hint").hidden = true;
+  $("site-header").hidden = true;
+  $("mobile-menu").hidden = true;
+
+  cameraController?.disableGyroscope();
+  cameraController?.reset();
+  store?.closeDoors?.();
+  storeAudio?.playCue("departure");
+
+  window.setTimeout(() => {
+    isOpen = false;
+    const status = $("intro-status");
+    status.classList.remove("is-open");
+    status.replaceChildren(makeNode("span"), document.createTextNode(" " + COPY[language].closed));
+    $("intro").hidden = false;
+    $("intro").classList.remove("is-leaving");
+    $("intro").classList.add("is-arriving");
+    showToast(COPY[language].leavingToast);
+    isTransitioning = false;
+    window.setTimeout(() => $("intro").classList.remove("is-arriving"), 900);
+  }, 760);
 }
 
 function showDirectory() {
@@ -769,6 +827,26 @@ function closeListeningRoom() {
   if ($("listening-dialog").open) $("listening-dialog").close();
 }
 
+function openGoldenPassDetails() {
+  const dialog = $("project-dialog");
+  const content = $("project-dialog-content");
+  content.replaceChildren(
+    makeNode("p", "dialog-eyebrow", "SIDE A / RARE FIND"),
+    makeNode("h2", "dialog-title", COPY[language].collectibleTitle),
+    makeNode("p", "dialog-summary", COPY[language].collectibleText)
+  );
+  dialog.showModal();
+}
+
+function discoverGoldenPass() {
+  safeStorageSet("adam-projects-store.golden-pass-found", "1");
+  recordInteraction?.markCollectibleFound();
+  store?.markGoldenPassFound?.();
+  storeAudio?.playCue("discovery");
+  showToast(COPY[language].collectibleFoundToast);
+  openGoldenPassDetails();
+}
+
 function revealEasterEgg() {
   showToast(COPY[language].easterToast);
   storeAudio?.playCue("easter");
@@ -797,6 +875,8 @@ function bindInterface() {
   $("easter-discover-button").addEventListener("click", revealEasterEgg);
   $("sound-button").addEventListener("click", toggleStoreSound);
   $("listening-button").addEventListener("click", openListeningRoom);
+  $("exit-store-button").addEventListener("click", exitStore);
+  $("collectible-discover-button").addEventListener("click", () => discoverGoldenPass(store?.goldenPass));
   $("listening-close").addEventListener("click", closeListeningRoom);
   $("listening-dialog").addEventListener("click", event => {
     if (event.target === $("listening-dialog")) closeListeningRoom();
@@ -863,6 +943,7 @@ function boot() {
 
   try {
     store = createStoreScene($("world"), PROJECTS, CATEGORIES, APPLICATIONS);
+    if (safeStorageGet("adam-projects-store.golden-pass-found")) store.markGoldenPassFound();
     cameraController = createCameraController(store.camera, $("world"));
     recordInteraction = createRecordInteraction({
       scene: store.scene,
@@ -873,11 +954,13 @@ function boot() {
       posters: store.posterRoots,
       shopkeeper: store.shopkeeper,
       easterEgg: store.easterEgg,
+      collectible: safeStorageGet("adam-projects-store.golden-pass-found") ? null : store.goldenPass,
       onPanelChange: renderRecordPanel,
       onOpenProject: openProjectDetails,
       onOpenPoster: openPosterDetails,
       onOpenAssistant: openAssistant,
       onOpenEasterEgg: revealEasterEgg,
+      onFoundCollectible: discoverGoldenPass,
       onSound: kind => storeAudio?.playCue(kind)
     });
     webglAvailable = true;
