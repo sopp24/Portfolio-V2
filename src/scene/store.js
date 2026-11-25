@@ -253,6 +253,38 @@ function createPosterTexture(index, title) {
   return texture;
 }
 
+function createInteractivePoster(scene, x, y, z, rotationY, title, index, materials, posterRoots) {
+  const root = new THREE.Group();
+  root.position.set(x, y, z);
+  root.rotation.y = rotationY;
+  root.userData.isPoster = true;
+  root.userData.hovered = false;
+  root.userData.poster = {
+    title: { fr: title, en: title },
+    description: {
+      fr: "Une affiche décorative conçue pour évoquer l’univers des petits concerts et des disquaires indépendants des années 1990. Il s’agit d’un élément fictif du décor, pas de l’affiche d’un événement réel.",
+      en: "A decorative print designed to evoke small live shows and independent record shops of the 1990s. This is fictional store artwork, not a poster for a real event."
+    }
+  };
+  const image = new THREE.Mesh(
+    new THREE.PlaneGeometry(.82, 1.22),
+    new THREE.MeshBasicMaterial({ map: createPosterTexture(index, title), side: THREE.DoubleSide })
+  );
+  image.position.z = .012;
+  image.castShadow = false;
+  image.receiveShadow = false;
+  root.add(image);
+  const frameDepth = .055;
+  const frameZ = .025;
+  addBox(root, [.96, .065, frameDepth], [0, .665, frameZ], materials.wood, { castShadow: false, receiveShadow: false });
+  addBox(root, [.96, .065, frameDepth], [0, -.665, frameZ], materials.wood, { castShadow: false, receiveShadow: false });
+  addBox(root, [.065, 1.30, frameDepth], [-.447, 0, frameZ], materials.wood, { castShadow: false, receiveShadow: false });
+  addBox(root, [.065, 1.30, frameDepth], [.447, 0, frameZ], materials.wood, { castShadow: false, receiveShadow: false });
+  scene.add(root);
+  posterRoots.push(root);
+  return root;
+}
+
 function addWallCover(scene, x, y, z, rotationY, title, index, width = .58, height = .70) {
   const key = width.toFixed(3) + "x" + height.toFixed(3);
   let geometry = wallCoverGeometryCache.get(key);
@@ -535,6 +567,39 @@ function createFrontWindow(scene, materials) {
   windowPanel.position.set(0, windowY, z - .10);
   scene.add(windowPanel);
 
+  // Stylized daylight streaks: one transparent texture instead of live reflections.
+  const reflectionTexture = makeTexture(512, 256, (ctx) => {
+    ctx.clearRect(0, 0, 512, 256);
+    const sheen = ctx.createLinearGradient(0, 0, 512, 0);
+    sheen.addColorStop(0, "rgba(255,255,255,0)");
+    sheen.addColorStop(.18, "rgba(255,249,226,.04)");
+    sheen.addColorStop(.31, "rgba(255,255,255,.22)");
+    sheen.addColorStop(.39, "rgba(255,255,255,0)");
+    sheen.addColorStop(.68, "rgba(228,240,237,.08)");
+    sheen.addColorStop(.82, "rgba(255,255,255,.16)");
+    sheen.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, 512, 256);
+    ctx.save();
+    ctx.globalAlpha = .22;
+    ctx.translate(110, 0);
+    ctx.rotate(-.12);
+    ctx.fillStyle = "rgba(255,255,255,.15)";
+    ctx.fillRect(95, -40, 22, 360);
+    ctx.fillRect(145, -40, 4, 360);
+    ctx.restore();
+  });
+  const reflectionMaterial = new THREE.MeshBasicMaterial({
+    map: reflectionTexture, transparent: true, opacity: .46,
+    depthWrite: false, side: THREE.DoubleSide, toneMapped: false
+  });
+  const reflection = new THREE.Mesh(new THREE.PlaneGeometry(11.82, 3.18), reflectionMaterial);
+  reflection.position.set(0, windowY, z - .108);
+  reflection.renderOrder = 2;
+  reflection.castShadow = false;
+  reflection.receiveShadow = false;
+  scene.add(reflection);
+
   // Double entrance doors with hinged pivots. They open during the intro transition.
   const leftPivot = new THREE.Group();
   leftPivot.position.set(-.95, .10, z - .17);
@@ -556,7 +621,7 @@ function createFrontWindow(scene, materials) {
   addBox(scene, [.08, .42, .10], [-.06, 2.15, z - .08], materials.metal);
   const openLabel = createSign(scene, "SIDE A  /  OPEN", [0, 4.03, z - .22], 2.65, .43);
   openLabel.rotation.y = Math.PI;
-  return { leftPivot, rightPivot, openLabel, open: false };
+  return { leftPivot, rightPivot, openLabel, reflection, reflectionMaterial, open: false };
 }
 
 function createCounterAndListeningCorner(scene, materials) {
@@ -653,7 +718,7 @@ function createCounterAndListeningCorner(scene, materials) {
     speaker.add(center);
   }
   scene.add(speaker);
-  return { platter: record, easterEgg };
+  return { platter: record, arm, easterEgg };
 }
 
 function createShopkeeper(scene, materials) {
@@ -835,18 +900,9 @@ export function createStoreScene(canvas, projects, categories, applications) {
     const project = projects[i % projects.length];
     addWallCover(scene, -4.6 + i * 1.53, 2.25 + (i % 2) * .08, -7.36, 0, project.title.fr, i, .86, 1.05);
   }
-  const posterLeft = new THREE.Mesh(
-    new THREE.PlaneGeometry(.82, 1.22),
-    new THREE.MeshBasicMaterial({ map: createPosterTexture(14, "LIVE / 1996"), side: THREE.DoubleSide })
-  );
-  posterLeft.position.set(-5.2, 3.15, -7.34);
-  scene.add(posterLeft);
-  const posterRight = new THREE.Mesh(
-    new THREE.PlaneGeometry(.82, 1.22),
-    new THREE.MeshBasicMaterial({ map: createPosterTexture(18, "LOCAL SOUNDS"), side: THREE.DoubleSide })
-  );
-  posterRight.position.set(5.2, 3.15, -7.34);
-  scene.add(posterRight);
+  const posterRoots = [];
+  createInteractivePoster(scene, -5.2, 3.15, -7.34, 0, "LIVE / 1996", 14, materials, posterRoots);
+  createInteractivePoster(scene, 5.2, 3.15, -7.34, 0, "LOCAL SOUNDS", 18, materials, posterRoots);
 
   // Six category bins: each physical record appears once, while multi-category tags remain available in the data.
   const recordRoots = [];
@@ -904,6 +960,14 @@ export function createStoreScene(canvas, projects, categories, applications) {
     doors.leftPivot.rotation.y = -swing;
     doors.rightPivot.rotation.y = swing;
     listening.platter.rotation.y = elapsed * .65;
+    listening.arm.rotation.y = .018 + Math.sin(elapsed * .085) * .012;
+    doors.reflection.position.x = Math.sin(elapsed * .13) * .10;
+    doors.reflectionMaterial.opacity = .44 + Math.sin(elapsed * .17) * .025;
+
+    for (const poster of posterRoots) {
+      const targetScale = poster.userData.hovered ? 1.025 : 1;
+      poster.scale.setScalar(THREE.MathUtils.damp(poster.scale.x, targetScale, 7, delta));
+    }
 
     // A quiet idle cycle: breathing, small head turns and relaxed arm movement.
     const motion = shopkeeper.userData.motion;
@@ -934,7 +998,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   }
 
   return {
-    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, openDoors, closeDoors, greetShopkeeper, update, resize,
+    scene, camera, renderer, materials, recordRoots, applicationRoots, posterRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, openDoors, closeDoors, greetShopkeeper, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
