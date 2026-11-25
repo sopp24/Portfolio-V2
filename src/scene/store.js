@@ -272,46 +272,98 @@ function addWallCover(scene, x, y, z, rotationY, title, index, width = .58, heig
   return art;
 }
 
+function backSleeveTexture(project, index) {
+  const title = String(project.title.fr || "UNTITLED").toUpperCase();
+  const summary = String(project.short.fr || "");
+  return makeTexture(512, 512, (ctx) => {
+    ctx.fillStyle = "#dfd4c0"; ctx.fillRect(0, 0, 512, 512);
+    ctx.fillStyle = "#28352e"; ctx.fillRect(0, 0, 512, 70);
+    ctx.fillStyle = "#e8d8b7"; ctx.font = "bold 18px monospace"; ctx.textAlign = "left";
+    ctx.fillText("SIDE B  /  LINER NOTES", 32, 43);
+    ctx.fillStyle = "#4a4338"; ctx.font = "bold 26px Arial";
+    const words = title.split(/\s+/); let line = "", lines = [];
+    for (const word of words) {
+      const next = line ? line + " " + word : word;
+      if (ctx.measureText(next).width > 444 && line) { lines.push(line); line = word; }
+      else line = next;
+    }
+    if (line) lines.push(line);
+    lines.slice(0, 3).forEach((value, i) => ctx.fillText(value, 32, 126 + i * 32));
+    ctx.fillStyle = "#716552"; ctx.fillRect(32, 160, 448, 2);
+    ctx.fillStyle = "#544b3e"; ctx.font = "18px Arial";
+    const text = summary.length > 225 ? summary.slice(0, 222) + "…" : summary;
+    const tokens = text.split(/\s+/); let paragraph = "", row = 0;
+    for (const token of tokens) {
+      const next = paragraph ? paragraph + " " + token : token;
+      if (ctx.measureText(next).width > 440 && paragraph) {
+        ctx.fillText(paragraph, 32, 205 + row * 27); row++; paragraph = token;
+      } else paragraph = next;
+      if (row >= 5) break;
+    }
+    if (paragraph && row < 6) ctx.fillText(paragraph, 32, 205 + row * 27);
+    ctx.fillStyle = "#897b66"; ctx.font = "bold 14px monospace";
+    ctx.fillText("CATALOGUE NO. " + String(index + 1).padStart(2, "0"), 32, 458);
+    ctx.fillText("INDEPENDENT PRESSING  /  SIDE A", 32, 482);
+    ctx.strokeStyle = "rgba(53,44,32,.45)"; ctx.lineWidth = 2; ctx.strokeRect(14, 14, 484, 484);
+  });
+}
+
 function createRecord(project, index, position, materials) {
   const group = new THREE.Group();
   group.position.set(...position);
-  group.rotation.y = (index % 2 ? 1 : -1) * (.025 + (index % 3) * .018);
+  group.rotation.y = Math.PI + (index % 2 ? .018 : -.018);
   group.userData.projectId = project.id;
+  group.userData.project = project;
   group.userData.provisionalArtwork = true;
+  group.userData.isRecord = true;
 
-  const sleeve = new THREE.Mesh(new THREE.BoxGeometry(.65, .72, .045), materials.cardboard);
-  sleeve.castShadow = true;
-  group.add(sleeve);
+  const sleeveBody = new THREE.Mesh(new THREE.BoxGeometry(.65, .72, .045), materials.cardboard);
+  sleeveBody.castShadow = true; sleeveBody.receiveShadow = true; group.add(sleeveBody);
 
+  const back = new THREE.Mesh(
+    new THREE.PlaneGeometry(.626, .696),
+    new THREE.MeshBasicMaterial({ map: backSleeveTexture(project, index), side: THREE.DoubleSide })
+  );
+  back.position.z = -.024; back.rotation.y = Math.PI; group.add(back);
+
+  const flap = new THREE.Group();
+  flap.position.set(-.325, 0, .025); group.add(flap);
+  const flapBoard = new THREE.Mesh(new THREE.BoxGeometry(.65, .72, .014), materials.cardboard);
+  flapBoard.position.x = .325; flapBoard.castShadow = true; flap.add(flapBoard);
   const front = new THREE.Mesh(
     new THREE.PlaneGeometry(.626, .696),
     new THREE.MeshBasicMaterial({ map: sleeveTexture(project, index), side: THREE.DoubleSide })
   );
-  front.position.z = .024;
-  group.add(front);
+  front.position.set(.325, 0, .009); flap.add(front);
 
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(.285, .285, .012, 32), materials.vinyl);
-  disc.rotation.x = Math.PI / 2;
-  disc.position.set(.20, .12, .039);
-  disc.castShadow = false;
-  group.add(disc);
-
-  const label = new THREE.Mesh(new THREE.CircleGeometry(.075, 24), materials.label);
-  label.position.set(.20, .12, .046);
-  group.add(label);
-
+  const discAssembly = new THREE.Group();
+  discAssembly.position.set(.16, .02, .055); group.add(discAssembly);
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(.285, .285, .012, 40), materials.vinyl);
+  disc.rotation.x = Math.PI / 2; disc.castShadow = false; disc.receiveShadow = true; discAssembly.add(disc);
+  for (const radius of [.17, .205, .24]) {
+    const groove = new THREE.Mesh(new THREE.TorusGeometry(radius, .0018, 3, 40), materials.rim);
+    groove.position.z = .0072; discAssembly.add(groove);
+  }
+  const label = new THREE.Mesh(new THREE.CircleGeometry(.075, 28), materials.label);
+  label.position.z = .0075; discAssembly.add(label);
+  const labelText = new THREE.Mesh(
+    new THREE.CircleGeometry(.055, 28),
+    new THREE.MeshBasicMaterial({ color: PROJECT_COLORS[index % PROJECT_COLORS.length][0] })
+  );
+  labelText.position.z = .008; discAssembly.add(labelText);
   const spindle = new THREE.Mesh(new THREE.CircleGeometry(.012, 12), materials.spindle);
-  spindle.position.set(.20, .12, .048);
-  group.add(spindle);
+  spindle.position.z = .0085; discAssembly.add(spindle);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.285, .004, 4, 40), materials.rim);
+  rim.position.z = .007; discAssembly.add(rim);
 
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(.285, .004, 4, 32), materials.rim);
-  rim.position.set(.20, .12, .047);
-  group.add(rim);
-
+  group.userData.flap = flap;
+  group.userData.discAssembly = discAssembly;
+  group.userData.discHome = discAssembly.position.clone();
+  group.userData.isOpen = false;
+  group.userData.isFlipped = false;
   return group;
 }
-
-function createRecordCrate(scene, projects, materials, x, z, offset) {
+function createRecordCrate(scene, projects, materials, x, z, offset, recordRoots) {
   const group = new THREE.Group();
   group.position.set(x, 0, z);
   addBox(group, [2.56, .15, 1.36], [0, .66, 0], materials.wood);
@@ -335,6 +387,11 @@ function createRecordCrate(scene, projects, materials, x, z, offset) {
     const project = projects[(offset + i) % projects.length];
     const record = createRecord(project, offset + i, [-.86 + i * .43, 1.38 + (i % 2) * .04, -.10 + (i % 2) * .10], materials);
     group.add(record);
+    record.userData.homeParent = group;
+    record.userData.homePosition = record.position.clone();
+    record.userData.homeQuaternion = record.quaternion.clone();
+    record.userData.homeScale = record.scale.clone();
+    recordRoots.push(record);
   }
   scene.add(group);
   return group;
@@ -642,8 +699,9 @@ export function createStoreScene(canvas, projects) {
   scene.add(posterRight);
 
   // Two central wooden listening bins form the main project collection.
-  createRecordCrate(scene, projects, materials, -1.45, .88, 0);
-  createRecordCrate(scene, projects, materials, 1.45, .88, 5);
+  const recordRoots = [];
+  createRecordCrate(scene, projects, materials, -1.45, .88, 0, recordRoots);
+  createRecordCrate(scene, projects, materials, 1.45, 5.88, 5, recordRoots);
 
   // Checkout, vintage register, turntable and listening corner.
   const listening = createCounterAndListeningCorner(scene, materials);
@@ -685,7 +743,7 @@ export function createStoreScene(canvas, projects) {
   }
 
   return {
-    scene, camera, renderer, materials, openDoors, closeDoors, update, resize,
+    scene, camera, renderer, materials, recordRoots, openDoors, closeDoors, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
