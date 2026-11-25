@@ -4,6 +4,7 @@ import { PROJECTS, CATEGORIES } from "./data/projects.js";
 import { APPLICATIONS } from "./data/applications.js";
 import { createStoreScene } from "./scene/store.js";
 import { createCameraController } from "./controls/camera.js";
+import { createRecordInteraction } from "./scene/record-interaction.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -47,7 +48,16 @@ const COPY = {
     gyroError: "Gyroscope indisponible ou autorisation refusée.",
     introReturn: "Content de te revoir. La collection t’attend.",
     webglError: "La 3D n’est pas disponible sur cet appareil. La collection reste consultable en 2D.",
-    projectFallback: "Les pochettes sont des visuels provisoires. Les créations définitives seront ajoutées ensuite."
+    projectFallback: "Les pochettes sont des visuels provisoires. Les créations définitives seront ajoutées ensuite.",
+    hoverPrompt: "REGARDER PUIS CLIQUER POUR SORTIR LE VINYLE",
+    selectedPrompt: "VINYLE EXTRAIT · MANIPULEZ LA POCHETTE",
+    returningPrompt: "REMISE EN RAYON EN COURS…",
+    flip: "VOIR LE VERSO",
+    showFront: "REVENIR AU RECTO",
+    openSleeve: "OUVRIR LA POCHETTE",
+    closeSleeve: "REFERMER LA POCHETTE",
+    details: "FICHE DU PROJET",
+    returnRecord: "REMETTRE DANS LE BAC"
   },
   en: {
     closed: "CLOSED",
@@ -88,13 +98,24 @@ const COPY = {
     gyroError: "Gyroscope unavailable or permission denied.",
     introReturn: "Welcome back. The collection is waiting.",
     webglError: "3D is not available on this device. You can still browse the collection in 2D.",
-    projectFallback: "Sleeve artwork is provisional. Final project visuals will be added later."
+    projectFallback: "Sleeve artwork is provisional. Final project visuals will be added later.",
+    hoverPrompt: "LOOK AT A RECORD, THEN CLICK TO PULL IT OUT",
+    selectedPrompt: "RECORD EXTRACTED · HANDLE THE SLEEVE",
+    returningPrompt: "RETURNING TO THE CRATE…",
+    flip: "VIEW SIDE B",
+    showFront: "RETURN TO SIDE A",
+    openSleeve: "OPEN THE SLEEVE",
+    closeSleeve: "CLOSE THE SLEEVE",
+    details: "PROJECT DETAILS",
+    returnRecord: "RETURN TO THE CRATE"
   }
 };
 
 let language = "fr";
 let store = null;
 let cameraController = null;
+let recordInteraction = null;
+let recordPanelState = { mode: "none" };
 let clock = null;
 let elapsed = 0;
 let isOpen = false;
@@ -115,6 +136,43 @@ function makeNode(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined && text !== null) node.textContent = text;
   return node;
+}
+
+function renderRecordPanel(state = recordPanelState) {
+  recordPanelState = state || { mode: "none" };
+  const panel = $("record-panel");
+  const reticle = $("aim-reticle");
+  const hint = $("control-hint");
+  const copy = COPY[language];
+  const mode = recordPanelState.mode || "none";
+
+  const visible = isOpen && !directoryVisible;
+  reticle.hidden = !visible || mode === "selected" || mode === "returning";
+  reticle.classList.toggle("is-target", mode === "hover");
+
+  if (!visible || mode === "none") {
+    panel.hidden = true;
+    hint.hidden = !visible;
+    return;
+  }
+
+  panel.hidden = false;
+  panel.classList.toggle("is-hovering", mode === "hover");
+  panel.classList.toggle("is-returning", mode === "returning");
+  const project = recordPanelState.project;
+  $("record-title").textContent = project?.title?.[language] || "SIDE A";
+  $("record-summary").textContent = mode === "hover"
+    ? copy.hoverPrompt
+    : mode === "returning"
+      ? copy.returningPrompt
+      : copy.selectedPrompt;
+  $("record-actions").hidden = mode !== "selected";
+  $("record-flip-button").textContent = recordPanelState.isFlipped ? copy.showFront : copy.flip;
+  $("record-open-button").textContent = recordPanelState.isOpen ? copy.closeSleeve : copy.openSleeve;
+  $("record-open-button").disabled = !!recordPanelState.isFlipped;
+  $("record-details-button").hidden = !recordPanelState.isOpen;
+  $("record-return-button").textContent = copy.returnRecord;
+  hint.hidden = true;
 }
 
 function openProjectDetails(project) {
@@ -251,6 +309,7 @@ function setLanguage(nextLanguage) {
   if ($("fallback-note")) {
     $("fallback-note").textContent = copy.webglError;
   }
+  renderRecordPanel(recordPanelState);
   if (directoryVisible) renderDirectory();
 }
 
@@ -263,6 +322,7 @@ function enterStore(direct = false) {
   $("mobile-menu").hidden = false;
   if (store) {
     store.openDoors();
+    recordInteraction?.setActive(true);
     if (direct) cameraController?.reset();
   }
   const status = $("intro-status");
@@ -288,6 +348,8 @@ function enterStore(direct = false) {
 
 function showDirectory() {
   directoryVisible = true;
+  recordInteraction?.setActive(false);
+  renderRecordPanel({ mode: "none" });
   $("intro").hidden = true;
   $("intro").classList.remove("is-leaving");
   $("site-header").hidden = true;
@@ -305,7 +367,9 @@ function returnToStore() {
     return;
   }
   $("mobile-menu").hidden = false;
+  recordInteraction?.setActive(true);
   $("control-hint").hidden = false;
+  renderRecordPanel(recordPanelState);
 }
 
 function toggleHeader(force) {
@@ -353,6 +417,10 @@ function bindInterface() {
   $("header-close").addEventListener("click", () => toggleHeader(false));
   $("mobile-menu").addEventListener("click", () => toggleHeader(true));
   $("dialog-close").addEventListener("click", () => $("project-dialog").close());
+  $("record-flip-button").addEventListener("click", () => recordInteraction?.flipSelected());
+  $("record-open-button").addEventListener("click", () => recordInteraction?.toggleSleeve());
+  $("record-details-button").addEventListener("click", () => recordInteraction?.showProjectDetails());
+  $("record-return-button").addEventListener("click", () => recordInteraction?.returnSelected());
   $("project-dialog").addEventListener("click", event => {
     if (event.target === $("project-dialog")) $("project-dialog").close();
   });
@@ -362,12 +430,24 @@ function bindInterface() {
       $("project-dialog").close();
       return;
     }
+    if (event.key === "Escape" && recordInteraction?.hasSelection()) {
+      event.preventDefault();
+      recordInteraction.returnSelected();
+      return;
+    }
     if (event.key === "Escape" && isOpen && !directoryVisible) {
       event.preventDefault();
       toggleHeader();
     }
+    if (isOpen && !directoryVisible && event.key.toLowerCase() === "f") {
+      recordInteraction?.flipSelected();
+    }
+    if (isOpen && !directoryVisible && event.key.toLowerCase() === "o") {
+      recordInteraction?.toggleSleeve();
+    }
     if ((event.key === "0" || event.key.toLowerCase() === "r") && isOpen && !directoryVisible) {
-      cameraController?.reset();
+      if (recordInteraction?.hasSelection()) recordInteraction.returnSelected();
+      else cameraController?.reset();
     }
   });
 }
@@ -394,6 +474,14 @@ function boot() {
   try {
     store = createStoreScene($("world"), PROJECTS);
     cameraController = createCameraController(store.camera, $("world"));
+    recordInteraction = createRecordInteraction({
+      scene: store.scene,
+      camera: store.camera,
+      canvas: $("world"),
+      records: store.recordRoots,
+      onPanelChange: renderRecordPanel,
+      onOpenProject: openProjectDetails
+    });
     webglAvailable = true;
     clock = new THREE.Clock();
     let firstFrame = true;
@@ -404,6 +492,7 @@ function boot() {
       elapsed += delta;
       cameraController.update(delta);
       store.update(delta, elapsed);
+      recordInteraction?.update(delta);
       store.renderer.render(store.scene, store.camera);
       if (firstFrame) {
         firstFrame = false;
