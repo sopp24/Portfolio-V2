@@ -395,3 +395,22 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
     font-size: 7px;
   }
 }
+
+
+/* Personal corner and music credits in the 2D collection. */
+.about-section, .music-section { padding-top: 24px; border-top: 1px solid rgba(57,45,31,.22); }
+.profile-grid { grid-template-columns: minmax(260px, 2fr) repeat(2, minmax(0, 1fr)); }
+.profile-card { min-height: 190px; padding: 22px; }
+.profile-card .app-card-title { font-size: 28px; }
+.profile-detail { margin: 4px 0 0; color: #756651; font: 10px/1.6 var(--mono); }
+.music-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.music-card { min-height: 145px; padding: 18px; }
+.music-card .app-card-title { font-size: 26px; }
+@media (max-width: 760px) {
+  .profile-grid, .music-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-card { grid-column: 1 / -1; }
+}
+@media (max-width: 430px) {
+  .profile-grid, .music-grid { grid-template-columns: 1fr 1fr; }
+  .profile-card { grid-column: 1 / -1; padding: 16px; }
+}
