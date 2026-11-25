@@ -62,7 +62,21 @@ const COPY = {
     appPanelEyebrow: "SOPP AGENTS / APPLICATION WEB",
     appHoverPrompt: "REGARDER PUIS CLIQUER POUR CONSULTER",
     appSelectedPrompt: "APPLICATION SÉLECTIONNÉE · LIENS EXTERNES",
-    returnApp: "RETOUR AU RACK"
+    returnApp: "RETOUR AU RACK",
+    shopkeeperName: "LE DISQUAIRE",
+    shopkeeperPrompt: "VISE LE DISQUAIRE ET CLIQUE POUR DISCUTER",
+    talkToShopkeeper: "PARLER AU DISQUAIRE ↗",
+    assistantTitle: "PARLONS MUSIQUE ET PROJETS.",
+    assistantStatusOnline: "ASSISTANT IA CONNECTÉ",
+    assistantStatusOffline: "MODE CATALOGUE · IA NON CONNECTÉE",
+    assistantWelcome: "Salut, bienvenue chez SIDE A. Je peux te guider à travers les projets d’Adam et les applications qu’il a développées. Qu’est-ce qui t’intéresse ?",
+    assistantPlaceholder: "Pose ta question au disquaire…",
+    assistantSend: "ENVOYER ↗",
+    assistantThinking: "Le disquaire réfléchit…",
+    assistantError: "Je n’ai pas réussi à joindre l’assistant. Réessaie dans un instant.",
+    assistantOfflinePrefix: "Je fonctionne actuellement en mode catalogue : le serveur IA n’est pas encore configuré. Voici ce que je peux déjà te conseiller :",
+    assistantPrompts: ["PRÉSENTE-MOI ADAM", "UN PROJET WEB", "LES APPLICATIONS"],
+    assistantQuestions: ["Présente-moi le parcours et les domaines d’Adam.", "Je cherche un projet web ou une application à découvrir.", "Quelles applications puis-je tester ?"]
   },
   en: {
     closed: "CLOSED",
@@ -117,7 +131,21 @@ const COPY = {
     appPanelEyebrow: "SOPP AGENTS / WEB APPLICATION",
     appHoverPrompt: "LOOK AT THE CARD, THEN CLICK TO EXPLORE",
     appSelectedPrompt: "APPLICATION SELECTED · EXTERNAL LINKS",
-    returnApp: "BACK TO THE RACK"
+    returnApp: "BACK TO THE RACK",
+    shopkeeperName: "THE RECORD STORE CLERK",
+    shopkeeperPrompt: "LOOK AT THE CLERK AND CLICK TO CHAT",
+    talkToShopkeeper: "TALK TO THE CLERK ↗",
+    assistantTitle: "LET’S TALK MUSIC AND PROJECTS.",
+    assistantStatusOnline: "AI ASSISTANT CONNECTED",
+    assistantStatusOffline: "CATALOGUE MODE · AI NOT CONNECTED",
+    assistantWelcome: "Hey, welcome to SIDE A. I can guide you through Adam’s projects and the applications he has built. What are you curious about?",
+    assistantPlaceholder: "Ask the record store clerk…",
+    assistantSend: "SEND ↗",
+    assistantThinking: "The clerk is thinking…",
+    assistantError: "I couldn't reach the assistant. Please try again in a moment.",
+    assistantOfflinePrefix: "I'm currently in catalogue mode: the AI server hasn't been configured yet. Here's what I can already recommend:",
+    assistantPrompts: ["INTRODUCE ADAM", "A WEB PROJECT", "THE APPLICATIONS"],
+    assistantQuestions: ["Introduce Adam’s background and areas of work.", "I’m looking for a web project or an application to explore.", "Which applications can I try?"]
   }
 };
 
@@ -156,7 +184,8 @@ function renderRecordPanel(state = recordPanelState) {
   const copy = COPY[language];
   const mode = recordPanelState.mode || "none";
   const isApplication = mode === "application-hover" || mode === "application-selected";
-  const isHover = mode === "hover" || mode === "application-hover";
+  const isShopkeeper = mode === "shopkeeper-hover";
+  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper;
   const isSelected = mode === "selected";
   const isReturning = mode === "returning";
   const visible = isOpen && !directoryVisible;
@@ -177,16 +206,20 @@ function renderRecordPanel(state = recordPanelState) {
 
   const project = recordPanelState.project;
   const application = recordPanelState.application;
-  $("record-panel-eyebrow").textContent = isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
-  $("record-title").textContent = isApplication
-    ? (application?.name || "SOPP AGENTS")
-    : (project?.title?.[language] || "SIDE A");
-  $("record-summary").textContent = isApplication
-    ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
-    : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
+  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
+  $("record-title").textContent = isShopkeeper
+    ? copy.shopkeeperName
+    : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
+  $("record-summary").textContent = isShopkeeper
+    ? copy.shopkeeperPrompt
+    : isApplication
+      ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
+      : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
 
   $("record-actions").hidden = !isSelected;
   $("application-actions").hidden = mode !== "application-selected";
+  $("shopkeeper-actions").hidden = !isShopkeeper;
+  $("shopkeeper-talk-button").textContent = copy.talkToShopkeeper;
 
   $("record-flip-button").textContent = recordPanelState.isFlipped ? copy.showFront : copy.flip;
   $("record-open-button").textContent = recordPanelState.isOpen ? copy.closeSleeve : copy.openSleeve;
@@ -385,6 +418,14 @@ function setLanguage(nextLanguage) {
   if ($("fallback-note")) {
     $("fallback-note").textContent = copy.webglError;
   }
+  $("assistant-title").textContent = copy.assistantTitle;
+  $("assistant-status").textContent = assistantEndpoint() ? copy.assistantStatusOnline : copy.assistantStatusOffline;
+  $("assistant-input").placeholder = copy.assistantPlaceholder;
+  $("assistant-send").textContent = copy.assistantSend;
+  document.querySelectorAll("[data-assistant-prompt]").forEach((button, index) => {
+    button.textContent = copy.assistantPrompts[index] || "";
+    button.dataset.question = copy.assistantQuestions[index] || "";
+  });
   renderRecordPanel(recordPanelState);
   if (directoryVisible) renderDirectory();
 }
@@ -480,6 +521,135 @@ async function toggleGyroscope() {
   showToast(enabled ? COPY[language].gyroOk : COPY[language].gyroError);
 }
 
+const assistantHistory = [];
+let assistantBusy = false;
+
+function assistantEndpoint() {
+  const raw = document.querySelector('meta[name="assistant-endpoint"]')?.content || "";
+  return raw.trim();
+}
+
+function appendAssistantMessage(role, content, pending = false) {
+  const message = makeNode("p", "assistant-message " + (role === "user" ? "is-user" : "is-assistant") + (pending ? " is-pending" : ""), content);
+  $("assistant-messages").appendChild(message);
+  $("assistant-messages").scrollTop = $("assistant-messages").scrollHeight;
+  return message;
+}
+
+function localCatalogueReply(question) {
+  const copy = COPY[language];
+  const normalized = question.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+  if (/(application|applications|apps|outil|outils|tester|try)/.test(normalized)) {
+    const list = APPLICATIONS.slice(0, 8).map(item => "• " + item.name + " — " + item.description[language]).join("\\n");
+    return copy.assistantOfflinePrefix + "\\n\\n" + list;
+  }
+  if (/(adam|parcours|about|profil|qui es|introdu|background|experience)/.test(normalized)) {
+    const projects = PROFILE.historical?.degree ? PROFILE.historical.degree : "";
+    const music = (PROFILE.historical?.musicProjects || []).join(", ");
+    return copy.assistantOfflinePrefix + "\\n\\n" +
+      (language === "fr"
+        ? "Le portfolio présente Adam Soppelsa à travers des projets de communication, de création numérique, de développement web et de gestion de projet."
+        : "The portfolio introduces Adam Soppelsa through communication, digital creation, web development and project-management work.") +
+      (projects ? "\\n\\n" + (language === "fr" ? "Formation historique renseignée : " : "Previous qualification listed: ") + projects : "") +
+      (music ? "\\n\\n" + (language === "fr" ? "Projets musicaux : " : "Music projects: ") + music : "");
+  }
+  if (/(musique|music|audio|artist|artiste)/.test(normalized)) {
+    return copy.assistantOfflinePrefix + "\\n\\n" +
+      (PROFILE.historical?.musicProjects || []).join(" · ") +
+      (language === "fr" ? "\\nDeux projets musicaux personnels sont référencés dans les données du portfolio." : "\\nTwo personal music projects are listed in the portfolio data.");
+  }
+  const terms = normalized.split(/[^a-z0-9]+/).filter(term => term.length >= 4 && !["pour","avec","dans","cherche","projet","projets","looking","which","that","this","from","what"].includes(term));
+  const matches = PROJECTS.map(project => {
+    const searchable = [
+      project.title.fr, project.title.en, project.short.fr, project.short.en,
+      (project.skills || []).join(" "), (project.skillsEn || []).join(" ")
+    ].join(" ").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+    return { project, score: terms.reduce((score, term) => score + (searchable.includes(term) ? 1 : 0), 0) };
+  }).filter(item => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
+  if (matches.length) {
+    return copy.assistantOfflinePrefix + "\\n\\n" + matches.map(({project}) =>
+      "• " + project.title[language] + " — " + project.short[language]
+    ).join("\\n");
+  }
+  return language === "fr"
+    ? copy.assistantOfflinePrefix + "\\n\\nJe peux présenter les projets, détailler les applications web ou t'orienter vers une catégorie. La conversation IA sera activée après le déploiement du serveur."
+    : copy.assistantOfflinePrefix + "\\n\\nI can introduce the projects, explain the web apps or guide you to a category. Full AI conversation will be enabled once the server is deployed.";
+}
+
+async function sendAssistantMessage(rawMessage) {
+  const message = String(rawMessage || "").trim().slice(0, 1200);
+  if (!message || assistantBusy) return;
+  assistantBusy = true;
+  const input = $("assistant-input");
+  const send = $("assistant-send");
+  input.value = "";
+  appendAssistantMessage("user", message);
+  assistantHistory.push({ role: "user", content: message });
+  send.disabled = true;
+  const pending = appendAssistantMessage("assistant", COPY[language].assistantThinking, true);
+
+  try {
+    const endpoint = assistantEndpoint();
+    if (!endpoint) {
+      await new Promise(resolve => window.setTimeout(resolve, 180));
+      const reply = localCatalogueReply(message);
+      pending.remove();
+      appendAssistantMessage("assistant", reply);
+      assistantHistory.push({ role: "assistant", content: reply });
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 28000);
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: assistantHistory.slice(-8) }),
+        signal: controller.signal
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || typeof payload.reply !== "string" || !payload.reply.trim()) {
+      throw new Error("Assistant endpoint returned an invalid response.");
+    }
+    pending.remove();
+    appendAssistantMessage("assistant", payload.reply.trim());
+    assistantHistory.push({ role: "assistant", content: payload.reply.trim() });
+    if (assistantHistory.length > 8) assistantHistory.splice(0, assistantHistory.length - 8);
+  } catch (error) {
+    pending.remove();
+    appendAssistantMessage("assistant", COPY[language].assistantError);
+  } finally {
+    assistantBusy = false;
+    send.disabled = false;
+    input.focus();
+  }
+}
+
+function openAssistant() {
+  const dialog = $("assistant-dialog");
+  $("assistant-status").textContent = assistantEndpoint()
+    ? COPY[language].assistantStatusOnline
+    : COPY[language].assistantStatusOffline;
+  if (!dialog.open) dialog.showModal();
+  $("assistant-input").focus({ preventScroll: true });
+}
+
+function bindAssistantInterface() {
+  $("assistant-close").addEventListener("click", () => $("assistant-dialog").close());
+  $("shopkeeper-talk-button").addEventListener("click", openAssistant);
+  $("assistant-form").addEventListener("submit", event => {
+    event.preventDefault();
+    sendAssistantMessage($("assistant-input").value);
+  });
+  document.querySelectorAll("[data-assistant-prompt]").forEach(button => {
+    button.addEventListener("click", () => sendAssistantMessage(button.dataset.question));
+  });
+}
+
 function bindInterface() {
   document.querySelectorAll("[data-lang]").forEach(button => {
     button.addEventListener("click", () => setLanguage(button.dataset.lang));
@@ -500,6 +670,7 @@ function bindInterface() {
   $("record-details-button").addEventListener("click", () => recordInteraction?.showProjectDetails());
   $("record-return-button").addEventListener("click", () => recordInteraction?.returnSelectedRecord());
   $("application-return-button").addEventListener("click", () => recordInteraction?.returnSelectedApplication());
+  bindAssistantInterface();
   $("project-dialog").addEventListener("click", event => {
     if (event.target === $("project-dialog")) $("project-dialog").close();
   });
@@ -550,6 +721,7 @@ function boot() {
   bindInterface();
   const savedLanguage = safeStorageGet("adam-projects-store.language");
   setLanguage(savedLanguage || "fr");
+  appendAssistantMessage("assistant", COPY[language].assistantWelcome);
   $("intro-direct").hidden = !safeStorageGet("adam-projects-store.visited");
 
   try {
@@ -561,8 +733,10 @@ function boot() {
       canvas: $("world"),
       records: store.recordRoots,
       applications: store.applicationRoots,
+      shopkeeper: store.shopkeeper,
       onPanelChange: renderRecordPanel,
-      onOpenProject: openProjectDetails
+      onOpenProject: openProjectDetails,
+      onOpenAssistant: openAssistant
     });
     webglAvailable = true;
     clock = new THREE.Clock();
