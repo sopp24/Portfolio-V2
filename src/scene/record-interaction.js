@@ -128,6 +128,8 @@ export function createRecordInteraction({
 
   function returnSelected() {
     if (!selected || returning) return;
+    selected.userData.isOpen = false;
+    selected.userData.isFlipped = false;
     returning = true;
     panel("returning");
   }
