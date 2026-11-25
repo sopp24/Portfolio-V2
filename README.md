@@ -43,7 +43,6 @@ The applications rack contains the eight applications listed in the SOPP Agents 
 - Desktop mouse position: look around and aim with the center reticle; click the targeted sleeve to extract it.
 - Mouse wheel: zoom without moving the camera.
 - Selected record: F flips Side A / Side B; O opens or closes the sleeve; Escape or R returns it to its exact crate position.
-- On-screen record controls: flip, open/close, view project details and return to the bin.
 - Selected record: F flips Side A / Side B; O opens or closes the sleeve; Escape or R returns it to its exact crate position.
 - On-screen record controls: flip, open/close, view project details and return to the bin.
 - Smartphone: one-finger drag to look around, pinch to zoom, tap the targeted sleeve to extract it.
@@ -142,3 +141,10 @@ The front storefront glazing now has a subtle, procedural daylight sheen made fr
 The visit now has a complete return-to-storefront action. The header includes a leave-store control: open panels and the listening iframe are closed, gyroscope input is disabled, the camera is recentered, the entrance doors animate shut, and the intro returns with the store marked CLOSED. Arrival now also triggers the shopkeeper's welcome gesture and a short optional cue.
 
 A single Golden Pass is tucked flat onto the upper face of a right-wall shelf. Visitors must look around and aim the center reticle before clicking it. Its discovery opens a bilingual keepsake dialog, plays a short optional three-note cue, and persists in local storage so it cannot be collected repeatedly on the same browser. The ticket has a restrained idle bob and gaze response; its status is restored when the scene is created.
+
+
+### Phase 10 — Performance, lifecycle and accessibility polish
+
+The render loop is suspended while the browser tab is hidden and restarted with a fresh clock when the visitor returns. This avoids spending GPU time in a background tab and prevents hidden time from being applied to scene animations. The renderer's pixel-ratio ceiling now adapts to coarse-pointer devices and available hardware-memory / core-count hints. Camera projection updates run only while the field of view is actually changing.
+
+Keyboard shortcuts no longer intercept typing in editable fields or browser-modified key combinations. Sound and gyroscope controls expose their pressed state to assistive technology. If WebGL initialization fails or the context is lost, the renderer loop and interaction listeners are stopped before the visitor is moved to the 2D collection. The existing reduced-motion stylesheet rules remain active.
