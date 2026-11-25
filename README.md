@@ -112,3 +112,12 @@ GitHub Pages only hosts the static portfolio. The AI endpoint is a separate Clou
 The Worker accepts only POST requests from the configured origin, limits message size and history, applies a short timeout and returns no provider error details to the browser. Requests use `store: false`. Add billing limits and usage alerts to the API project before enabling the endpoint publicly.
 
 Local Worker secrets belong in an untracked `.dev.vars` file; the repository ignores `.dev.vars*` and `.env*`. Do not commit real credentials.
+
+
+### Phase 6 — Listening room, opt-in ambience and hidden detail
+
+Ambient room tone and short record-handling cues are generated locally with the Web Audio API. They are completely silent until the visitor explicitly presses the SOUND control; the preference is not persisted between visits. The sound layer includes a low room hum, restrained vinyl-like noise, and short pickup / flip / sleeve / return / secret cues. It has no external audio files and can be switched off immediately.
+
+The LISTEN control opens a dedicated listening dialog. A YouTube embed is created only when the `youtube-video-id` meta tag contains a valid 11-character video ID. The player uses the privacy-enhanced `youtube-nocookie.com` domain, does not autoplay, and is removed on closing the dialog to stop playback. No video ID is prefilled because no track has yet been selected and verified.
+
+A small lucky-cat charm sits on the counter as a clickable easter egg. Aim at it with the center reticle and click, or use its contextual discovery action.
