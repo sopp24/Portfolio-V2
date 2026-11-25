@@ -324,7 +324,7 @@ function createRecord(project, index, position, materials) {
     new THREE.PlaneGeometry(.626, .696),
     new THREE.MeshBasicMaterial({ map: backSleeveTexture(project, index), side: THREE.DoubleSide })
   );
-  back.position.z = -.024; back.rotation.y = Math.PI; group.add(back);
+  back.position.z = -.024; back.rotation.y = Math.PI; back.scale.x = -1; group.add(back);
 
   const flap = new THREE.Group();
   flap.position.set(-.325, 0, .025); group.add(flap);
