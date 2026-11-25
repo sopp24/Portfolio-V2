@@ -232,6 +232,7 @@ function setLanguage(nextLanguage) {
   $("intro-title").textContent = copy.introTitle;
   $("intro-subtitle").textContent = copy.introSub;
   $("intro-description").textContent = copy.introText;
+  $("intro-status").replaceChildren(makeNode("span"), document.createTextNode(language === "fr" ? " FERMÉ" : " CLOSED"));
   $("intro-open").textContent = copy.enter;
   $("intro-direct").textContent = copy.direct;
   $("intro-2d").textContent = copy.limited;
@@ -246,6 +247,9 @@ function setLanguage(nextLanguage) {
     button.classList.toggle("is-active", button.dataset.lang === language);
     button.setAttribute("aria-pressed", String(button.dataset.lang === language));
   });
+  if ($("fallback-note")) {
+    $("fallback-note").textContent = copy.webglError;
+  }
   if (directoryVisible) renderDirectory();
 }
 
@@ -283,7 +287,11 @@ function showDirectory() {
 function returnToStore() {
   directoryVisible = false;
   $("mode-2d").hidden = true;
-  $("mobile-menu").hidden = !isOpen;
+  if (!isOpen) {
+    enterStore(true);
+    return;
+  }
+  $("mobile-menu").hidden = false;
   $("control-hint").hidden = false;
 }
 
