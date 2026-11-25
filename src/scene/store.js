@@ -1036,15 +1036,16 @@ export function createStoreScene(canvas, projects, categories, applications) {
     const fixture = new THREE.Group();
     fixture.position.set(x, 4.40, .35);
     addBox(fixture, [.52, .08, .56], [0, 0, 0], materials.metal);
-    const bulb = new THREE.Mesh(
-      sphereGeometry(.095, 12, 10),
-      new THREE.MeshBasicMaterial({ color: 0xffe6b4 })
-    );
+    const bulb = new THREE.Mesh(sphereGeometry(.095, 12, 10), materials.bulb);
     bulb.position.y = -.12;
     fixture.add(bulb);
-    const light = new THREE.PointLight(0xffd89f, 1.65, 5.5, 2);
-    light.position.y = -.20;
-    fixture.add(light);
+    // Keep the three warm local pools on capable devices; one central pool is
+    // sufficient on low-power phones while the three visible bulbs remain.
+    if (!lowPowerDevice || x === 0) {
+      const light = new THREE.PointLight(0xffd89f, lowPowerDevice ? 1.25 : 1.65, lowPowerDevice ? 4.4 : 5.5, 2);
+      light.position.y = -.20;
+      fixture.add(light);
+    }
     scene.add(fixture);
   }
 
