@@ -5,6 +5,7 @@ import { APPLICATIONS } from "./data/applications.js";
 import { createStoreScene } from "./scene/store.js";
 import { createCameraController } from "./controls/camera.js";
 import { createRecordInteraction } from "./scene/record-interaction.js";
+import { createStoreAudio } from "./audio/store-audio.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -63,6 +64,20 @@ const COPY = {
     appHoverPrompt: "REGARDER PUIS CLIQUER POUR CONSULTER",
     appSelectedPrompt: "APPLICATION SÉLECTIONNÉE · LIENS EXTERNES",
     returnApp: "RETOUR AU RACK",
+    soundOn: "SON : ON",
+    soundOff: "SON : OFF",
+    soundUnavailable: "AUDIO INDISPONIBLE",
+    listeningButton: "ÉCOUTER",
+    listeningTitle: "LA PLATINE EST À TOI.",
+    listeningReady: "LECTURE YOUTUBE PRÊTE",
+    listeningMissing: "AUCUN TITRE YOUTUBE CONFIGURÉ",
+    listeningMissingCopy: "Aucun titre YouTube n’est encore associé à cette platine. Un identifiant vidéo pourra être ajouté dans la balise youtube-video-id du fichier index.html.",
+    listeningReadyCopy: "Choisis un titre et lance la lecture avec les commandes YouTube. La vidéo ne démarre jamais automatiquement.",
+    listeningFootnote: "La lecture est lancée uniquement à la demande. Le son d’ambiance reste indépendant.",
+    easterName: "UN PETIT SECRET",
+    easterPrompt: "UN PETIT OBJET SE CACHE SUR LE COMPTOIR… CLIQUE POUR LE DÉCOUVRIR",
+    easterButton: "DÉCOUVRIR LE SECRET ↗",
+    easterToast: "SIDE A CLUB — GOOD MUSIC, GOOD PEOPLE, ALWAYS.",
     shopkeeperName: "LE DISQUAIRE",
     shopkeeperPrompt: "VISE LE DISQUAIRE ET CLIQUE POUR DISCUTER",
     talkToShopkeeper: "PARLER AU DISQUAIRE ↗",
@@ -132,6 +147,20 @@ const COPY = {
     appHoverPrompt: "LOOK AT THE CARD, THEN CLICK TO EXPLORE",
     appSelectedPrompt: "APPLICATION SELECTED · EXTERNAL LINKS",
     returnApp: "BACK TO THE RACK",
+    soundOn: "SOUND: ON",
+    soundOff: "SOUND: OFF",
+    soundUnavailable: "AUDIO UNAVAILABLE",
+    listeningButton: "LISTEN",
+    listeningTitle: "THE TURNTABLE IS YOURS.",
+    listeningReady: "YOUTUBE PLAYER READY",
+    listeningMissing: "NO YOUTUBE TRACK CONFIGURED",
+    listeningMissingCopy: "No YouTube track is linked to this turntable yet. Add a video ID to the youtube-video-id meta tag in index.html when a track is selected.",
+    listeningReadyCopy: "Choose a track and start playback with the YouTube controls. Playback never starts automatically.",
+    listeningFootnote: "Playback starts only when requested. Ambient sound is independent.",
+    easterName: "A LITTLE SECRET",
+    easterPrompt: "A LITTLE OBJECT IS HIDING ON THE COUNTER… CLICK TO DISCOVER IT",
+    easterButton: "DISCOVER THE SECRET ↗",
+    easterToast: "SIDE A CLUB — GOOD MUSIC, GOOD PEOPLE, ALWAYS.",
     shopkeeperName: "THE RECORD STORE CLERK",
     shopkeeperPrompt: "LOOK AT THE CLERK AND CLICK TO CHAT",
     talkToShopkeeper: "TALK TO THE CLERK ↗",
@@ -159,6 +188,7 @@ let elapsed = 0;
 let isOpen = false;
 let directoryVisible = false;
 let webglAvailable = false;
+let storeAudio = null;
 
 function safeStorageGet(key) {
   try { return localStorage.getItem(key); }
@@ -185,7 +215,8 @@ function renderRecordPanel(state = recordPanelState) {
   const mode = recordPanelState.mode || "none";
   const isApplication = mode === "application-hover" || mode === "application-selected";
   const isShopkeeper = mode === "shopkeeper-hover";
-  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper;
+  const isEasterEgg = mode === "easter-hover";
+  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper || isEasterEgg;
   const isSelected = mode === "selected";
   const isReturning = mode === "returning";
   const visible = isOpen && !directoryVisible;
@@ -206,20 +237,24 @@ function renderRecordPanel(state = recordPanelState) {
 
   const project = recordPanelState.project;
   const application = recordPanelState.application;
-  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
+  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isEasterEgg ? "SIDE A / HIDDEN PRESSING" : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
   $("record-title").textContent = isShopkeeper
     ? copy.shopkeeperName
-    : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
+    : isEasterEgg ? copy.easterName
+      : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
   $("record-summary").textContent = isShopkeeper
     ? copy.shopkeeperPrompt
-    : isApplication
-      ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
-      : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
+    : isEasterEgg ? copy.easterPrompt
+      : isApplication
+        ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
+        : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
 
   $("record-actions").hidden = !isSelected;
   $("application-actions").hidden = mode !== "application-selected";
   $("shopkeeper-actions").hidden = !isShopkeeper;
+  $("easter-actions").hidden = !isEasterEgg;
   $("shopkeeper-talk-button").textContent = copy.talkToShopkeeper;
+  $("easter-discover-button").textContent = copy.easterButton;
 
   $("record-flip-button").textContent = recordPanelState.isFlipped ? copy.showFront : copy.flip;
   $("record-open-button").textContent = recordPanelState.isOpen ? copy.closeSleeve : copy.openSleeve;
@@ -420,6 +455,10 @@ function setLanguage(nextLanguage) {
   }
   $("assistant-title").textContent = copy.assistantTitle;
   $("assistant-status").textContent = assistantEndpoint() ? copy.assistantStatusOnline : copy.assistantStatusOffline;
+  $("sound-button").textContent = audioEnabled ? copy.soundOn : copy.soundOff;
+  $("listening-button").textContent = copy.listeningButton;
+  $("listening-title").textContent = copy.listeningTitle;
+  $("listening-footnote").textContent = copy.listeningFootnote;
   $("assistant-input").placeholder = copy.assistantPlaceholder;
   $("assistant-send").textContent = copy.assistantSend;
   document.querySelectorAll("[data-assistant-prompt]").forEach((button, index) => {
@@ -523,6 +562,7 @@ async function toggleGyroscope() {
 
 const assistantHistory = [];
 let assistantBusy = false;
+let audioEnabled = false;
 
 function assistantEndpoint() {
   const raw = document.querySelector('meta[name="assistant-endpoint"]')?.content || "";
@@ -653,6 +693,57 @@ function bindAssistantInterface() {
   });
 }
 
+async function toggleStoreSound() {
+  if (!storeAudio) storeAudio = createStoreAudio();
+  const next = !audioEnabled;
+  const enabled = await storeAudio.setEnabled(next);
+  audioEnabled = enabled;
+  $("sound-button").textContent = enabled ? COPY[language].soundOn : next ? COPY[language].soundUnavailable : COPY[language].soundOff;
+  showToast(enabled
+    ? (language === "fr" ? "Ambiance sonore activée." : "Ambient sound enabled.")
+    : next
+      ? COPY[language].soundUnavailable
+      : (language === "fr" ? "Son désactivé." : "Sound disabled."));
+}
+
+function openListeningRoom() {
+  const meta = document.querySelector('meta[name="youtube-video-id"]');
+  const videoId = (meta?.content || "").trim();
+  const host = $("youtube-player-host");
+  host.replaceChildren();
+  const status = $("listening-status");
+  const copy = $("listening-copy");
+  const validId = /^[a-zA-Z0-9_-]{11}$/.test(videoId);
+  host.hidden = !validId;
+  if (!validId) {
+    status.textContent = COPY[language].listeningMissing;
+    copy.textContent = COPY[language].listeningMissingCopy;
+  } else {
+    const frame = document.createElement("iframe");
+    frame.title = "SIDE A YouTube listening player";
+    frame.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(videoId) + "?rel=0&modestbranding=1&playsinline=1";
+    frame.allow = "encrypted-media; picture-in-picture";
+    frame.allowFullscreen = true;
+    frame.loading = "lazy";
+    host.appendChild(frame);
+    status.textContent = COPY[language].listeningReady;
+    copy.textContent = COPY[language].listeningReadyCopy;
+  }
+  $("listening-dialog").showModal();
+}
+
+function closeListeningRoom() {
+  const host = $("youtube-player-host");
+  host.replaceChildren();
+  host.hidden = true;
+  if ($("listening-dialog").open) $("listening-dialog").close();
+}
+
+function revealEasterEgg() {
+  showToast(COPY[language].easterToast);
+  storeAudio?.playCue("easter");
+}
+
 function bindInterface() {
   document.querySelectorAll("[data-lang]").forEach(button => {
     button.addEventListener("click", () => setLanguage(button.dataset.lang));
@@ -673,6 +764,17 @@ function bindInterface() {
   $("record-details-button").addEventListener("click", () => recordInteraction?.showProjectDetails());
   $("record-return-button").addEventListener("click", () => recordInteraction?.returnSelectedRecord());
   $("application-return-button").addEventListener("click", () => recordInteraction?.returnSelectedApplication());
+  $("easter-discover-button").addEventListener("click", revealEasterEgg);
+  $("sound-button").addEventListener("click", toggleStoreSound);
+  $("listening-button").addEventListener("click", openListeningRoom);
+  $("listening-close").addEventListener("click", closeListeningRoom);
+  $("listening-dialog").addEventListener("click", event => {
+    if (event.target === $("listening-dialog")) closeListeningRoom();
+  });
+  $("listening-dialog").addEventListener("close", () => {
+    $("youtube-player-host").replaceChildren();
+    $("youtube-player-host").hidden = true;
+  });
   bindAssistantInterface();
   $("project-dialog").addEventListener("click", event => {
     if (event.target === $("project-dialog")) $("project-dialog").close();
@@ -722,6 +824,7 @@ function showFallback(error) {
 }
 
 function boot() {
+  storeAudio = createStoreAudio();
   bindInterface();
   const savedLanguage = safeStorageGet("adam-projects-store.language");
   setLanguage(savedLanguage || "fr");
@@ -738,9 +841,12 @@ function boot() {
       records: store.recordRoots,
       applications: store.applicationRoots,
       shopkeeper: store.shopkeeper,
+      easterEgg: store.easterEgg,
       onPanelChange: renderRecordPanel,
       onOpenProject: openProjectDetails,
-      onOpenAssistant: openAssistant
+      onOpenAssistant: openAssistant,
+      onOpenEasterEgg: revealEasterEgg,
+      onSound: kind => storeAudio?.playCue(kind)
     });
     webglAvailable = true;
     clock = new THREE.Clock();
