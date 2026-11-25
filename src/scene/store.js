@@ -545,6 +545,60 @@ function createShelf(scene, side, z, level, materials, projects, shelfIndex) {
   }
 }
 
+function createGoldenPass(scene, materials) {
+  const root = new THREE.Group();
+  // Tucked onto a lower wall shelf: visitors need to look around and aim carefully.
+  root.position.set(5.60, .835, 2.75);
+  root.userData.isCollectible = true;
+  root.userData.found = false;
+  root.userData.baseY = root.position.y;
+
+  const texture = makeTexture(512, 224, (ctx) => {
+    ctx.fillStyle = "#c28b38";
+    ctx.fillRect(0, 0, 512, 224);
+    ctx.fillStyle = "#f3d99e";
+    ctx.fillRect(10, 10, 492, 204);
+    ctx.fillStyle = "#382d20";
+    ctx.fillRect(18, 18, 476, 188);
+    ctx.strokeStyle = "#d6aa5c";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(29, 29, 454, 166);
+    ctx.setLineDash([]);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f0d08d";
+    ctx.font = "bold 22px monospace";
+    ctx.fillText("SIDE A  /  SPECIAL ENTRY", 256, 75);
+    ctx.fillStyle = "#fff0c9";
+    ctx.font = "900 54px Georgia";
+    ctx.fillText("GOLDEN PASS", 256, 139);
+    ctx.fillStyle = "#d5b77c";
+    ctx.font = "bold 15px monospace";
+    ctx.fillText("ONE OF ONE  •  KEEP GOOD MUSIC ALIVE", 256, 173);
+  });
+  const backing = new THREE.Mesh(
+    new THREE.BoxGeometry(.58, .025, .28),
+    materials.trim
+  );
+  backing.position.y = .012;
+  root.add(backing);
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(.56, .245),
+    new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
+  );
+  face.rotation.x = -Math.PI / 2;
+  face.position.y = .026;
+  face.userData.isCollectiblePart = true;
+  root.add(face);
+
+  const eyelet = new THREE.Mesh(new THREE.TorusGeometry(.018, .004, 5, 12), materials.metal);
+  eyelet.position.set(-.245, .029, -.09);
+  eyelet.rotation.x = -Math.PI / 2;
+  root.add(eyelet);
+  scene.add(root);
+  return { root, texture, face };
+}
+
 function createFrontWindow(scene, materials) {
   const glass = new THREE.MeshStandardMaterial({
     color: 0xc7d9d9, transparent: true, opacity: .22, roughness: .12, metalness: .06,
@@ -904,6 +958,8 @@ export function createStoreScene(canvas, projects, categories, applications) {
   createInteractivePoster(scene, -5.2, 3.15, -7.34, 0, "LIVE / 1996", 14, materials, posterRoots);
   createInteractivePoster(scene, 5.2, 3.15, -7.34, 0, "LOCAL SOUNDS", 18, materials, posterRoots);
 
+  const goldenPass = createGoldenPass(scene, materials);
+
   // Six category bins: each physical record appears once, while multi-category tags remain available in the data.
   const recordRoots = [];
   const categoryBins = [];
@@ -989,6 +1045,20 @@ export function createStoreScene(canvas, projects, categories, applications) {
     const catScale = cat.userData.hovered ? 1.10 : 1;
     cat.scale.setScalar(THREE.MathUtils.damp(cat.scale.x, catScale, 7, delta));
     cat.position.y = 1.15 + Math.sin(elapsed * 1.35) * .007;
+
+    // The rare ticket has a tiny idle lift and a stronger but restrained gaze response.
+    const pass = goldenPass.root;
+    const passScale = pass.userData.hovered ? 1.12 : 1;
+    pass.scale.setScalar(THREE.MathUtils.damp(pass.scale.x, passScale, 8, delta));
+    pass.position.y = pass.userData.baseY + (pass.userData.found ? 0 : Math.sin(elapsed * 1.8) * .006);
+    pass.rotation.y = Math.sin(elapsed * .38) * .018;
+  }
+
+  function markGoldenPassFound() {
+    goldenPass.root.userData.found = true;
+    goldenPass.root.scale.setScalar(1);
+    goldenPass.root.position.y = goldenPass.root.userData.baseY;
+    goldenPass.root.rotation.y = 0;
   }
 
   function resize(width, height) {
@@ -998,7 +1068,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   }
 
   return {
-    scene, camera, renderer, materials, recordRoots, applicationRoots, posterRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, openDoors, closeDoors, greetShopkeeper, update, resize,
+    scene, camera, renderer, materials, recordRoots, applicationRoots, posterRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, goldenPass: goldenPass.root, markGoldenPassFound, openDoors, closeDoors, greetShopkeeper, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
