@@ -670,6 +670,8 @@ function createShopkeeper(scene, materials) {
   const apron = new THREE.Mesh(new THREE.BoxGeometry(.44, .54, .045), materials.apron);
   apron.position.set(0, 1.19, .255);
   figure.add(apron);
+  figure.userData.isShopkeeper = true;
+  figure.userData.hovered = false;
   scene.add(figure);
   return figure;
 }
@@ -868,7 +870,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   }
 
   return {
-    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, openDoors, closeDoors, update, resize,
+    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, shopkeeper, openDoors, closeDoors, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
