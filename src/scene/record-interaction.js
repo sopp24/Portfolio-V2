@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
 export function createRecordInteraction({
-  scene, camera, canvas, records, applications = [], posters = [], shopkeeper = null, easterEgg = null,
+  scene, camera, canvas, records, applications = [], posters = [], shopkeeper = null, easterEgg = null, collectible = null,
   onPanelChange = () => {}, onOpenProject = () => {}, onOpenPoster = () => {}, onOpenAssistant = () => {},
-  onOpenEasterEgg = () => {}, onSound = () => {}
+  onOpenEasterEgg = () => {}, onFoundCollectible = () => {}, onSound = () => {}
 }) {
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0);
@@ -13,10 +13,10 @@ export function createRecordInteraction({
   const targetQuaternion = new THREE.Quaternion();
   const hoverScale = new THREE.Vector3(1, 1, 1);
   const presentationScale = new THREE.Vector3(1.06, 1.06, 1.06);
-  const pickTargets = [...records, ...applications, ...posters, ...(shopkeeper ? [shopkeeper] : []), ...(easterEgg ? [easterEgg] : [])];
+  const pickTargets = [...records, ...applications, ...posters, ...(shopkeeper ? [shopkeeper] : []), ...(easterEgg ? [easterEgg] : []), ...(collectible ? [collectible] : [])];
   const flipQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
-  let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null, hoveredEasterEgg = null, hoveredPoster = null;
+  let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null, hoveredEasterEgg = null, hoveredPoster = null, hoveredCollectible = null;
   let selectedRecord = null, selectedApplication = null;
   let returningRecord = false, destroyed = false;
 
@@ -73,13 +73,20 @@ export function createRecordInteraction({
     if (hoveredPoster) hoveredPoster.userData.hovered = true;
   }
 
+  function setHoveredCollectible(next) {
+    if (hoveredCollectible === next) return;
+    if (hoveredCollectible) hoveredCollectible.userData.hovered = false;
+    hoveredCollectible = next;
+    if (hoveredCollectible) hoveredCollectible.userData.hovered = true;
+  }
+
   function pick() {
     if (!active || selectedRecord || selectedApplication || destroyed) return;
     scene.updateMatrixWorld(true);
     camera.updateMatrixWorld(true);
     raycaster.setFromCamera(center, camera);
     const hits = raycaster.intersectObjects(pickTargets, true);
-    let nextRecord = null, nextApplication = null, nextShopkeeper = null, nextEasterEgg = null, nextPoster = null;
+    let nextRecord = null, nextApplication = null, nextShopkeeper = null, nextEasterEgg = null, nextPoster = null, nextCollectible = null;
     for (const hit of hits) {
       const record = findRoot(hit.object, "isRecord");
       if (record) { nextRecord = record; break; }
@@ -91,20 +98,25 @@ export function createRecordInteraction({
       if (secret) { nextEasterEgg = secret; break; }
       const poster = findRoot(hit.object, "isPoster");
       if (poster) { nextPoster = poster; break; }
+      const rare = findRoot(hit.object, "isCollectible");
+      if (rare && !rare.userData.found) { nextCollectible = rare; break; }
     }
     const changed = nextRecord !== hoveredRecord || nextApplication !== hoveredApplication ||
-      nextShopkeeper !== hoveredShopkeeper || nextEasterEgg !== hoveredEasterEgg || nextPoster !== hoveredPoster;
+      nextShopkeeper !== hoveredShopkeeper || nextEasterEgg !== hoveredEasterEgg ||
+      nextPoster !== hoveredPoster || nextCollectible !== hoveredCollectible;
     setHoveredRecord(nextRecord);
     setHoveredApplication(nextApplication);
     setHoveredShopkeeper(nextShopkeeper);
     setHoveredEasterEgg(nextEasterEgg);
     setHoveredPoster(nextPoster);
+    setHoveredCollectible(nextCollectible);
     if (!changed) return;
     if (hoveredRecord) emitPanel({ mode: "hover", project: hoveredRecord.userData.project });
     else if (hoveredApplication) emitPanel({ mode: "application-hover", application: hoveredApplication.userData.application });
     else if (hoveredShopkeeper) emitPanel({ mode: "shopkeeper-hover" });
     else if (hoveredEasterEgg) emitPanel({ mode: "easter-hover" });
     else if (hoveredPoster) emitPanel({ mode: "poster-hover", poster: hoveredPoster.userData.poster });
+    else if (hoveredCollectible) emitPanel({ mode: "collectible-hover" });
     else emitPanel({ mode: "none" });
   }
 
@@ -131,6 +143,7 @@ export function createRecordInteraction({
     setHoveredShopkeeper(null);
     setHoveredEasterEgg(null);
     setHoveredPoster(null);
+    setHoveredCollectible(null);
     returningRecord = false;
     onSound("pickup");
     emitRecordPanel("selected");
@@ -144,6 +157,7 @@ export function createRecordInteraction({
     setHoveredShopkeeper(null);
     setHoveredEasterEgg(null);
     setHoveredPoster(null);
+    setHoveredCollectible(null);
     selectedApplication.userData.selected = true;
     onSound("focus");
     emitPanel({ mode: "application-selected", application: selectedApplication.userData.application });
@@ -174,6 +188,14 @@ export function createRecordInteraction({
       emitPanel({ mode: "none" });
       onSound("focus");
       onOpenPoster(poster);
+    } else if (hoveredCollectible) {
+      event.preventDefault();
+      const rare = hoveredCollectible;
+      rare.userData.found = true;
+      setHoveredCollectible(null);
+      emitPanel({ mode: "none" });
+      onSound("discovery");
+      onFoundCollectible(rare);
     }
   }
 
@@ -294,6 +316,7 @@ export function createRecordInteraction({
       setHoveredShopkeeper(null);
       setHoveredEasterEgg(null);
       setHoveredPoster(null);
+      setHoveredCollectible(null);
       if (selectedRecord) returnSelectedRecord();
       if (selectedApplication) returnSelectedApplication();
       if (!selectedRecord) emitPanel({ mode: "none" });
@@ -308,6 +331,7 @@ export function createRecordInteraction({
     setHoveredShopkeeper(null);
     setHoveredEasterEgg(null);
     setHoveredPoster(null);
+    setHoveredCollectible(null);
     if (selectedApplication) returnSelectedApplication();
     if (selectedRecord) {
       selectedRecord.userData.flap.rotation.y = 0;
@@ -316,10 +340,16 @@ export function createRecordInteraction({
     }
   }
 
+  function markCollectibleFound() {
+    if (!collectible) return;
+    collectible.userData.found = true;
+    setHoveredCollectible(null);
+  }
+
   canvas.addEventListener("click", handleCanvasClick);
   return {
     update, setActive, flipSelected, toggleSleeve, showProjectDetails,
-    returnSelectedRecord, returnSelectedApplication,
+    returnSelectedRecord, returnSelectedApplication, markCollectibleFound,
     hasSelection: () => !!selectedRecord || !!selectedApplication,
     hasRecordSelection: () => !!selectedRecord,
     hasApplicationSelection: () => !!selectedApplication,
