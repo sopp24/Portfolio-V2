@@ -78,6 +78,10 @@ const COPY = {
     easterPrompt: "UN PETIT OBJET SE CACHE SUR LE COMPTOIR… CLIQUE POUR LE DÉCOUVRIR",
     easterButton: "DÉCOUVRIR LE SECRET ↗",
     easterToast: "SIDE A CLUB — GOOD MUSIC, GOOD PEOPLE, ALWAYS.",
+    posterPrompt: "VISE UNE AFFICHE ET CLIQUE POUR LA CONSULTER",
+    posterEyebrow: "SIDE A / AFFICHE DU MAGASIN",
+    posterNoteTitle: "À PROPOS DE CETTE AFFICHE",
+    posterNote: "Visuel décoratif fictif créé pour l’univers du disquaire SIDE A. Il ne représente pas un événement réel ni un projet client.",
     shopkeeperName: "LE DISQUAIRE",
     shopkeeperPrompt: "VISE LE DISQUAIRE ET CLIQUE POUR DISCUTER",
     talkToShopkeeper: "PARLER AU DISQUAIRE ↗",
@@ -161,6 +165,10 @@ const COPY = {
     easterPrompt: "A LITTLE OBJECT IS HIDING ON THE COUNTER… CLICK TO DISCOVER IT",
     easterButton: "DISCOVER THE SECRET ↗",
     easterToast: "SIDE A CLUB — GOOD MUSIC, GOOD PEOPLE, ALWAYS.",
+    posterPrompt: "LOOK AT A POSTER AND CLICK TO EXPLORE IT",
+    posterEyebrow: "SIDE A / STORE WALL PRINT",
+    posterNoteTitle: "ABOUT THIS PRINT",
+    posterNote: "Fictional decorative artwork created for the SIDE A record-store setting. It does not represent a real event or client project.",
     shopkeeperName: "THE RECORD STORE CLERK",
     shopkeeperPrompt: "LOOK AT THE CLERK AND CLICK TO CHAT",
     talkToShopkeeper: "TALK TO THE CLERK ↗",
@@ -216,7 +224,8 @@ function renderRecordPanel(state = recordPanelState) {
   const isApplication = mode === "application-hover" || mode === "application-selected";
   const isShopkeeper = mode === "shopkeeper-hover";
   const isEasterEgg = mode === "easter-hover";
-  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper || isEasterEgg;
+  const isPoster = mode === "poster-hover";
+  const isHover = mode === "hover" || mode === "application-hover" || isShopkeeper || isEasterEgg || isPoster;
   const isSelected = mode === "selected";
   const isReturning = mode === "returning";
   const visible = isOpen && !directoryVisible;
@@ -237,17 +246,20 @@ function renderRecordPanel(state = recordPanelState) {
 
   const project = recordPanelState.project;
   const application = recordPanelState.application;
-  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isEasterEgg ? "SIDE A / HIDDEN PRESSING" : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
+  const poster = recordPanelState.poster;
+  $("record-panel-eyebrow").textContent = isShopkeeper ? "SIDE A / COUNTER SERVICE" : isEasterEgg ? "SIDE A / HIDDEN PRESSING" : isPoster ? copy.posterEyebrow : isApplication ? copy.appPanelEyebrow : copy.panelEyebrow;
   $("record-title").textContent = isShopkeeper
     ? copy.shopkeeperName
     : isEasterEgg ? copy.easterName
-      : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
+      : isPoster ? (poster?.title?.[language] || "SIDE A")
+        : isApplication ? (application?.name || "SOPP AGENTS") : (project?.title?.[language] || "SIDE A");
   $("record-summary").textContent = isShopkeeper
     ? copy.shopkeeperPrompt
     : isEasterEgg ? copy.easterPrompt
-      : isApplication
-        ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
-        : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
+      : isPoster ? copy.posterPrompt
+        : isApplication
+          ? (isHover ? copy.appHoverPrompt : (application?.description?.[language] || copy.appSelectedPrompt))
+          : (isHover ? copy.hoverPrompt : isReturning ? copy.returningPrompt : copy.selectedPrompt);
 
   $("record-actions").hidden = !isSelected;
   $("application-actions").hidden = mode !== "application-selected";
@@ -272,6 +284,22 @@ function renderRecordPanel(state = recordPanelState) {
   }
 
   hint.hidden = true;
+}
+
+function openPosterDetails(poster) {
+  const dialog = $("project-dialog");
+  const content = $("project-dialog-content");
+  content.replaceChildren();
+  content.append(
+    makeNode("p", "dialog-eyebrow", COPY[language].posterEyebrow),
+    makeNode("h2", "dialog-title", poster?.title?.[language] || "SIDE A"),
+    makeNode("p", "dialog-summary", poster?.description?.[language] || "")
+  );
+  const section = makeNode("section", "dialog-section");
+  section.appendChild(makeNode("h3", "dialog-section-title", COPY[language].posterNoteTitle));
+  section.appendChild(makeNode("p", "dialog-copy", COPY[language].posterNote));
+  content.appendChild(section);
+  dialog.showModal();
 }
 
 function openProjectDetails(project) {
@@ -842,10 +870,12 @@ function boot() {
       canvas: $("world"),
       records: store.recordRoots,
       applications: store.applicationRoots,
+      posters: store.posterRoots,
       shopkeeper: store.shopkeeper,
       easterEgg: store.easterEgg,
       onPanelChange: renderRecordPanel,
       onOpenProject: openProjectDetails,
+      onOpenPoster: openPosterDetails,
       onOpenAssistant: openAssistant,
       onOpenEasterEgg: revealEasterEgg,
       onSound: kind => storeAudio?.playCue(kind)
