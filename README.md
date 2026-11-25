@@ -135,3 +135,10 @@ The lucky-cat charm now has a continuously moving raised paw and a very subtle h
 The two large decorative wall prints are now framed 3D objects and direct raycast targets. Aim at either print and click to open a bilingual information card. Their text explicitly identifies the artwork as fictional store decoration rather than a real concert poster or client deliverable.
 
 The front storefront glazing now has a subtle, procedural daylight sheen made from a single transparent canvas texture. It drifts very slightly and changes opacity by a restrained amount; it is not a live reflection probe and adds no dynamic lighting. The turntable arm has a barely perceptible idle movement while the record continues to rotate. The frames scale gently while targeted.
+
+
+### Phase 9 — Arrival / departure staging and the Golden Pass
+
+The visit now has a complete return-to-storefront action. The header includes a leave-store control: open panels and the listening iframe are closed, gyroscope input is disabled, the camera is recentered, the entrance doors animate shut, and the intro returns with the store marked CLOSED. Arrival now also triggers the shopkeeper's welcome gesture and a short optional cue.
+
+A single Golden Pass is tucked flat onto the upper face of a right-wall shelf. Visitors must look around and aim the center reticle before clicking it. Its discovery opens a bilingual keepsake dialog, plays a short optional three-note cue, and persists in local storage so it cannot be collected repeatedly on the same browser. The ticket has a restrained idle bob and gaze response; its status is restored when the scene is created.
