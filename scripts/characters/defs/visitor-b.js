@@ -67,9 +67,9 @@ export default {
   skin: SKIN,
   handSize: 0.94,
   headScale: 1.08,
-  head: { skin: SKIN, brow: 0.8, browSlope: 0.8, nose: 0.85, noseLen: 0.88, noseTip: 0.95, lip: 1.3, lipFull: 1.35, mouthW: 1.05, cheek: 1.05, jaw: 0.88, chin: 0.92, ear: 0.9, faceW: 0.93, neck: 0.9, eyeGap: 0.0335, blush: 0.4, lipColor: [0.58, 0.26, 0.27] },
+  head: { skin: SKIN, brow: 0.8, browSlope: 0.8, nose: 0.74, noseLen: 0.66, noseTip: 0.95, lip: 1.3, lipFull: 1.35, mouthW: 1.05, cheek: 1.16, jaw: 0.95, chin: 0.95, ear: 0.9, faceW: 1.0, neck: 0.9, eyeGap: 0.0315, blush: 0.4, lipColor: [0.58, 0.26, 0.27] },
   brows: { thick: 0.85, arch: 1.6, tilt: 0.3, color: [0.06, 0.045, 0.04], y: 0.002 },
-  eyes: { iris: [0.2, 0.12, 0.07], size: 1.08, lid: 0.55 },
+  eyes: { iris: [0.2, 0.12, 0.07], size: 1.15, lid: 0.62 },
   style: { skin: SKIN },
   hair, garments
 };

@@ -170,15 +170,30 @@ export function hairLine({ front = 0.055, sideRecede = 0.022, side = 0.02, back 
     const yb = back + Math.max(0, ax - 0.05) * 1.4;
     const wf = smoothstep(0.0, 0.055, z);
     const wb = smoothstep(-0.015, -0.075, z);
-    return wf * yf + wb * yb + (1 - wf - wb) * ys;
+    const wobble = 0.0016 * Math.sin(x * 210 + z * 40) + 0.0022 * Math.sin(x * 97 + 1.3); // a natural, uneven edge
+    return wf * (yf + wobble) + wb * yb + (1 - wf - wb) * (ys + wobble * 0.5);
   };
 }
 
-export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0, 0.085, 0.02] } = {}) {
-  const outer = ellipsoid(0, 0.03, -0.012, 0.071 + expand, 0.084 + expand, 0.093 + expand);
-  let cap = outer;
-  if (topVolume > 0) cap = union(0.03, outer, ellipsoid(topCenter[0], topCenter[1], topCenter[2], 0.062, 0.03 + topVolume, 0.085));
-  return fromFn((x, y, z) => smax(cap.d(x, y, z), line(x, z) - y, 0.004), cap.c, cap.r + 0.03);
+// Scalp hair mass. The thickness tapers to a few millimetres at the hairline so the hair feathers into the skin
+// instead of ending in a thick wall (which reads as a wig).
+export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0, 0.085, 0.02], feather = 0.022, flow = { center: [0.005, 0.1, -0.035], n: 46, amp: 0.0016 } } = {}) {
+  const base = union(0.03, ellipsoid(0, 0.03, -0.012, 0.071, 0.084, 0.093), ellipsoid(0, 0.028, 0.04, 0.06, 0.074, 0.058));
+  let cap = base;
+  if (topVolume > 0) cap = union(0.03, base, ellipsoid(topCenter[0], topCenter[1], topCenter[2], 0.062, 0.03 + topVolume - expand, 0.085));
+  const thin = 0.0032;
+  return fromFn((x, y, z) => {
+    const h = y - line(x, z);
+    const t = smoothstep(0.0, feather, h);
+    // combed strands: grooves radiate from the crown whorl, fading towards the hairline
+    let groove = 0;
+    if (flow) {
+      const a = Math.atan2(x - flow.center[0], z - flow.center[2]);
+      const w = noise3(x * 30, y * 30, z * 30) - 0.5;
+      groove = flow.amp * Math.sin(a * flow.n + w * 5) * smoothstep(0.0, 0.03, h);
+    }
+    return smax(cap.d(x, y, z) - (thin + (expand - thin) * t) - groove, -h, 0.004);
+  }, base.c, base.r + 0.04);
 }
 
 // A hair lock: bezier-swept tapered tube. pts = [p0,p1,p2,p3]; radii = [r0, r1]; colour per lock.

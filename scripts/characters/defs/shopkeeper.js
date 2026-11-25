@@ -125,9 +125,9 @@ export default {
   id: "shopkeeper",
   skin: SKIN,
   headScale: 1.1,
-  head: { skin: SKIN, age: 1, brow: 1.35, browSlope: -0.2, nose: 1.22, noseLen: 1.1, noseTip: 1.15, cheek: 1.18, jaw: 0.92, chin: 0.92, lip: 0.85, lipFull: 0.85, mouthW: 1.05, ear: 1.18, faceW: 1.04, neck: 1.1, forehead: 1.08, eyeGap: 0.0345, blush: 0.5, lipColor: [0.7, 0.4, 0.38] },
+  head: { skin: SKIN, age: 1, brow: 1.35, browSlope: -0.2, nose: 1.06, noseLen: 0.95, noseTip: 1.08, cheek: 1.18, jaw: 0.92, chin: 0.92, lip: 0.85, lipFull: 0.85, mouthW: 1.05, ear: 1.18, faceW: 1.04, neck: 1.1, forehead: 1.08, eyeGap: 0.0345, blush: 0.5, lipColor: [0.7, 0.4, 0.38] },
   brows: { thick: 1.7, arch: 1.3, tilt: 0.1, color: [0.86, 0.85, 0.82], length: 1.1 },
-  eyes: { iris: [0.36, 0.23, 0.12], size: 1.0, lid: 0.42 },
+  eyes: { iris: [0.36, 0.23, 0.12], size: 1.06, lid: 0.5 },
   style: { skin: SKIN },
   hair, garments
 };

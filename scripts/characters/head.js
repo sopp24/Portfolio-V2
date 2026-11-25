@@ -27,11 +27,11 @@ export function buildHead(opts = {}) {
   // --- skull & face masses ---------------------------------------------------------------
   const cranium = ellipsoid(0, 0.03, -0.012, 0.071 * P.skull * P.faceW, 0.084 * P.skull, 0.093 * P.skull);
   const forehead = ellipsoid(0, 0.028, 0.04, 0.06 * P.faceW, 0.074 * P.forehead, 0.058);
-  const faceMass = ellipsoid(0, -0.036, 0.03, 0.058 * P.faceW, 0.072, 0.064);
-  const cheeks = [-1, 1].map((s) => ellipsoid(s * 0.043 * P.faceW, -0.022, 0.05, 0.025 * P.cheek, 0.025 * P.cheek, 0.023 * P.cheek));
+  const faceMass = ellipsoid(0, -0.034, 0.03, 0.054 * P.faceW, 0.068, 0.062);
+  const cheeks = [-1, 1].map((s) => ellipsoid(s * 0.04 * P.faceW, -0.014, 0.052, 0.024 * P.cheek, 0.024 * P.cheek, 0.022 * P.cheek));
   // jaw line: ear -> chin, tapered
-  const jawLines = [-1, 1].map((s) => capsule([s * 0.05 * P.faceW, -0.034, -0.012], [s * 0.022 * P.jaw, -0.092, 0.046], 0.024 * P.jaw, 0.017 * P.jaw));
-  const chin = ellipsoid(0, -0.1, 0.057, 0.0215 * P.chin * P.jaw, 0.02 * P.chin, 0.023 * P.chin);
+  const jawLines = [-1, 1].map((s) => capsule([s * 0.048 * P.faceW, -0.03, -0.012], [s * 0.022 * P.jaw, -0.087, 0.05], 0.02 * P.jaw, 0.0165 * P.jaw));
+  const chin = ellipsoid(0, -0.094, 0.059, 0.021 * P.chin * P.jaw, 0.019 * P.chin, 0.021 * P.chin);
   const neck = capsule([0, -0.07, -0.02], [0, -0.2, -0.016], 0.036 * P.neck, 0.042 * P.neck);
   let skull = union(0.03, cranium, forehead, faceMass, ...cheeks);
   skull = union(0.02, skull, ...jawLines, chin);
@@ -40,22 +40,22 @@ export function buildHead(opts = {}) {
 
   // --- brow ridge -----------------------------------------------------------------------
   const brows = [-1, 1].map((s) => capsule([s * 0.006, 0.047, 0.079], [s * 0.05, 0.043 + 0.006 * P.browSlope, 0.059], 0.0108 * P.brow, 0.009 * P.brow));
-  const masseter = [-1, 1].map((s) => ellipsoidRot(s * 0.052 * P.faceW, -0.05, 0.018, 0.021, 0.03, 0.028, 0, 0, s * 0.15));
+  const masseter = [-1, 1].map((s) => ellipsoidRot(s * 0.049 * P.faceW, -0.046, 0.012, 0.016, 0.027, 0.022, 0, 0, s * 0.15));
   skull = union(0.02, skull, ...brows, ...masseter);
 
   // --- nose -----------------------------------------------------------------------------
   const nz = P.noseLen;
   const bridge = capsule([0, 0.026, 0.078], [0, -0.02, 0.098 + 0.004 * nz], 0.0072 * P.nose, 0.0098 * P.nose);
   const tip = ellipsoid(0, -0.028, 0.105 + 0.005 * (nz - 1), 0.0098 * P.nose * P.noseTip, 0.0092 * P.nose, 0.0102 * P.nose);
-  const wings = [-1, 1].map((s) => ellipsoidRot(s * 0.0108 * P.nose, -0.031, 0.093, 0.0072 * P.nose, 0.0082 * P.nose, 0.008 * P.nose, 0, 0, s * 0.35));
+  const wings = [-1, 1].map((s) => ellipsoidRot(s * 0.0098 * P.nose, -0.0305, 0.0925, 0.0064 * P.nose, 0.0076 * P.nose, 0.0072 * P.nose, 0, 0, s * 0.35));
   skull = union(0.011, skull, bridge, tip, ...wings);
-  const nostrils = [-1, 1].map((s) => ellipsoid(s * 0.0066, -0.0372, 0.0985, 0.0032, 0.0024, 0.005));
+  const nostrils = [-1, 1].map((s) => ellipsoid(s * 0.0062, -0.0368, 0.0975, 0.0036, 0.0028, 0.0065));
   skull = nostrils.reduce((acc, n) => subtract(acc, n, 0.003), skull);
 
   // --- lips & mouth ---------------------------------------------------------------------
   const L = P.lip;
-  const lipU = ellipsoid(0, -0.0572, 0.0832, 0.0185 * L * P.mouthW, 0.0072 * L * P.lipFull, 0.011);
-  const lipD = ellipsoid(0, -0.0692, 0.0802, 0.0168 * L * P.mouthW, 0.0085 * L * P.lipFull, 0.011);
+  const lipU = ellipsoid(0, -0.0574, 0.0834, 0.0178 * L * P.mouthW, 0.0076 * L * P.lipFull, 0.0115);
+  const lipD = ellipsoid(0, -0.0694, 0.0806, 0.0164 * L * P.mouthW, 0.0088 * L * P.lipFull, 0.0115);
   const corners = [-1, 1].map((s) => ellipsoid(s * 0.0165 * P.mouthW, -0.0625, 0.0745, 0.006, 0.0055, 0.006));
   const lips = union(0.004, lipU, lipD, ...corners);
   skull = union(0.006, skull, lips);
@@ -126,6 +126,8 @@ export function buildHead(opts = {}) {
     const ds = slit.d(p[0], p[1], p[2]);
     const dc = cavity.d(p[0], p[1], p[2]);
     if (dc < 0.0035 || ds < 0.0015) c = tint(c, [0.16, 0.05, 0.05], 1 - smoothstep(-0.002, 0.0035, Math.min(ds * 2.5, dc)));
+    const dn = Math.min(nostrils[0].d(p[0], p[1], p[2]), nostrils[1].d(p[0], p[1], p[2]));
+    if (dn < 0.004) c = tint(c, [0.2, 0.07, 0.06], (1 - smoothstep(-0.001, 0.004, dn)) * 0.85);
     const dsock = Math.min(...sockets.map((so) => so.d(p[0], p[1], p[2])));
     if (dsock < 0.003) c = tint(c, [0.74, 0.4, 0.38], 1 - smoothstep(-0.002, 0.003, dsock));
     return c;

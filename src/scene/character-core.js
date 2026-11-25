@@ -158,7 +158,7 @@ export function skinMaterial() {
     vertexColors: true, roughness: 0.52, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.45,
     sheen: 0.5, sheenColor: new THREE.Color(0xffd7c0), sheenRoughness: 0.55, envMapIntensity: 0.8, name: "skin"
   });
-  return patchCharacterMaterial(m, { detailScale: 95, detailBump: 0.5, detailAlbedo: 0.06, sss: { wrap: 0.55, color: 0xff6a4a }, key: "skin" });
+  return patchCharacterMaterial(m, { detailScale: 95, detailBump: 0.5, detailAlbedo: 0.06, sss: { wrap: 0.42, color: 0xe58f74 }, key: "skin" });
 }
 
 export function clothMaterial({ roughness = 0.9, detailScale = 120, bump = 1.2, sheen = 0.12 } = {}) {
@@ -168,7 +168,7 @@ export function clothMaterial({ roughness = 0.9, detailScale = 120, bump = 1.2, 
   return patchCharacterMaterial(m, { detailScale, detailBump: bump, detailAlbedo: 0.12, key: "cloth" });
 }
 
-export function hairMaterial({ roughness = 0.46, clearcoat = 0.22 } = {}) {
+export function hairMaterial({ roughness = 0.5, clearcoat = 0.14 } = {}) {
   const m = new THREE.MeshPhysicalMaterial({
     vertexColors: true, roughness, metalness: 0, clearcoat, clearcoatRoughness: 0.3, sheen: 0.4, sheenColor: new THREE.Color(0xffe0c0), sheenRoughness: 0.4, envMapIntensity: 1.0, name: "hair"
   });

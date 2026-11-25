@@ -20,8 +20,8 @@ function eyeTexture(iris) {
   const sh = g.createLinearGradient(0, 0, W, 0); sh.addColorStop(0, "rgba(190,140,120,.25)"); sh.addColorStop(.25, "rgba(255,255,255,0)"); sh.addColorStop(.75, "rgba(255,255,255,0)"); sh.addColorStop(1, "rgba(190,140,120,.25)");
   g.fillStyle = sh; g.fillRect(0, 0, W, H);
   g.strokeStyle = "rgba(200,90,80,.13)"; g.lineWidth = 1.2;
-  for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2; g.beginPath(); const cx = W * .25, cy = H * .5; g.moveTo(cx + Math.cos(a) * 95, cy + Math.sin(a) * 95); g.quadraticCurveTo(cx + Math.cos(a + .2) * 140, cy + Math.sin(a + .2) * 140, cx + Math.cos(a + .1) * 200, cy + Math.sin(a + .1) * 200); g.stroke(); }
-  const cx = W * 0.25, cy = H * 0.5, R = 80; // iris radius in px
+  for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2; g.beginPath(); const cx = W * .25, cy = H * .5; g.moveTo(cx + Math.cos(a) * 125, cy + Math.sin(a) * 125); g.quadraticCurveTo(cx + Math.cos(a + .2) * 160, cy + Math.sin(a + .2) * 160, cx + Math.cos(a + .1) * 215, cy + Math.sin(a + .1) * 215); g.stroke(); }
+  const cx = W * 0.25, cy = H * 0.5, R = 96; // iris radius in px (≈34°: slightly larger than life for a stylised, expressive look)
   const col = (k, a = 1) => `rgba(${Math.round(iris[0] * 255 * k)},${Math.round(iris[1] * 255 * k)},${Math.round(iris[2] * 255 * k)},${a})`;
   // limbal ring + iris body
   const body = g.createRadialGradient(cx, cy, R * 0.15, cx, cy, R);
