@@ -363,42 +363,144 @@ function createRecord(project, index, position, materials) {
   group.userData.isFlipped = false;
   return group;
 }
-function createRecordCrate(scene, projects, materials, x, z, offset, recordRoots) {
+function createRecordCrate(scene, category, categoryProjects, materials, x, z, recordRoots) {
   const group = new THREE.Group();
   group.position.set(x, 0, z);
-  addBox(group, [2.56, .15, 1.36], [0, .66, 0], materials.wood);
-  addBox(group, [2.56, .72, .12], [0, .98, .62], materials.wood);
-  addBox(group, [2.56, .72, .12], [0, .98, -.62], materials.wood);
-  addBox(group, [.12, .72, 1.26], [-1.22, .98, 0], materials.wood);
-  addBox(group, [.12, .72, 1.26], [1.22, .98, 0], materials.wood);
+  const width = 2.30;
+  const depth = 1.36;
+  addBox(group, [width, .15, depth], [0, .66, 0], materials.wood);
+  addBox(group, [width, .72, .12], [0, .98, depth / 2 - .06], materials.wood);
+  addBox(group, [width, .72, .12], [0, .98, -depth / 2 + .06], materials.wood);
+  addBox(group, [.12, .72, depth - .12], [-width / 2 + .06, .98, 0], materials.wood);
+  addBox(group, [.12, .72, depth - .12], [width / 2 - .06, .98, 0], materials.wood);
 
-  const topRail = addBox(group, [2.5, .065, .07], [0, 1.34, .60], materials.trim);
-  topRail.castShadow = false;
-  const ticket = makeTexture(512, 96, (ctx) => {
-    ctx.fillStyle = "#e8dec7"; ctx.fillRect(0, 0, 512, 96);
-    ctx.fillStyle = "#30382f"; ctx.font = "bold 30px monospace"; ctx.textAlign = "center";
-    ctx.fillText(offset === 0 ? "NEW ARRIVALS" : "FEATURED PRESSINGS", 256, 58);
+  const rail = addBox(group, [width - .08, .06, .07], [0, 1.34, depth / 2 - .10], materials.trim);
+  rail.castShadow = false;
+
+  const ticket = makeTexture(640, 112, (ctx) => {
+    ctx.fillStyle = "#e8dec7"; ctx.fillRect(0, 0, 640, 112);
+    ctx.fillStyle = "#30382f"; ctx.fillRect(7, 7, 626, 98);
+    ctx.strokeStyle = "#cbb68e"; ctx.lineWidth = 2; ctx.strokeRect(15, 15, 610, 82);
+    ctx.fillStyle = "#f0e2c6"; ctx.font = "bold 25px monospace"; ctx.textAlign = "center";
+    ctx.fillText(category.fr.toUpperCase(), 320, 48, 590);
+    ctx.fillStyle = "#d8ad69"; ctx.font = "bold 13px monospace";
+    ctx.fillText(String(categoryProjects.length).padStart(2, "0") + " PRESSING" + (categoryProjects.length > 1 ? "S" : "") + "  /  SIDE A", 320, 80);
   });
-  const label = new THREE.Mesh(new THREE.PlaneGeometry(1.52, .22), new THREE.MeshBasicMaterial({ map: ticket }));
-  label.position.set(0, .99, -.687);
+  const label = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.06, .30),
+    new THREE.MeshBasicMaterial({ map: ticket })
+  );
+  label.position.set(0, 1.01, -depth / 2 - .012);
   label.rotation.y = Math.PI;
   label.scale.x = -1;
   group.add(label);
 
-  for (let i = 0; i < 5; i++) {
-    const project = projects[(offset + i) % projects.length];
-    const record = createRecord(project, offset + i, [-.86 + i * .43, 1.38 + (i % 2) * .04, -.10 + (i % 2) * .10], materials);
+  const count = categoryProjects.length;
+  categoryProjects.forEach((project, index) => {
+    const spacing = count === 1 ? 0 : count === 2 ? .64 : .54;
+    const xPosition = (index - (count - 1) / 2) * spacing;
+    const record = createRecord(project, index, [xPosition, 1.38 + (index % 2) * .025, -.08 + (index % 2) * .10], materials);
     group.add(record);
     record.userData.homeParent = group;
     record.userData.homePosition = record.position.clone();
     record.userData.homeQuaternion = record.quaternion.clone();
     record.userData.homeScale = record.scale.clone();
     recordRoots.push(record);
-  }
+  });
+
+  group.userData.categoryId = category.id;
+  group.userData.projectCount = count;
   scene.add(group);
   return group;
 }
 
+function applicationCardTexture(application, index) {
+  const palette = [
+    ["#d5a253", "#3c4e47"], ["#7e9c9a", "#233d43"], ["#d6a49a", "#4f3941"], ["#8ca2bd", "#283746"],
+    ["#77a4a0", "#26433e"], ["#d6b16f", "#4f4737"], ["#ad7a6a", "#382e31"], ["#a4a6bb", "#36384b"]
+  ][index % 8];
+  return makeTexture(384, 512, (ctx) => {
+    const gradient = ctx.createLinearGradient(0, 0, 384, 512);
+    gradient.addColorStop(0, palette[0]); gradient.addColorStop(1, palette[1]);
+    ctx.fillStyle = gradient; ctx.fillRect(0, 0, 384, 512);
+    ctx.fillStyle = "rgba(12,17,17,.22)"; ctx.fillRect(12, 12, 360, 488);
+    ctx.strokeStyle = "rgba(244,232,209,.68)"; ctx.lineWidth = 3; ctx.strokeRect(16, 16, 352, 480);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(250,241,220,.76)"; ctx.font = "bold 22px monospace";
+    ctx.fillText("SIDE A / WEB TOOLS", 192, 64);
+    ctx.fillStyle = "#f7edd9"; ctx.font = "900 44px Arial";
+    const words = application.name.toUpperCase().split(/\s+/);
+    let line = "", lines = [];
+    for (const word of words) {
+      const next = line ? line + " " + word : word;
+      if (ctx.measureText(next).width > 320 && line) { lines.push(line); line = word; }
+      else line = next;
+    }
+    if (line) lines.push(line);
+    const size = lines.length > 2 ? 31 : 42;
+    ctx.font = "900 " + size + "px Arial";
+    lines.slice(0, 3).forEach((value, row) => ctx.fillText(value, 192, 245 + row * size * 1.12, 320));
+    ctx.fillStyle = "rgba(249,239,218,.82)"; ctx.font = "bold 17px monospace";
+    ctx.fillText(application.category.fr.toUpperCase(), 192, 398, 320);
+    ctx.fillStyle = "rgba(9,14,14,.52)"; ctx.fillRect(34, 435, 316, 42);
+    ctx.fillStyle = "#f2e5cb"; ctx.font = "bold 15px monospace";
+    ctx.fillText("APP / " + String(index + 1).padStart(2, "0"), 192, 462);
+  });
+}
+
+function createApplicationRack(scene, applications, materials, applicationRoots) {
+  const rack = new THREE.Group();
+  rack.position.set(5.94, 0, 4.92);
+  rack.rotation.y = -Math.PI / 2;
+
+  addBox(rack, [3.02, 2.30, .16], [0, 1.92, 0], materials.wood);
+  addBox(rack, [3.08, .10, .22], [0, .82, .10], materials.trim);
+  addBox(rack, [3.08, .10, .22], [0, 1.89, .10], materials.trim);
+  addBox(rack, [3.08, .10, .22], [0, 2.97, .10], materials.trim);
+  addBox(rack, [.09, 2.18, .18], [-1.48, 1.92, .10], materials.trim);
+  addBox(rack, [.09, 2.18, .18], [1.48, 1.92, .10], materials.trim);
+
+  const header = makeTexture(768, 112, (ctx) => {
+    ctx.fillStyle = "#26342e"; ctx.fillRect(0, 0, 768, 112);
+    ctx.strokeStyle = "#d9c59f"; ctx.lineWidth = 3; ctx.strokeRect(8, 8, 752, 96);
+    ctx.fillStyle = "#f0e2c6"; ctx.font = "bold 34px monospace"; ctx.textAlign = "center";
+    ctx.fillText("SOPP AGENTS  /  WEB APPLICATIONS", 384, 68, 720);
+  });
+  const headerMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.82, .42),
+    new THREE.MeshBasicMaterial({ map: header })
+  );
+  headerMesh.position.set(0, 3.30, .105);
+  rack.add(headerMesh);
+
+  applications.forEach((application, index) => {
+    const col = index % 4;
+    const row = Math.floor(index / 4);
+    const card = new THREE.Group();
+    card.position.set(-1.08 + col * .72, 1.34 + row * .98, .17);
+    card.userData.isApplication = true;
+    card.userData.application = application;
+    card.userData.homeScale = card.scale.clone();
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(.62, .82, .09),
+      new THREE.MeshStandardMaterial({ color: 0x443e34, roughness: .78 })
+    );
+    body.castShadow = true;
+    card.add(body);
+    const front = new THREE.Mesh(
+      new THREE.PlaneGeometry(.586, .786),
+      new THREE.MeshBasicMaterial({ map: applicationCardTexture(application, index), side: THREE.DoubleSide })
+    );
+    front.position.z = .052;
+    card.add(front);
+    rack.add(card);
+    applicationRoots.push(card);
+  });
+
+  scene.add(rack);
+  return rack;
+}
 function createShelf(scene, side, z, level, materials, projects, shelfIndex) {
   const x = side * 5.68;
   const y = .78 + level * 1.08;
@@ -673,10 +775,11 @@ export function createStoreScene(canvas, projects) {
   createSign(scene, "SIDE A  /  RECORDS", [0, 4.05, -7.40], 3.9, .58, 0);
   createSign(scene, "LISTEN  /  DISCOVER  /  REPEAT", [0, 3.55, -7.39], 4.8, .25, 0);
 
-  // Dense but orderly wall racks: the covers, not a UI menu, create the navigation cues.
+  // Dense wall shelves retain their album-cover backdrop. The right-front module becomes the independent app rack.
   for (const side of [-1, 1]) {
     for (let level = 0; level < 3; level++) {
       for (const z of [-3.45, -.35, 2.75, 5.25]) {
+        if (side === 1 && z === 5.25) continue;
         createShelf(scene, side, z, level, materials, projects, level * 8 + Math.round(z + 4));
       }
     }
@@ -700,10 +803,22 @@ export function createStoreScene(canvas, projects) {
   posterRight.position.set(5.2, 3.15, -7.34);
   scene.add(posterRight);
 
-  // Two central wooden listening bins form the main project collection.
+  // Six category bins: each physical record appears once, while multi-category tags remain available in the data.
   const recordRoots = [];
-  createRecordCrate(scene, projects, materials, -1.45, .88, 0, recordRoots);
-  createRecordCrate(scene, projects, materials, 1.45, .88, 5, recordRoots);
+  const categoryBins = [];
+  const binPositions = [
+    [-3.62, -.72], [0, -.72], [3.62, -.72],
+    [-3.62, 2.45], [0, 2.45], [3.62, 2.45]
+  ];
+  categories.forEach((category, index) => {
+    const categoryProjects = projects.filter(project => project.categories[0] === category.id);
+    const [x, z] = binPositions[index];
+    categoryBins.push(createRecordCrate(scene, category, categoryProjects, materials, x, z, recordRoots));
+  });
+
+  // A distinct right-wall rack holds all eight live SOPP applications.
+  const applicationRoots = [];
+  const applicationRack = createApplicationRack(scene, applications, materials, applicationRoots);
 
   // Checkout, vintage register, turntable and listening corner.
   const listening = createCounterAndListeningCorner(scene, materials);
@@ -745,7 +860,7 @@ export function createStoreScene(canvas, projects) {
   }
 
   return {
-    scene, camera, renderer, materials, recordRoots, openDoors, closeDoors, update, resize,
+    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, openDoors, closeDoors, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
