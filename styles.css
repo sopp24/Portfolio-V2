@@ -354,3 +354,44 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
 @media (prefers-reduced-motion: reduce) {
   .aim-reticle, .record-actions button { transition: none !important; }
 }
+
+
+/* Independent SOPP Agents rack: its live links are distinct from vinyl actions. */
+.record-panel.is-application {
+  border-top-color: rgba(126,164,157,.9);
+}
+.record-panel.is-application .record-panel-eyebrow {
+  color: #93bbb0;
+}
+.application-actions a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(145,184,170,.42);
+  padding: 0 12px;
+  background: rgba(122,158,143,.10);
+  color: #d6e5d7;
+  font: 7px var(--mono);
+  letter-spacing: .08em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
+}
+.application-actions a:hover {
+  border-color: #a8c9b4;
+  background: rgba(122,158,143,.20);
+  color: #fff3da;
+}
+.application-actions .record-return {
+  border-color: rgba(173,102,76,.62);
+  color: #e0a28b;
+}
+@media (max-width: 760px) {
+  .application-actions a {
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 7px;
+    font-size: 7px;
+  }
+}
