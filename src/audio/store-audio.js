@@ -120,6 +120,19 @@ export function createStoreAudio() {
           tone(392, 440, .16, .009, "sine");
           tone(523, 587, .19, .007, "sine", .12);
           break;
+        case "arrival":
+          tone(246, 330, .22, .009, "sine");
+          tone(392, 494, .28, .007, "sine", .16);
+          break;
+        case "departure":
+          tone(330, 246, .24, .009, "sine");
+          tone(220, 165, .30, .006, "sine", .14);
+          break;
+        case "discovery":
+          tone(587, 587, .12, .014, "sine");
+          tone(740, 740, .16, .012, "sine", .10);
+          tone(880, 880, .20, .010, "sine", .22);
+          break;
         case "easter":
           tone(660, 660, .12, .014, "sine");
           tone(880, 880, .18, .012, "sine", .10);
