@@ -121,3 +121,10 @@ Ambient room tone and short record-handling cues are generated locally with the 
 The LISTEN control opens a dedicated listening dialog. A YouTube embed is created only when the `youtube-video-id` meta tag contains a valid 11-character video ID. The player uses the privacy-enhanced `youtube-nocookie.com` domain, does not autoplay, and is removed on closing the dialog to stop playback. No video ID is prefilled because no track has yet been selected and verified.
 
 A small lucky-cat charm sits on the counter as a clickable easter egg. Aim at it with the center reticle and click, or use its contextual discovery action.
+
+
+### Phase 7 — Subtle character animation and in-store reactions
+
+The shopkeeper now has a lightweight procedural rig assembled from the existing low-poly meshes: a restrained breathing cycle, small head movements, relaxed arm movement and a short right-hand welcome gesture when the conversation opens. The animation adds no skeletal system, external models or new lights.
+
+The lucky-cat charm now has a continuously moving raised paw and a very subtle hover response. Its animation is updated by the existing scene loop. The greeting uses a short two-note sound cue only when the visitor has previously enabled sound. The scene remains silent by default.
