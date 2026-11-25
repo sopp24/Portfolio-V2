@@ -77,7 +77,22 @@
     </header>
 
     <button id="mobile-menu" class="mobile-menu" type="button" hidden aria-label="Open menu">MENU <span>+</span></button>
-    <p id="control-hint" class="control-hint" hidden>Déplace la souris pour regarder · Molette pour zoomer · Échap pour le menu</p>
+    <p id="control-hint" class="control-hint" hidden>Regarde une pochette puis clique pour la sortir · Échap pour le menu</p>
+    <div id="aim-reticle" class="aim-reticle" hidden aria-hidden="true"><span></span></div>
+
+    <aside id="record-panel" class="record-panel" hidden aria-live="polite">
+      <div class="record-panel-copy">
+        <p class="record-panel-eyebrow">SIDE A / SELECTED PRESSING</p>
+        <h2 id="record-title">PROJECT TITLE</h2>
+        <p id="record-summary"></p>
+      </div>
+      <div id="record-actions" class="record-actions" hidden>
+        <button id="record-flip-button" type="button">VOIR LE VERSO</button>
+        <button id="record-open-button" type="button">OUVRIR LA POCHETTE</button>
+        <button id="record-details-button" type="button" hidden>FICHE DU PROJET</button>
+        <button id="record-return-button" class="record-return" type="button">REMETTRE DANS LE BAC</button>
+      </div>
+    </aside>
 
     <section id="mode-2d" class="mode-2d" hidden>
       <div class="directory-top">
