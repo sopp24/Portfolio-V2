@@ -542,3 +542,38 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
   .shopkeeper-actions { width: 100%; }
   .shopkeeper-actions button { width: 100%; min-height: 42px; }
 }
+
+
+/* Optional, visitor-controlled sound and the SIDE A listening corner. */
+.listening-dialog {
+  position: fixed;
+  inset: auto 50% 22px auto;
+  transform: translateX(50%);
+  width: min(620px, calc(100% - 28px));
+  max-width: none;
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid rgba(78,65,47,.28);
+  background: #eee4d1;
+  color: #2d261e;
+  box-shadow: 0 24px 90px rgba(0,0,0,.42);
+}
+.listening-dialog[open] { display: block; }
+.listening-dialog::backdrop { background: rgba(25,21,17,.66); backdrop-filter: blur(4px); }
+.listening-dialog .assistant-header { padding-right: 62px; }
+.listening-copy { margin: 0; padding: 22px 24px; color: #5f5140; font: 12px/1.7 Arial, sans-serif; }
+.youtube-player-host { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #171512; }
+.youtube-player-host iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.listening-dialog .assistant-footnote { padding: 0 24px 20px; }
+.easter-actions button {
+  border-color: rgba(216,166,83,.55);
+  background: rgba(216,166,83,.11);
+  color: #f1d5a6;
+}
+.easter-actions button:hover { border-color: #e6bd79; background: rgba(216,166,83,.2); }
+@media (max-width: 600px) {
+  .listening-dialog { bottom: max(8px, env(safe-area-inset-bottom)); }
+  .listening-copy { padding: 17px; }
+  .listening-dialog .assistant-footnote { padding: 0 17px 16px; }
+}
