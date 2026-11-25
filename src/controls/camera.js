@@ -25,7 +25,7 @@ export function createCameraController(camera, canvas) {
 
   function isOverInterface(target) {
     return target instanceof Element && !!target.closest(
-      "#site-header, .screen-overlay, .project-dialog, .mode-2d, button, a, input, select, textarea"
+      "#site-header, .screen-overlay, .project-dialog, .mode-2d, .record-panel, button, a, input, select, textarea"
     );
   }
 
