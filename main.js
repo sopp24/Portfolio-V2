@@ -356,6 +356,8 @@ function createShelfModule(side, centerZ, segmentNumber, aisleIndex=segmentNumbe
   for(let i=0;i<11;i++)addBox(parent,[.018,3.75,.014],[-3.6+i*.72,2.2,-.407],pegMaterial);
   const label=createPosterSign(AISLE_LABELS[((aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length],2.2,.36,aisleIndex%4===3?"#c77c62":"#d7dfc1");
   label.position.set(0,4.48,-.35);parent.add(label);parent.userData.aisleSign=label;
+  const aisleNumber=createPosterSign("AISLE "+String(Math.abs(aisleIndex)+1).padStart(2,"0"),.82,.28,"#d7dfc1");
+  aisleNumber.position.set(1.52,4.48,-.35);parent.add(aisleNumber);parent.userData.aisleNumberSign=aisleNumber;
   sideSections.push(parent);scene.add(parent);return parent;
 }
 
@@ -789,14 +791,18 @@ function updateMovement(delta) {
   updateCamera();
 }
 
-function refreshAisleSign(section) {
-  const label=section.userData.aisleSign;
+function replaceSignTexture(label,text,width,height,color) {
   if(!label)return;
-  const index=((section.userData.aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length;
-  const next=createPosterSign(AISLE_LABELS[index],2.2,.36,index%4===3?"#c77c62":"#d7dfc1");
+  const next=createPosterSign(text,width,height,color);
   const map=next.material.map;next.material.map=null;next.material.dispose();next.geometry.dispose();
   if(label.material.map)label.material.map.dispose();
   label.material.map=map;label.material.needsUpdate=true;
+}
+function refreshAisleSign(section) {
+  const aisleIndex=section.userData.aisleIndex;
+  const index=((aisleIndex%AISLE_LABELS.length)+AISLE_LABELS.length)%AISLE_LABELS.length;
+  replaceSignTexture(section.userData.aisleSign,AISLE_LABELS[index],2.2,.36,index%4===3?"#c77c62":"#d7dfc1");
+  replaceSignTexture(section.userData.aisleNumberSign,"AISLE "+String(Math.abs(aisleIndex)+1).padStart(2,"0"),.82,.28,"#d7dfc1");
 }
 function updateWorldStreaming() {
   let sectionsStreamed=false;
