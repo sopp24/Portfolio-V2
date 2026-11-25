@@ -1,6 +1,6 @@
 # Adam Soppelsa — Projects Store
 
-A 3D portfolio designed as a compact independent record store from the 1990s. The visitor stays in one fixed position and looks around the shop; projects are represented as vinyl records. The eight web applications currently have a separate section in the 2D collection; their physical 3D rack is planned next.
+A 3D portfolio designed as a compact independent record store from the 1990s. The visitor stays in one fixed position and looks around the shop; projects are represented as vinyl records in six category bins. The eight web applications have a dedicated physical rack with live links to each app and its GitHub repository.
 
 ## Current direction
 
@@ -58,7 +58,7 @@ The visitor's camera position never changes.
 
 1. ~~Create the physical vinyl model, front/back liner art and hinged sleeve.~~
 2. ~~Add center-gaze raycast selection, subtle hover response, extraction, flip, opening, project details and return-to-crate animation.~~
-3. Build category bins and the dedicated applications rack as navigable objects.
+3. ~~Build six category bins and the dedicated applications rack as navigable objects.~~
 4. Add the About corner, validated CV/contact links and the interactive shopkeeper.
 5. Connect the shopkeeper to a secure serverless AI backend. No API secret is allowed in the frontend.
 6. Add the official YouTube player, opt-in audio, effects, bilingual refinements and Easter eggs.
@@ -82,3 +82,8 @@ The project is compatible with GitHub Pages at the repository root. The applicat
 The ten central records are independent selectable 3D objects. Aim with the center reticle and click/tap the canvas to pull a record toward the fixed camera. The inspection controls can flip the sleeve to Side B, open and close its hinged front, slide the vinyl outward, open the full project sheet, or return the record to its exact original crate position. Escape and R also return a selected record. Keyboard shortcuts F and O flip/open the sleeve. The raycast and record animations are isolated in `src/scene/record-interaction.js`; the camera position remains fixed throughout.
 
 The current sleeve artwork and its Side B liner notes are procedural placeholders, clearly marked as such in the project catalogue. Final supplied project artwork can replace the textures without changing the interaction system.
+
+
+### Phase 3 — Category bins and application rack
+
+The ten project records are now distributed once across six physical category bins. The first category tag in each project's data determines its physical home; all additional tags remain intact for multi-category filtering and project details. The separate right-wall SOPP Agents rack contains eight physical application cards. Center the gaze on a card and click/tap to select it; the information panel provides the real live-app URL and GitHub repository URL, and the card eases slightly out from the rack. Returning closes the panel and restores the card to its original position. New categories and applications can be added through the data modules and the existing loops without duplicating the scene structure.
