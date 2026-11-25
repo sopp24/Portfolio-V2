@@ -1,8 +1,8 @@
 import * as THREE from "three";
 
 export function createRecordInteraction({
-  scene, camera, canvas, records, applications = [],
-  onPanelChange = () => {}, onOpenProject = () => {}
+  scene, camera, canvas, records, applications = [], shopkeeper = null,
+  onPanelChange = () => {}, onOpenProject = () => {}, onOpenAssistant = () => {}
 }) {
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0);
@@ -12,10 +12,10 @@ export function createRecordInteraction({
   const targetQuaternion = new THREE.Quaternion();
   const hoverScale = new THREE.Vector3(1, 1, 1);
   const presentationScale = new THREE.Vector3(1.06, 1.06, 1.06);
-  const pickTargets = [...records, ...applications];
+  const pickTargets = [...records, ...applications, ...(shopkeeper ? [shopkeeper] : [])];
   const flipQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
-  let active = false, hoveredRecord = null, hoveredApplication = null;
+  let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null;
   let selectedRecord = null, selectedApplication = null;
   let returningRecord = false, destroyed = false;
 
@@ -51,25 +51,36 @@ export function createRecordInteraction({
     if (hoveredApplication) hoveredApplication.userData.hovered = true;
   }
 
+  function setHoveredShopkeeper(next) {
+    if (hoveredShopkeeper === next) return;
+    if (hoveredShopkeeper) hoveredShopkeeper.userData.hovered = false;
+    hoveredShopkeeper = next;
+    if (hoveredShopkeeper) hoveredShopkeeper.userData.hovered = true;
+  }
+
   function pick() {
     if (!active || selectedRecord || selectedApplication || destroyed) return;
     scene.updateMatrixWorld(true);
     camera.updateMatrixWorld(true);
     raycaster.setFromCamera(center, camera);
     const hits = raycaster.intersectObjects(pickTargets, true);
-    let nextRecord = null, nextApplication = null;
+    let nextRecord = null, nextApplication = null, nextShopkeeper = null;
     for (const hit of hits) {
       const record = findRoot(hit.object, "isRecord");
       if (record) { nextRecord = record; break; }
       const application = findRoot(hit.object, "isApplication");
       if (application) { nextApplication = application; break; }
+      const person = findRoot(hit.object, "isShopkeeper");
+      if (person) { nextShopkeeper = person; break; }
     }
-    const changed = nextRecord !== hoveredRecord || nextApplication !== hoveredApplication;
+    const changed = nextRecord !== hoveredRecord || nextApplication !== hoveredApplication || nextShopkeeper !== hoveredShopkeeper;
     setHoveredRecord(nextRecord);
     setHoveredApplication(nextApplication);
+    setHoveredShopkeeper(nextShopkeeper);
     if (!changed) return;
     if (hoveredRecord) emitPanel({ mode: "hover", project: hoveredRecord.userData.project });
     else if (hoveredApplication) emitPanel({ mode: "application-hover", application: hoveredApplication.userData.application });
+    else if (hoveredShopkeeper) emitPanel({ mode: "shopkeeper-hover" });
     else emitPanel({ mode: "none" });
   }
 
@@ -93,6 +104,7 @@ export function createRecordInteraction({
     selectedRecord = record;
     setHoveredRecord(null);
     setHoveredApplication(null);
+    setHoveredShopkeeper(null);
     returningRecord = false;
     emitRecordPanel("selected");
   }
@@ -102,6 +114,7 @@ export function createRecordInteraction({
     selectedApplication = applicationObject;
     setHoveredApplication(null);
     setHoveredRecord(null);
+    setHoveredShopkeeper(null);
     selectedApplication.userData.selected = true;
     emitPanel({ mode: "application-selected", application: selectedApplication.userData.application });
   }
@@ -114,6 +127,11 @@ export function createRecordInteraction({
     } else if (hoveredApplication) {
       event.preventDefault();
       selectApplication(hoveredApplication);
+    } else if (hoveredShopkeeper) {
+      event.preventDefault();
+      setHoveredShopkeeper(null);
+      emitPanel({ mode: "none" });
+      onOpenAssistant();
     }
   }
 
@@ -228,6 +246,7 @@ export function createRecordInteraction({
     if (!active) {
       setHoveredRecord(null);
       setHoveredApplication(null);
+      setHoveredShopkeeper(null);
       if (selectedRecord) returnSelectedRecord();
       if (selectedApplication) returnSelectedApplication();
       if (!selectedRecord) emitPanel({ mode: "none" });
@@ -239,6 +258,7 @@ export function createRecordInteraction({
     canvas.removeEventListener("click", handleCanvasClick);
     setHoveredRecord(null);
     setHoveredApplication(null);
+    setHoveredShopkeeper(null);
     if (selectedApplication) returnSelectedApplication();
     if (selectedRecord) {
       selectedRecord.userData.flap.rotation.y = 0;
