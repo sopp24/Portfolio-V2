@@ -33,6 +33,7 @@ export function renderProjectSheet(project, categories, { index = null, kind = "
   chips.append(h("span", { class: project.year ? "chip chip-solid" : "chip chip-warn", text: project.year ? String(project.year) : t("liner.yearTbc") }));
   for (const id of project.categories || []) chips.append(h("span", { class: "chip", text: categoryLabel(categories, id) }));
   if (project.visualStatus === "provisional") chips.append(h("span", { class: "chip chip-warn", text: t("dock.provisional") }));
+  if (project.confirmed === false) chips.append(h("span", { class: "chip chip-warn", text: t("about.toConfirm") }));
   root.append(chips);
 
   if (hasText(project.short)) root.append(h("p", { text: L(project.short) }));

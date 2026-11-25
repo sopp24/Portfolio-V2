@@ -16,7 +16,7 @@ async function coverUrl(project, index) {
   return url;
 }
 
-export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv, onContact, onBack, onEnter3d, canEnter3d, onLanguage }) {
+export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv, onContact, onBack, onEnter3d, canEnter3d, canRetry3d = () => true, onLanguage }) {
   const root = $("#mode-2d");
   let filter = "";
   let note = "";
@@ -34,6 +34,8 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
   }
 
   function render() {
+    // a full re-render must not drop keyboard focus (language buttons, category filter, primary action)
+    const keepFocus = root.contains(document.activeElement) ? document.activeElement.id : "";
     root.replaceChildren();
     const lang = getLanguage();
     const page = h("div", { class: "d2" });
@@ -41,8 +43,9 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
       h("div", { class: "brand" }, h("span", { class: "brand-mark", "aria-hidden": "true", text: "A" }), h("span", { text: t("store.name") })),
       h("div", { class: "actions" },
         h("div", { class: "lang-switch", role: "group", "aria-label": "Language / Langue" },
-          ...["fr", "en"].map((code) => h("button", { type: "button", "aria-pressed": String(lang === code), text: code.toUpperCase(), onclick: () => onLanguage(code) }))),
-        canEnter3d() ? h("button", { type: "button", class: "btn btn-primary", text: t("dir.back"), onclick: onBack }) : h("button", { type: "button", class: "btn btn-primary", text: t("dir.enter3d"), onclick: onEnter3d })
+          ...["fr", "en"].map((code) => h("button", { type: "button", id: `dir-lang-${code}`, "aria-pressed": String(lang === code), text: code.toUpperCase(), onclick: () => onLanguage(code) }))),
+        canEnter3d() ? h("button", { type: "button", id: "dir-primary", class: "btn btn-primary", text: t("dir.back"), onclick: onBack })
+          : (canRetry3d() ? h("button", { type: "button", id: "dir-primary", class: "btn btn-primary", text: t("dir.enter3d"), onclick: onEnter3d }) : null)
       )
     );
     page.append(top);
@@ -122,6 +125,7 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
 
     page.append(h("footer", { class: "d2-foot" }, h("span", { text: "ADAM SOPPELSA — PROJECTS STORE" }), h("span", { text: "FR / EN" })));
     root.append(page);
+    if (keepFocus) document.getElementById(keepFocus)?.focus({ preventScroll: true });
   }
 
   return {

@@ -493,3 +493,11 @@ test("worker: AI_EFFORT is forwarded as output_config.effort (adaptive thinking 
   await worker.fetch(chat(q()), bad);
   assert.equal(upstream[upstream.length - 1].body.output_config, undefined, "unknown values are never forwarded");
 });
+
+test("local FAQ: domain questions are answered from the matching bin, generic ones from the whole shop", () => {
+  const data = answerLocally("Quel est le projet le plus data d'Adam ?", { language: "fr" });
+  assert.match(data.reply, /datavisualisation/i);
+  assert.ok(data.actions.length >= 2 && data.actions.every((a) => a.type === "project"));
+  assert.match(answerLocally("Which project is about video?", { language: "en" }).reply, /RAPMAP/);
+  assert.match(answerLocally("Ses projets ?", { language: "fr" }).reply, /Communication|bac/i);
+});

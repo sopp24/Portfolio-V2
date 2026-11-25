@@ -37,7 +37,7 @@ and keep `ALLOWED_ORIGINS` in `wrangler.jsonc` limited to `https://sopp24.github
 
 ## Music (YouTube)
 
-The soundtrack uses the official IFrame player and the video id configured in `src/audio/engine.js` (`RSXMwOvUui4`; the `youtube-video-id` meta in `index.html` may be used by the UI). Things to know: sound starts only after the visitor chooses "enter with sound"; the player must remain visible (≥ 200×200) per YouTube's policy; the random start only works if the stream exposes a DVR window; if embedding is disabled by the owner of the video the UI shows an error state. Details and limits: `src/audio/README.md`. None of this could be tested from the build sandbox.
+The soundtrack uses the official IFrame player and the video id `DEFAULT_VIDEO_ID` in `src/audio/youtube-music.js` (`RSXMwOvUui4`; `createAudioEngine({ youtubeVideoId })` can override it). Things to know: sound starts only after the visitor chooses "enter with sound"; the player must remain visible (≥ 200×200) per YouTube's policy; the random start only works if the stream exposes a DVR window; if embedding is disabled by the owner of the video the UI shows an error state. Details and limits: `src/audio/README.md`. None of this could be tested from the build sandbox.
 
 ## Custom domain later
 

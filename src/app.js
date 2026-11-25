@@ -104,7 +104,8 @@ export async function boot() {
     onAbout: showAbout, onCv: showCv, onContact: showContact,
     onBack: () => hideDirectory(),
     onEnter3d: () => { if (contextLost) location.reload(); else location.search = ""; },
-    canEnter3d: () => !!world,
+    canEnter3d: () => !!world && !contextLost,
+    canRetry3d: () => supportsWebGL2(),
     onLanguage: (code) => changeLanguage(code)
   });
   function wrapSheet(node) {

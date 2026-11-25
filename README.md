@@ -90,9 +90,11 @@ Legend: **V** = built and verified in headless Chromium (software renderer) only
 | Master 2 title/institution/availability date, project years, internship validation | X | Never invented; see `PROFILE_PENDING` (printed by `npm run check`). |
 | SOPP Agents application URLs | D | The 8 entries were not re-verified against the live site from the sandbox. |
 | GitHub Pages deployment | D | Workflows written; first deploy not yet run. Set Pages source to "GitHub Actions". |
+| Abuse protection of the AI Worker | D | The per-IP rate limit and daily budget live in isolate memory (best effort). For real protection bind a Cloudflare rate-limit/KV namespace (see `docs/BACKEND.md`) and keep a spend cap at the provider. |
+| Content-Security-Policy | N | Not shipped: it has to be validated against the YouTube player and the Worker URL once those are final. |
 | GTA-class photorealism | N | Stylised procedural assets (including the characters) with real-time lighting and post-processing; no baked GI, no photoscanned assets. |
 <!-- STATUS:END -->
 
 ## Credits and licences
 
-Three.js (MIT). Fonts via `@fontsource` (Poppins, Anton, Caveat, Permanent Marker, Special Elite, Playfair Display: SIL OFL) plus the project's own Dirtyline font file. All artwork, audio and models in the store are generated at runtime; fictional bands and posters are scenery, not real releases. This repository contains no secrets: the AI key lives only in the Cloudflare Worker.
+Three.js (MIT). Fonts via `@fontsource` (Poppins, Anton, Caveat, Permanent Marker, Special Elite, Playfair Display: SIL OFL) plus the "Dirtyline 36 Days of Type 2022" font (© Dirtyline Studio, all rights reserved per its font file; it came with the original repository and is used for the intro title). **Check its licence for web redistribution** (https://dirtylinestudio.com/license) or swap it for an OFL font. All artwork, audio and models in the store are generated at runtime; fictional bands and posters are scenery, not real releases. This repository contains no secrets: the AI key lives only in the Cloudflare Worker.

@@ -146,7 +146,17 @@ const INTENTS = [
   ["availability", /(disponib|availab|etranger|abroad|overseas|relocat|embauch|septembre|september|start date|date de debut|demarrer)/]
 ];
 
+// "which project is the most data-driven?" -> the matching bin (keyword -> category id)
+const BIN_KEYWORDS = [
+  ["data", /\b(data|datavis\w*|dataviz|datajournal\w*|donnees)\b/],
+  ["graphic-design", /(graphi|\bdesign\b|direction artistique|\bda\b|affiche|identite visuelle)/],
+  ["audiovisual-music", /(audiovisuel|audiovisual|\bvideo|podcast|\bfilm\b|montage)/],
+  ["project-management", /(evenement|\bevents?\b|gestion de projet|project management|pilotage)/]
+];
+const binFor = (t) => (BIN_KEYWORDS.find(([, pattern]) => pattern.test(t)) || [])[0] || null;
+
 const LATE_INTENTS = [
+  ["bin", /\b(projets?|projects?|realisations?|works?|vinyles?|records?)\b/],
   ["webdev", /(developpement web|web dev|developpeur|developer|front ?end|html|css|javascript|\bcode\b|coder|programm|integration|site web|website)/],
   ["apps", /(application|\bapps?\b|\brack\b|sopp agents|outils|\btools?\b|tester|\btest\b)/],
   ["music", /(musi|guitar|piano|\bchant|\bmao\b|\bmix\b|\bsing|\bsong|stream|\bdaw\b|compos)/],
@@ -167,7 +177,11 @@ export function detectIntent(text, kb) {
   const apps = matchApplications(text, kb);
   if (apps.length) return { name: "application", apps };
   for (const [name, pattern] of INTENTS) if (pattern.test(t)) return { name };
-  for (const [name, pattern] of LATE_INTENTS) if (pattern.test(t)) return { name };
+  for (const [name, pattern] of LATE_INTENTS) {
+    if (!pattern.test(t)) continue;
+    if (name === "bin" && !binFor(t)) return { name: "best" }; // "his projects?" with no domain: show the whole shop, bin by bin
+    return { name };
+  }
   return { name: "unknown" };
 }
 
@@ -276,6 +290,18 @@ export function answerLocally(question, { language = "fr", kb = getDefaultKnowle
         ? `Ses compétences se regroupent en ${names.length} familles : ${list(names, lang)}. Elles viennent des fiches projet validées ; je n'ai pas de liste de logiciels ou d'outils confirmée.`
         : `His skills fall into ${names.length} families: ${list(names, lang)}. They come from the validated project sheets; I don't have a confirmed list of software or tools.`;
       actions = [{ type: "about" }];
+      break;
+    }
+    case "bin": {
+      const categoryId = binFor(t);
+      const category = kb.categories.find((c) => c.id === categoryId);
+      const items = (kb.projects || []).filter((p) => (p.categories || []).some((c) => c.id === categoryId));
+      if (!category || !items.length) { reply = nic; break; }
+      const firstSentence = (text) => String(text || "").split(/(?<=[.!?…])\s/)[0];
+      reply = (fr ? `Dans le bac « ${pick(category.name, lang)} », tu trouveras :\n` : `In the "${pick(category.name, lang)}" bin you'll find:\n`)
+        + items.slice(0, 4).map((p) => `• ${shortTitle(p, lang)} — ${firstSentence(pick(p.summary, lang))}`).join("\n")
+        + (fr ? "\nJe ne les classe pas : ils sont tous au même niveau. Dis-moi lequel te tente." : "\nI don't rank them: they're all on equal footing. Tell me which one tempts you.");
+      actions = items.slice(0, 3).map((p) => ({ type: "project", id: p.id }));
       break;
     }
     case "categories": {

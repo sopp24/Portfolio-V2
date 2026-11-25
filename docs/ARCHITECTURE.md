@@ -29,7 +29,7 @@ None of this is done: the shipped shell is 100 % procedural.
 
 | Path | Responsibility |
 | --- | --- |
-| `index.html`, `styles/app.css` | Document shell, import map, meta (description, OG, `assistant-endpoint`, `youtube-video-id`), accessible 2D fallback markup, all overlay UI styling. |
+| `index.html`, `styles/app.css` | Document shell, import map, meta (description, OG, `assistant-endpoint`), accessible 2D fallback markup, all overlay UI styling. |
 | `src/main.js` | Entry. Imports `src/app.js`. |
 | `src/app.js` | Orchestrator: boots the world, wires UI ↔ world ↔ audio ↔ AI, intro/loading states, first-visit memory, language, mode switching (3D / 2D). |
 | `src/core/i18n.js`, `src/core/storage.js` | UI strings (FR/EN) and language helper; safe `localStorage` wrapper (private-mode safe). |
@@ -116,7 +116,7 @@ No key, token or secret exists in the browser or the repository (`scripts/check.
 ## 10. Known limitations
 
 - Performance has been measured only in headless Chromium on a software renderer (SwiftShader): no frame-rate claim exists for real hardware. See `docs/ACCESSIBILITY_PERFORMANCE.md` for the protocol.
-- All sleeves are **provisional generated artwork**; `visualStatus: "provisional"` marks them. The data model has no consumed `cover.front/back` field yet (see `docs/CONTENT.md`).
+- All sleeves are **provisional generated artwork**; `visualStatus: "provisional"` marks them. `cover.front` / `cover.back` are consumed by `records.js` (see `docs/CONTENT.md`) but have not been exercised with a real image yet.
 - Project data has no `images`/`videos`/`documents`/`externalUrl` fields yet, although the brief lists them.
 - People and furniture are stylised procedural models, not GTA-class photoreal assets (the characters are sculpted and rigged, with eyes, blink, jaw and head tracking, but hair/cloth do not simulate and faces are simpler than a hand-made game hero); there is no screen-space reflection and no baked global illumination.
 - The YouTube random start depends on the stream exposing a DVR window; unverified from the build sandbox.
