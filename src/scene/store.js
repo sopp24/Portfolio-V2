@@ -480,6 +480,7 @@ function createApplicationRack(scene, applications, materials, applicationRoots)
     card.position.set(-1.08 + col * .72, 1.34 + row * .98, .17);
     card.userData.isApplication = true;
     card.userData.application = application;
+    card.userData.homePosition = card.position.clone();
     card.userData.homeScale = card.scale.clone();
 
     const body = new THREE.Mesh(
