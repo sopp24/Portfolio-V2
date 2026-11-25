@@ -674,6 +674,8 @@ async function sendAssistantMessage(rawMessage) {
 
 function openAssistant() {
   const dialog = $("assistant-dialog");
+  store?.greetShopkeeper?.();
+  storeAudio?.playCue("greeting");
   $("assistant-status").textContent = assistantEndpoint()
     ? COPY[language].assistantStatusOnline
     : COPY[language].assistantStatusOffline;
