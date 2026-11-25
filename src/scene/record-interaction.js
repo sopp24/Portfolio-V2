@@ -14,6 +14,8 @@ export function createRecordInteraction({
   const up = new THREE.Vector3();
   const desiredPosition = new THREE.Vector3();
   const targetQuaternion = new THREE.Quaternion();
+  const hoverScale = new THREE.Vector3(1, 1, 1);
+  const presentationScale = new THREE.Vector3(1.06, 1.06, 1.06);
   const flipQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
   let active = false;
@@ -156,11 +158,8 @@ export function createRecordInteraction({
     for (const record of records) {
       if (record === selected) continue;
       const targetScale = record.userData.hovered ? 1.035 : 1;
-      record.scale.lerp(new THREE.Vector3(
-        record.userData.homeScale.x * targetScale,
-        record.userData.homeScale.y * targetScale,
-        record.userData.homeScale.z * targetScale
-      ), amount);
+      hoverScale.copy(record.userData.homeScale).multiplyScalar(targetScale);
+      record.scale.lerp(hoverScale, amount);
     }
 
     if (!selected) {
@@ -189,7 +188,6 @@ export function createRecordInteraction({
     camera.getWorldDirection(forward);
     camera.getWorldPosition(desiredPosition);
     desiredPosition.addScaledVector(forward, 1.34);
-    camera.getWorldDirection(up);
     up.set(0, 1, 0).applyQuaternion(camera.quaternion);
     desiredPosition.addScaledVector(up, -.015);
 
@@ -198,7 +196,7 @@ export function createRecordInteraction({
 
     record.position.lerp(desiredPosition, amount);
     record.quaternion.slerp(targetQuaternion, amount);
-    record.scale.lerp(new THREE.Vector3(1.06, 1.06, 1.06), amount);
+    record.scale.lerp(presentationScale, amount);
   }
 
   function setActive(value) {
