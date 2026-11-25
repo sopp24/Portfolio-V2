@@ -28,7 +28,7 @@ Touch devices have a movement pad, run, jump, crouch, flashlight and examine con
 
 ## Recreated systems
 
-- Endless aisle streaming: shelves, aisle categories, ceiling fluorescents, floor and side walls are recycled as the player walks in either direction.
+- Endless aisle streaming: shelves, aisle categories, ceiling fluorescents, floor and side walls are recycled as the player walks in either direction. Each shelf header pairs its genre/category with a compact numbered aisle marker that updates as the section streams forward or backward.
 - Mixed face-out movie covers and readable VHS spines, with softly rounded reusable cassette moulds and individual reusable GPU textures to limit memory growth as the catalogue streams.
 - Detailed streamed fluorescent fittings with shared housings, diffusers and subtle ceiling spill; each tube now has a slightly independent output drift and an extremely restrained warm/cool colour shift to keep the aisle lighting from feeling perfectly uniform.
 - Reusable rental ticket strips along the shelf edges, small shared metallic fasteners at the rail ends, and subtle hovering/rotation motion for the hidden anomalies in Survival Mode.
