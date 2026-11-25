@@ -77,7 +77,7 @@ let movieCatalogue = MOVIES.slice();
 let tmdbToken = "";
 try { tmdbToken = localStorage.getItem("midnightvideo.tmdbToken") || ""; }
 catch(error) { console.warn("Browser storage is unavailable; TMDB token will not persist.",error); }
-let pointerDragging=false,pointerDragMoved=false,pointerLastX=0,pointerLastY=0,suppressCanvasClick=false,touchLookMoved=false;
+let pointerDragging=false,pointerDragMoved=false,pointerLastX=0,pointerLastY=0,suppressCanvasClick=false,touchLookMoved=false,touchLookDistance=0;
 let yaw=0,pitch=0,verticalVelocity=0,grounded=true;
 let cameraBobOffset=0,cameraRollOffset=0,gaitPhase=0;
 const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)").matches||false;
@@ -1611,12 +1611,13 @@ function bindEvents() {
   let touchX=0,touchY=0;
   canvas.addEventListener("touchstart",e=>{
     if(!started||!e.touches.length)return;
-    touchX=e.touches[0].clientX;touchY=e.touches[0].clientY;touchLookMoved=false;
+    touchX=e.touches[0].clientX;touchY=e.touches[0].clientY;touchLookMoved=false;touchLookDistance=0;
   },{passive:true});
   canvas.addEventListener("touchmove",e=>{
     if(!started || isLocked || $("film-panel").hidden===false || $("library-panel").hidden===false || !e.touches.length)return;
     const t=e.touches[0],dx=t.clientX-touchX,dy=t.clientY-touchY;touchX=t.clientX;touchY=t.clientY;
-    if(Math.abs(dx)+Math.abs(dy)>6)touchLookMoved=true;
+    touchLookDistance+=Math.abs(dx)+Math.abs(dy);
+    if(touchLookDistance>8)touchLookMoved=true;
     yaw-=dx*.004;pitch=THREE.MathUtils.clamp(pitch-dy*.004,-1.22,1.22);updateCamera();
   },{passive:true});
   const finishTouchLook=()=>{
