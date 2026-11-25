@@ -597,10 +597,12 @@ function createCounterAndListeningCorner(scene, materials) {
   const catCollar = new THREE.Mesh(new THREE.TorusGeometry(.056, .009, 6, 14), materials.rim);
   catCollar.position.set(0, .163, .015);
   easterEgg.add(catCollar);
+  const pawRig = new THREE.Group();
+  pawRig.position.set(.086, .23, .018);
   const raisedPaw = new THREE.Mesh(new THREE.SphereGeometry(.032, 10, 8), materials.label);
-  raisedPaw.position.set(.086, .23, .018);
-  raisedPaw.rotation.z = -.28;
-  easterEgg.add(raisedPaw);
+  pawRig.add(raisedPaw);
+  easterEgg.add(pawRig);
+  easterEgg.userData.pawRig = pawRig;
   counter.add(easterEgg);
   scene.add(counter);
 
@@ -659,46 +661,59 @@ function createShopkeeper(scene, materials) {
   figure.position.set(4.15, 0, -2.35);
   figure.rotation.y = -Math.PI / 2.3;
 
+  // Simple pivots keep the animation inexpensive and easy to tune.
+  const bodyRig = new THREE.Group();
+  bodyRig.position.y = 1.32;
+  figure.add(bodyRig);
   const cardigan = new THREE.Mesh(new THREE.CapsuleGeometry(.29, .62, 5, 10), materials.cardigan);
-  cardigan.position.set(0, 1.32, 0);
-  figure.add(cardigan);
+  bodyRig.add(cardigan);
   const shirt = new THREE.Mesh(new THREE.BoxGeometry(.28, .42, .10), materials.shirt);
-  shirt.position.set(0, 1.45, .235);
-  figure.add(shirt);
+  shirt.position.set(0, .13, .235);
+  bodyRig.add(shirt);
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(.44, .54, .045), materials.apron);
+  apron.position.set(0, -.13, .255);
+  bodyRig.add(apron);
 
+  const headRig = new THREE.Group();
+  headRig.position.set(0, 1.92, 0);
+  figure.add(headRig);
   const head = new THREE.Mesh(new THREE.SphereGeometry(.205, 20, 16), materials.skin);
-  head.position.set(0, 2.02, .03);
-  figure.add(head);
+  head.position.set(0, .10, .03);
+  headRig.add(head);
   const hair = new THREE.Mesh(new THREE.SphereGeometry(.214, 18, 12, 0, Math.PI * 2, 0, Math.PI * .50), materials.hair);
-  hair.position.set(0, 2.08, .02);
-  figure.add(hair);
+  hair.position.set(0, .16, .02);
+  headRig.add(hair);
   for (const x of [-.09, .09]) {
     const lens = new THREE.Mesh(new THREE.TorusGeometry(.052, .008, 6, 18), materials.metal);
-    lens.position.set(x, 2.02, .222);
-    figure.add(lens);
+    lens.position.set(x, .10, .222);
+    headRig.add(lens);
   }
   const bridge = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .12, 6), materials.metal);
   bridge.rotation.z = Math.PI / 2;
-  bridge.position.set(0, 2.02, .23);
-  figure.add(bridge);
+  bridge.position.set(0, .10, .23);
+  headRig.add(bridge);
   const nose = new THREE.Mesh(new THREE.SphereGeometry(.027, 8, 8), materials.skin);
-  nose.position.set(0, 1.98, .245);
-  figure.add(nose);
+  nose.position.set(0, .06, .245);
+  headRig.add(nose);
 
+  const arms = {};
   for (const side of [-1, 1]) {
+    const armRig = new THREE.Group();
+    armRig.position.set(side * .29, 1.61, .02);
     const arm = new THREE.Mesh(new THREE.CapsuleGeometry(.085, .42, 4, 8), materials.cardigan);
-    arm.position.set(side * .34, 1.34, .02);
+    arm.position.set(side * .035, -.27, 0);
     arm.rotation.z = side * -.22;
-    figure.add(arm);
+    armRig.add(arm);
     const hand = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), materials.skin);
-    hand.position.set(side * .39, 1.02, .04);
-    figure.add(hand);
+    hand.position.set(side * .04, -.53, .04);
+    armRig.add(hand);
+    figure.add(armRig);
+    arms[side === 1 ? "right" : "left"] = armRig;
   }
-  const apron = new THREE.Mesh(new THREE.BoxGeometry(.44, .54, .045), materials.apron);
-  apron.position.set(0, 1.19, .255);
-  figure.add(apron);
+
   figure.userData.isShopkeeper = true;
   figure.userData.hovered = false;
+  figure.userData.motion = { bodyRig, headRig, leftArm: arms.left, rightArm: arms.right, greeting: 0 };
   scene.add(figure);
   return figure;
 }
@@ -879,15 +894,37 @@ export function createStoreScene(canvas, projects, categories, applications) {
   }
 
   const doorState = { doors, progress: 0, target: 0 };
+  let greetingTimer = 0;
   function openDoors() { doorState.target = 1; }
   function closeDoors() { doorState.target = 0; }
+  function greetShopkeeper() { greetingTimer = 2.25; }
   function update(delta, elapsed) {
     doorState.progress = THREE.MathUtils.damp(doorState.progress, doorState.target, 3.8, delta);
     const swing = doorState.progress * .72;
     doors.leftPivot.rotation.y = -swing;
     doors.rightPivot.rotation.y = swing;
     listening.platter.rotation.y = elapsed * .65;
+
+    // A quiet idle cycle: breathing, small head turns and relaxed arm movement.
+    const motion = shopkeeper.userData.motion;
+    greetingTimer = Math.max(0, greetingTimer - delta);
+    const greetTarget = greetingTimer > 0 ? 1 : 0;
+    motion.greeting = THREE.MathUtils.damp(motion.greeting, greetTarget, 4.8, delta);
+    motion.bodyRig.scale.y = 1 + Math.sin(elapsed * 1.55) * .006;
+    motion.headRig.rotation.y = Math.sin(elapsed * .42) * .065 - motion.greeting * .16;
+    motion.headRig.rotation.x = Math.sin(elapsed * .31) * .025 - motion.greeting * .035;
+    motion.leftArm.rotation.z = -.025 + Math.sin(elapsed * .72) * .025;
+    const wave = motion.greeting * (.86 + Math.sin(elapsed * 11.5) * .13);
+    motion.rightArm.rotation.z = .035 + wave;
+    motion.rightArm.rotation.x = motion.greeting * (.12 + Math.sin(elapsed * 11.5) * .08);
     shopkeeper.position.y = Math.sin(elapsed * .7) * .006;
+
+    const cat = listening.easterEgg;
+    const paw = cat.userData.pawRig;
+    paw.rotation.z = -.28 + Math.sin(elapsed * 2.15) * .17;
+    const catScale = cat.userData.hovered ? 1.10 : 1;
+    cat.scale.setScalar(THREE.MathUtils.damp(cat.scale.x, catScale, 7, delta));
+    cat.position.y = 1.15 + Math.sin(elapsed * 1.35) * .007;
   }
 
   function resize(width, height) {
@@ -897,7 +934,7 @@ export function createStoreScene(canvas, projects, categories, applications) {
   }
 
   return {
-    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, openDoors, closeDoors, update, resize,
+    scene, camera, renderer, materials, recordRoots, applicationRoots, categoryBins, applicationRack, shopkeeper, easterEgg: listening.easterEgg, openDoors, closeDoors, greetShopkeeper, update, resize,
     cameraHome: { position: camera.position.clone(), rotation: camera.rotation.clone() }
   };
 }
