@@ -1,8 +1,8 @@
 import * as THREE from "three";
 
 export function createRecordInteraction({
-  scene, camera, canvas, records, applications = [], shopkeeper = null, easterEgg = null,
-  onPanelChange = () => {}, onOpenProject = () => {}, onOpenAssistant = () => {},
+  scene, camera, canvas, records, applications = [], posters = [], shopkeeper = null, easterEgg = null,
+  onPanelChange = () => {}, onOpenProject = () => {}, onOpenPoster = () => {}, onOpenAssistant = () => {},
   onOpenEasterEgg = () => {}, onSound = () => {}
 }) {
   const raycaster = new THREE.Raycaster();
@@ -13,10 +13,10 @@ export function createRecordInteraction({
   const targetQuaternion = new THREE.Quaternion();
   const hoverScale = new THREE.Vector3(1, 1, 1);
   const presentationScale = new THREE.Vector3(1.06, 1.06, 1.06);
-  const pickTargets = [...records, ...applications, ...(shopkeeper ? [shopkeeper] : []), ...(easterEgg ? [easterEgg] : [])];
+  const pickTargets = [...records, ...applications, ...posters, ...(shopkeeper ? [shopkeeper] : []), ...(easterEgg ? [easterEgg] : [])];
   const flipQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
-  let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null, hoveredEasterEgg = null;
+  let active = false, hoveredRecord = null, hoveredApplication = null, hoveredShopkeeper = null, hoveredEasterEgg = null, hoveredPoster = null;
   let selectedRecord = null, selectedApplication = null;
   let returningRecord = false, destroyed = false;
 
@@ -66,13 +66,20 @@ export function createRecordInteraction({
     if (hoveredEasterEgg) hoveredEasterEgg.userData.hovered = true;
   }
 
+  function setHoveredPoster(next) {
+    if (hoveredPoster === next) return;
+    if (hoveredPoster) hoveredPoster.userData.hovered = false;
+    hoveredPoster = next;
+    if (hoveredPoster) hoveredPoster.userData.hovered = true;
+  }
+
   function pick() {
     if (!active || selectedRecord || selectedApplication || destroyed) return;
     scene.updateMatrixWorld(true);
     camera.updateMatrixWorld(true);
     raycaster.setFromCamera(center, camera);
     const hits = raycaster.intersectObjects(pickTargets, true);
-    let nextRecord = null, nextApplication = null, nextShopkeeper = null, nextEasterEgg = null;
+    let nextRecord = null, nextApplication = null, nextShopkeeper = null, nextEasterEgg = null, nextPoster = null;
     for (const hit of hits) {
       const record = findRoot(hit.object, "isRecord");
       if (record) { nextRecord = record; break; }
@@ -82,18 +89,22 @@ export function createRecordInteraction({
       if (person) { nextShopkeeper = person; break; }
       const secret = findRoot(hit.object, "isEasterEgg");
       if (secret) { nextEasterEgg = secret; break; }
+      const poster = findRoot(hit.object, "isPoster");
+      if (poster) { nextPoster = poster; break; }
     }
     const changed = nextRecord !== hoveredRecord || nextApplication !== hoveredApplication ||
-      nextShopkeeper !== hoveredShopkeeper || nextEasterEgg !== hoveredEasterEgg;
+      nextShopkeeper !== hoveredShopkeeper || nextEasterEgg !== hoveredEasterEgg || nextPoster !== hoveredPoster;
     setHoveredRecord(nextRecord);
     setHoveredApplication(nextApplication);
     setHoveredShopkeeper(nextShopkeeper);
     setHoveredEasterEgg(nextEasterEgg);
+    setHoveredPoster(nextPoster);
     if (!changed) return;
     if (hoveredRecord) emitPanel({ mode: "hover", project: hoveredRecord.userData.project });
     else if (hoveredApplication) emitPanel({ mode: "application-hover", application: hoveredApplication.userData.application });
     else if (hoveredShopkeeper) emitPanel({ mode: "shopkeeper-hover" });
     else if (hoveredEasterEgg) emitPanel({ mode: "easter-hover" });
+    else if (hoveredPoster) emitPanel({ mode: "poster-hover", poster: hoveredPoster.userData.poster });
     else emitPanel({ mode: "none" });
   }
 
@@ -119,6 +130,7 @@ export function createRecordInteraction({
     setHoveredApplication(null);
     setHoveredShopkeeper(null);
     setHoveredEasterEgg(null);
+    setHoveredPoster(null);
     returningRecord = false;
     onSound("pickup");
     emitRecordPanel("selected");
@@ -131,6 +143,7 @@ export function createRecordInteraction({
     setHoveredRecord(null);
     setHoveredShopkeeper(null);
     setHoveredEasterEgg(null);
+    setHoveredPoster(null);
     selectedApplication.userData.selected = true;
     onSound("focus");
     emitPanel({ mode: "application-selected", application: selectedApplication.userData.application });
@@ -154,6 +167,13 @@ export function createRecordInteraction({
       setHoveredEasterEgg(null);
       emitPanel({ mode: "none" });
       onOpenEasterEgg();
+    } else if (hoveredPoster) {
+      event.preventDefault();
+      const poster = hoveredPoster.userData.poster;
+      setHoveredPoster(null);
+      emitPanel({ mode: "none" });
+      onSound("focus");
+      onOpenPoster(poster);
     }
   }
 
@@ -273,6 +293,7 @@ export function createRecordInteraction({
       setHoveredApplication(null);
       setHoveredShopkeeper(null);
       setHoveredEasterEgg(null);
+      setHoveredPoster(null);
       if (selectedRecord) returnSelectedRecord();
       if (selectedApplication) returnSelectedApplication();
       if (!selectedRecord) emitPanel({ mode: "none" });
@@ -286,6 +307,7 @@ export function createRecordInteraction({
     setHoveredApplication(null);
     setHoveredShopkeeper(null);
     setHoveredEasterEgg(null);
+    setHoveredPoster(null);
     if (selectedApplication) returnSelectedApplication();
     if (selectedRecord) {
       selectedRecord.userData.flap.rotation.y = 0;
