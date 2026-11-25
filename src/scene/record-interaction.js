@@ -84,8 +84,10 @@ export function createRecordInteraction({
 
   function pick() {
     if (!active || selectedRecord || selectedApplication || destroyed) return;
-    scene.updateMatrixWorld(true);
-    camera.updateMatrixWorld(true);
+    // Only interactive roots (and their ancestors/children) need fresh world
+    // matrices before this raycast. Static room decoration is not part of pickTargets.
+    for (const target of pickTargets) target.updateWorldMatrix(true, true);
+    camera.updateWorldMatrix(true, false);
     raycaster.setFromCamera(center, camera);
     const hits = raycaster.intersectObjects(pickTargets, true);
     let nextRecord = null, nextApplication = null, nextShopkeeper = null, nextEasterEgg = null, nextPoster = null, nextCollectible = null;
