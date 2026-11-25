@@ -335,6 +335,7 @@ function enterStore(direct = false) {
       $("intro").hidden = true;
       $("intro").classList.remove("is-leaving");
       $("control-hint").hidden = false;
+      renderRecordPanel(recordPanelState);
     }, 220);
   } else {
     window.setTimeout(() => $("intro").classList.add("is-leaving"), 360);
@@ -342,6 +343,7 @@ function enterStore(direct = false) {
       $("intro").hidden = true;
       $("intro").classList.remove("is-leaving");
       $("control-hint").hidden = false;
+      renderRecordPanel(recordPanelState);
     }, 1120);
   }
 }
