@@ -334,6 +334,9 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
     bottom: max(15px, env(safe-area-inset-bottom));
   }
   .hud-actions { margin-left: auto; }
+  .battery, .survival-counter {
+    bottom: max(164px, calc(env(safe-area-inset-bottom) + 164px));
+  }
 }
 @media (max-width: 430px) and (pointer: coarse) {
   .mobile-controls {
@@ -357,4 +360,19 @@ kbd { min-width: 20px; height: 20px; display: inline-flex; align-items: center; 
     font-size: 7px;
     letter-spacing: .03em;
   }
+}
+
+
+/* Keep the help affordance clear of the bottom-right audio/action controls. */
+.help-toggle {
+  right: 17px;
+  left: auto;
+  top: max(74px, calc(env(safe-area-inset-top) + 74px));
+  bottom: auto;
+}
+.help-card {
+  right: 17px;
+  left: auto;
+  top: max(108px, calc(env(safe-area-inset-top) + 108px));
+  bottom: auto;
 }
