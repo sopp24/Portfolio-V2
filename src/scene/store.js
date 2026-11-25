@@ -17,28 +17,28 @@ function sharedGeometry(type, args, factory) {
 }
 
 function boxGeometry(...args) {
-  return sharedGeometry("box", args, () => boxGeometry(...args));
+  return sharedGeometry("box", args, () => new THREE.BoxGeometry(...args));
 }
 function planeGeometry(...args) {
-  return sharedGeometry("plane", args, () => planeGeometry(...args));
+  return sharedGeometry("plane", args, () => new THREE.PlaneGeometry(...args));
 }
 function cylinderGeometry(...args) {
-  return sharedGeometry("cylinder", args, () => cylinderGeometry(...args));
+  return sharedGeometry("cylinder", args, () => new THREE.CylinderGeometry(...args));
 }
 function sphereGeometry(...args) {
-  return sharedGeometry("sphere", args, () => sphereGeometry(...args));
+  return sharedGeometry("sphere", args, () => new THREE.SphereGeometry(...args));
 }
 function torusGeometry(...args) {
-  return sharedGeometry("torus", args, () => torusGeometry(...args));
+  return sharedGeometry("torus", args, () => new THREE.TorusGeometry(...args));
 }
 function circleGeometry(...args) {
-  return sharedGeometry("circle", args, () => circleGeometry(...args));
+  return sharedGeometry("circle", args, () => new THREE.CircleGeometry(...args));
 }
 function coneGeometry(...args) {
-  return sharedGeometry("cone", args, () => coneGeometry(...args));
+  return sharedGeometry("cone", args, () => new THREE.ConeGeometry(...args));
 }
 function capsuleGeometry(...args) {
-  return sharedGeometry("capsule", args, () => capsuleGeometry(...args));
+  return sharedGeometry("capsule", args, () => new THREE.CapsuleGeometry(...args));
 }
 
 const PROJECT_COLORS = [
