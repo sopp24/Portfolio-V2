@@ -601,7 +601,7 @@ function createCounterAndListeningCorner(scene, materials) {
 
   // Listening stool and a small speaker stack.
   const stool = new THREE.Group();
-  stool.position.set(-4.55, 0, 2.8);
+  stool.position.set(-4.55, 0, 4.82);
   addBox(stool, [.62, .12, .62], [0, .65, 0], materials.wood);
   for (const dx of [-.22, .22]) for (const dz of [-.22, .22]) {
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(.025, .035, .65, 8), materials.metal);
@@ -673,7 +673,7 @@ function createShopkeeper(scene, materials) {
   return figure;
 }
 
-export function createStoreScene(canvas, projects) {
+export function createStoreScene(canvas, projects, categories, applications) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xe0d6c2);
   scene.fog = new THREE.Fog(0xe4dac8, 17, 31);
