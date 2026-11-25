@@ -207,3 +207,150 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid
 @media (min-width: 761px) { .mobile-menu { display: none !important; } }
 .closed-status.is-open { color: #9dc38f; }
 .closed-status.is-open span { background: #82af70; box-shadow: 0 0 12px rgba(130,175,112,.45); }
+
+
+/* Vinyl inspection: a restrained gaze reticle and tactile record controls. */
+.aim-reticle {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(247,236,214,.58);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: .66;
+  transition: width .16s ease, height .16s ease, border-color .16s ease, opacity .16s ease;
+}
+.aim-reticle::before, .aim-reticle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(247,236,214,.65);
+}
+.aim-reticle::before { width: 2px; height: 24px; }
+.aim-reticle::after { width: 24px; height: 2px; }
+.aim-reticle span {
+  position: absolute;
+  z-index: 1;
+  inset: 6px;
+  border-radius: 50%;
+  background: #e2bd7b;
+}
+.aim-reticle.is-target {
+  width: 25px;
+  height: 25px;
+  border-color: #e5bd78;
+  opacity: 1;
+}
+.aim-reticle.is-target span { inset: 8px; }
+
+.record-panel {
+  position: absolute;
+  z-index: 11;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: min(920px, calc(100% - 42px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  transform: translateX(-50%);
+  padding: 16px 18px;
+  border: 1px solid rgba(231,211,177,.28);
+  border-top: 2px solid rgba(216,166,83,.78);
+  background: rgba(34,29,23,.91);
+  color: #f1e7d4;
+  box-shadow: 0 16px 48px rgba(14,11,8,.24);
+  backdrop-filter: blur(16px);
+}
+.record-panel.is-hovering {
+  width: min(540px, calc(100% - 42px));
+  padding: 11px 15px;
+  border-top-width: 1px;
+}
+.record-panel-copy { min-width: 0; flex: 1 1 auto; }
+.record-panel-eyebrow {
+  margin: 0 0 5px;
+  color: #c49a5d;
+  font: 7px var(--mono);
+  letter-spacing: .16em;
+}
+.record-panel-copy h2 {
+  margin: 0;
+  color: #f2e7d3;
+  font: 26px/1 "Perandory", Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.record-panel-copy > p:last-child {
+  margin: 7px 0 0;
+  color: rgba(239,229,210,.63);
+  font: 9px/1.5 var(--mono);
+  letter-spacing: .035em;
+}
+.record-panel.is-hovering .record-panel-copy h2 { font-size: 20px; }
+.record-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.record-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(232,216,188,.3);
+  padding: 0 11px;
+  background: rgba(241,229,205,.055);
+  color: #eadcc3;
+  cursor: pointer;
+  font: 7px var(--mono);
+  letter-spacing: .08em;
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
+}
+.record-actions button:hover:not(:disabled) {
+  border-color: var(--amber);
+  background: rgba(216,166,83,.14);
+  color: #f4c77f;
+}
+.record-actions button:disabled { opacity: .32; cursor: not-allowed; }
+.record-actions .record-return {
+  border-color: rgba(173,102,76,.62);
+  color: #e0a28b;
+}
+.record-panel.is-returning { opacity: .9; }
+@media (max-width: 760px) {
+  .record-panel {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: calc(100% - 20px);
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 13px;
+  }
+  .record-panel.is-hovering {
+    width: calc(100% - 28px);
+    padding: 10px 12px;
+  }
+  .record-panel-copy h2 { font-size: 22px; }
+  .record-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .record-actions button {
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 7px;
+    font-size: 7px;
+  }
+  .record-actions #record-details-button:not([hidden]) { grid-column: span 2; }
+  .record-actions .record-return { grid-column: span 2; }
+  .aim-reticle { width: 16px; height: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aim-reticle, .record-actions button { transition: none !important; }
+}
