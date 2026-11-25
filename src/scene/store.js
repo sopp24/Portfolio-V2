@@ -554,7 +554,7 @@ function createApplicationRack(scene, applications, materials, applicationRoots)
 
     const body = new THREE.Mesh(
       boxGeometry(.62, .82, .09),
-      new THREE.MeshStandardMaterial({ color: 0x443e34, roughness: .78 })
+      materials.applicationCard
     );
     body.castShadow = true;
     card.add(body);
