@@ -93,6 +93,7 @@ export function createRecordInteraction({
     record.userData.discAssembly.position.copy(record.userData.discHome);
 
     selected = record;
+    record.userData.hovered = false;
     hovered = null;
     returning = false;
     panel("selected");
@@ -193,7 +194,7 @@ export function createRecordInteraction({
     up.set(0, 1, 0).applyQuaternion(camera.quaternion);
     desiredPosition.addScaledVector(up, -.015);
 
-    targetQuaternion.copy(record.userData.presentationBaseQuaternion);
+    camera.getWorldQuaternion(targetQuaternion);
     if (record.userData.isFlipped) targetQuaternion.multiply(flipQuaternion);
 
     record.position.lerp(desiredPosition, amount);
