@@ -51,8 +51,8 @@ The visitor's camera position never changes.
 
 ## Development roadmap
 
-1. Complete the physical vinyl model: sleeve, disc, label, thickness, front/back and opening.
-2. Add raycast selection, hover response, tactile extraction and return-to-crate animations.
+1. ~~Create the physical vinyl model, front/back liner art and hinged sleeve.~~
+2. ~~Add center-gaze raycast selection, subtle hover response, extraction, flip, opening, project details and return-to-crate animation.~~
 3. Build category bins and the dedicated applications rack as navigable objects.
 4. Add the About corner, validated CV/contact links and the interactive shopkeeper.
 5. Connect the shopkeeper to a secure serverless AI backend. No API secret is allowed in the frontend.
@@ -70,3 +70,10 @@ The visitor's camera position never changes.
 ## Publish
 
 The project is compatible with GitHub Pages at the repository root. The application uses relative asset and module paths and does not require a build step.
+
+
+### Phase 2 — Vinyl interaction implementation
+
+The ten central records are independent selectable 3D objects. Aim with the center reticle and click/tap the canvas to pull a record toward the fixed camera. The inspection controls can flip the sleeve to Side B, open and close its hinged front, slide the vinyl outward, open the full project sheet, or return the record to its exact original crate position. Escape and R also return a selected record. Keyboard shortcuts F and O flip/open the sleeve. The raycast and record animations are isolated in `src/scene/record-interaction.js`; the camera position remains fixed throughout.
+
+The current sleeve artwork and its Side B liner notes are procedural placeholders, clearly marked as such in the project catalogue. Final supplied project artwork can replace the textures without changing the interaction system.
