@@ -128,3 +128,10 @@ A small lucky-cat charm sits on the counter as a clickable easter egg. Aim at it
 The shopkeeper now has a lightweight procedural rig assembled from the existing low-poly meshes: a restrained breathing cycle, small head movements, relaxed arm movement and a short right-hand welcome gesture when the conversation opens. The animation adds no skeletal system, external models or new lights.
 
 The lucky-cat charm now has a continuously moving raised paw and a very subtle hover response. Its animation is updated by the existing scene loop. The greeting uses a short two-note sound cue only when the visitor has previously enabled sound. The scene remains silent by default.
+
+
+### Phase 8 — Consultable wall prints and subtle glass / turntable motion
+
+The two large decorative wall prints are now framed 3D objects and direct raycast targets. Aim at either print and click to open a bilingual information card. Their text explicitly identifies the artwork as fictional store decoration rather than a real concert poster or client deliverable.
+
+The front storefront glazing now has a subtle, procedural daylight sheen made from a single transparent canvas texture. It drifts very slightly and changes opacity by a restrained amount; it is not a live reflection probe and adds no dynamic lighting. The turntable arm has a barely perceptible idle movement while the record continues to rotate. The frames scale gently while targeted.
