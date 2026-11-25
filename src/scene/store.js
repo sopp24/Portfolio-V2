@@ -821,6 +821,13 @@ export function createStoreScene(canvas, projects, categories, applications) {
   const applicationRoots = [];
   const applicationRack = createApplicationRack(scene, applications, materials, applicationRoots);
 
+  // A small personal corner: framed music sleeves and a discreet profile plaque.
+  createSign(scene, "ABOUT  /  ADAM", [-5.91, 3.48, -1.85], 1.72, .34, Math.PI / 2);
+  addWallCover(scene, -5.91, 2.56, -2.62, Math.PI / 2, "DAVIS MILES", 31, .78, .92);
+  addWallCover(scene, -5.91, 2.56, -1.18, Math.PI / 2, "STORY.", 32, .78, .92);
+  addBox(scene, [.16, .08, 2.18], [-5.80, 2.02, -1.90], materials.wood);
+  addBox(scene, [.10, .035, 2.18], [-5.70, 2.075, -1.90], materials.trim);
+
   // Checkout, vintage register, turntable and listening corner.
   const listening = createCounterAndListeningCorner(scene, materials);
   const shopkeeper = createShopkeeper(scene, materials);
