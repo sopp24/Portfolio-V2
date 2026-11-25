@@ -251,6 +251,11 @@ function spineCanvas(movie,index) {
   ctx.save();ctx.translate(135,256);ctx.rotate(-Math.PI/2);
   const title=(movie.title||"UNTITLED").toUpperCase();
   ctx.font="bold "+(title.length>22?20:25)+"px Arial";ctx.fillText(title,0,0,470);ctx.restore();
+  // A restrained rental-copy plate gives each spine a little more analogue inventory detail.
+  ctx.fillStyle="rgba(8,12,9,.42)";ctx.fillRect(25,397,219,31);
+  ctx.strokeStyle="rgba(245,239,220,.28)";ctx.lineWidth=1;ctx.strokeRect(29,400,211,25);
+  ctx.fillStyle="rgba(245,239,220,.76)";ctx.font="bold 10px monospace";ctx.textAlign="center";
+  ctx.fillText("RENTAL COPY  /  VHS",134,417);
   ctx.fillStyle="rgba(8,12,9,.52)";ctx.fillRect(25,440,219,34);
   let barcodeSeed=(index*7919+String(movie.title||"").length*31)>>>0;
   for(let x=34;x<224;){
@@ -260,6 +265,17 @@ function spineCanvas(movie,index) {
     ctx.fillRect(x,445,width,20);x+=width+1+(barcodeSeed%3);
   }
   ctx.fillStyle="rgba(245,239,220,.7)";ctx.font="18px monospace";ctx.fillText(String(movie.year||"—"),132,493);
+  // Fine, deterministic edge wear keeps the plastic from looking freshly rendered.
+  let wearSeed=(index*3571+19)>>>0;
+  for(let n=0;n<18;n++){
+    wearSeed=(wearSeed*1664525+1013904223)>>>0;
+    const x=n%2===0?23+(wearSeed%5):230+(wearSeed%5);
+    const y=54+(wearSeed%326);
+    const length=3+(wearSeed%13);
+    ctx.strokeStyle=n%3===0?"rgba(245,239,220,.13)":"rgba(5,8,6,.18)";
+    ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(n%2===0?length:-length),y+1+(wearSeed%4));ctx.stroke();
+  }
+  ctx.fillStyle="rgba(245,239,220,.12)";ctx.fillRect(23,18,1,476);ctx.fillRect(240,18,1,476);
   ctx.fillStyle="#090c09";ctx.fillRect(0,0,256,12);ctx.fillRect(0,500,256,12);
   return canvas;
 }
