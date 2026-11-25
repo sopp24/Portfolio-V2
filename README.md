@@ -92,3 +92,23 @@ The ten project records are now distributed once across six physical category bi
 ### Phase 4 — Personal corner and music collection
 
 The shop now includes a dedicated physical wall corner with an ABOUT / ADAM plaque and two framed sleeves representing the personal music projects Davis Miles and STORY. The 2D collection includes a bilingual About section and a separate music-project section. CV, email and social links are rendered only when real values are supplied in `PROFILE`; no placeholder destinations are published. Current degree and institution remain hidden while their profile fields are unconfirmed.
+
+
+### Phase 5 — Interactive shopkeeper and secure AI endpoint
+
+The shopkeeper model is now a raycast target. Aim at the person behind the counter and click to open the bilingual conversation panel. The visitor can also open the panel from the contextual shopkeeper card. If no backend URL is configured, the interface clearly reports catalogue mode and answers using the local project/application catalogue; it does not pretend the AI is connected.
+
+#### Deploy the AI backend (Cloudflare Worker)
+
+GitHub Pages only hosts the static portfolio. The AI endpoint is a separate Cloudflare Worker in `worker/index.js`. It imports the actual project and application data from `src/data`, sends them as trusted context to the OpenAI Responses API, and keeps the API key on the server.
+
+1. Install Wrangler locally and authenticate with your Cloudflare account.
+2. From the repository root, set the secret: `npx wrangler secret put OPENAI_API_KEY`. Never put this key in HTML, JavaScript, `vars`, or a committed file.
+3. Deploy the Worker: `npx wrangler deploy`.
+4. Copy the deployed Worker URL and place it in the `content` attribute of the `meta[name="assistant-endpoint"]` element in `index.html`, then publish the site.
+5. Keep `ALLOWED_ORIGIN` restricted to the actual GitHub Pages origin. If a custom domain is added, update this value to that exact origin.
+6. Configure a Cloudflare rate-limiting rule for the Worker route before public launch. The in-memory limit in the Worker is only a best-effort additional guard because Worker isolates are ephemeral.
+
+The Worker accepts only POST requests from the configured origin, limits message size and history, applies a short timeout and returns no provider error details to the browser. Requests use `store: false`. Add billing limits and usage alerts to the API project before enabling the endpoint publicly.
+
+Local Worker secrets belong in an untracked `.dev.vars` file; the repository ignores `.dev.vars*` and `.env*`. Do not commit real credentials.
