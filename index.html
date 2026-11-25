@@ -1,11 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#050706">
-  <meta name="description" content="An endless video store at midnight. Thousands of movies to discover, increasingly strange aisles, and nowhere to go.">
-  <title>Midnight Video — Open 24 Hours. Always.</title>
+  <meta name="theme-color" content="#201c17">
+  <meta name="description" content="Adam Soppelsa — Projects Store. Un portfolio immersif inspiré d’un disquaire indépendant des années 90.">
+  <meta property="og:title" content="Adam Soppelsa — Projects Store">
+  <meta property="og:description" content="Take your time. Browse the collection. Find something worth remembering.">
+  <meta property="og:type" content="website">
+  <title>Adam Soppelsa — Projects Store</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="./styles.css">
   <script type="importmap">
@@ -18,147 +21,101 @@
   </script>
 </head>
 <body>
-  <main id="experience" aria-label="Midnight Video interactive experience">
-    <canvas id="world" aria-label="Explore the Midnight Video store"></canvas>
-    <div class="screen-grain" aria-hidden="true"></div>
-    <div class="screen-vignette" aria-hidden="true"></div>
-
-    <section id="boot" class="boot" aria-label="Loading Midnight Video">
-      <div class="boot-brand">cuchillo</div>
-      <div class="boot-progress"><span id="boot-progress"></span></div>
-      <p id="boot-status" class="boot-status">REWINDING TAPES</p>
-      <p id="boot-error" class="boot-error" hidden></p>
+  <main id="experience" aria-label="Adam Soppelsa Projects Store">
+    <canvas id="world" aria-label="Vue immersive du disquaire Side A"></canvas>
+    <section id="loading" class="loading-screen" aria-live="polite">
+      <div class="loading-mark">SIDE A</div>
+      <div class="loading-line"><span></span></div>
+      <p>PREPARING THE RECORDS</p>
     </section>
 
-    <section id="hud" class="hud" aria-hidden="true">
-      <div class="hud-top">
-        <div class="hud-station">
-          <button id="play-toggle" class="hud-play"><span class="play-triangle">▶</span><span>PLAY</span></button>
-          <div class="hud-station-meta"><span class="tiny-arrow">▸</span><span id="aisle-name">THRILLER</span></div>
-        </div>
-          <div class="hud-readout">
-          <span id="speed-readout">SP</span>
-          <span id="clock-readout">00:00:00</span>
+    <section id="intro" class="screen-overlay">
+      <div class="intro-top">
+        <div class="store-mark"><span class="mark-a">A</span><span>SIDE A</span></div>
+        <div class="language-switch" aria-label="Language">
+          <button type="button" data-lang="fr" class="is-active" aria-pressed="true">FR</button>
+          <span></span>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
         </div>
       </div>
-
-      <div class="hud-crosshair" id="crosshair"><span></span><i></i></div>
-      <div id="look-hint" class="look-hint">DRAG TO LOOK <span>↗</span></div>
-      <div id="interaction-hint" class="interaction-hint" hidden><kbd>E</kbd><span>EXAMINE TAPE</span></div>
-
-      <div id="hud-bottom" class="hud-bottom" hidden>
-        <div class="control-legend">
-          <div><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd><span>MOVE</span></div>
-          <div><kbd>MOUSE</kbd><span>LOOK / SELECT</span></div><div><kbd>SCROLL</kbd><span>WALK</span></div>
-          <div><kbd>SHIFT</kbd><span>RUN</span></div><div><kbd>SPACE</kbd><span>JUMP</span></div>
-          <div><kbd>C</kbd><span>CROUCH</span></div><div><kbd>F</kbd><span>FLASHLIGHT</span></div>
-          <div><kbd>E</kbd><span>TAKE TAPE</span></div><div><kbd>M</kbd><span>INDEX</span></div><div><kbd>R</kbd><span>SURVIVAL</span></div>
+      <div class="intro-main">
+        <p id="intro-eyebrow" class="eyebrow">DISQUAIRE INDÉPENDANT / BORDEAUX, FRANCE</p>
+        <p id="intro-status" class="closed-status"><span></span> FERMÉ</p>
+        <h1 id="intro-title" class="intro-title">ADAM SOPPELSA</h1>
+        <p id="intro-subtitle" class="intro-subtitle">PROJECTS STORE</p>
+        <div class="intro-rule"></div>
+        <p id="intro-description" class="intro-description">Un portfolio à explorer comme une collection. Prends le temps de fouiller les bacs.</p>
+        <div class="intro-actions">
+          <button id="intro-open" class="primary-action" type="button">OUVRIR LA BOUTIQUE <span>↗</span></button>
+          <button id="intro-direct" class="secondary-action" type="button" hidden>ALLER DIRECTEMENT AUX PROJETS</button>
         </div>
-        <div class="hud-actions">
-          <button id="survival-toggle" class="icon-button" aria-pressed="false">SURVIVAL <span>38</span></button>
-          <button id="vr-toggle" class="icon-button">VR <span>◉</span></button>
-          <button id="sound-toggle" class="icon-button" aria-pressed="false">SOUND <span>♪</span></button>
-        </div>
+        <button id="intro-2d" class="text-action" type="button">CONSULTER LA COLLECTION EN 2D</button>
       </div>
-      <div class="battery" id="battery"><span>FLASHLIGHT</span><div><i id="battery-level"></i></div><b id="battery-value">100%</b></div>
-      <div class="survival-counter" id="survival-counter" hidden><span>ANOMALIES</span><b id="anomaly-count">00 / 38</b></div>
-    </section>
-
-    <section id="pause-screen" class="overlay-panel pause-screen" hidden>
-      <div class="panel-eyebrow">MIDNIGHT VIDEO / PAUSED</div>
-      <h2>TAKE YOUR<br><i>TIME.</i></h2>
-      <p>The store isn't going anywhere.</p>
-      <button id="resume-store" class="line-button">BACK TO THE AISLES <span>↗</span></button>
-      <div class="pause-links"><span>ESC</span> TO RESUME <span>·</span> M TO BROWSE</div>
-    </section>
-
-    <section id="film-panel" class="film-panel" hidden aria-label="Film information">
-      <button class="panel-close" id="film-close" aria-label="Close film details">×</button>
-      <div class="film-panel-top"><span>MEMBERSHIP REQUIRED</span><span id="film-catalogue-id">MV—0000</span></div>
-      <div class="film-card-row">
-        <div class="film-art-wrap">
-          <div id="film-art" class="film-art"></div>
-          <button id="flip-film" class="flip-button">FLIP TAPE ↻</button>
-        </div>
-        <div class="film-info" id="film-info">
-          <div class="panel-eyebrow" id="film-genre">FEATURE PRESENTATION</div>
-          <h2 id="film-title">THE SHINING</h2>
-          <div class="film-year"><span id="film-year">1980</span><span>·</span><span id="film-runtime">146 MIN</span><span>·</span><span id="film-rating">R</span></div>
-          <p class="film-synopsis" id="film-synopsis"></p>
-          <dl class="film-credits">
-            <div><dt>DIRECTOR</dt><dd id="film-director"></dd></div>
-            <div><dt>CAST</dt><dd id="film-cast"></dd></div>
-          </dl>
-          <div class="film-footer"><span>PLEASE REWIND BEFORE RETURNING</span><span>▰ VHS / STEREO</span></div>
-        </div>
-      </div>
-      <div id="film-back" class="film-back" hidden>
-        <div class="film-back-label">MIDNIGHT VIDEO · RENTAL COPY</div>
-        <h3 id="film-back-title"></h3>
-        <p id="film-back-synopsis"></p>
-        <div class="film-back-lines"><span>PLEASE BE KIND</span><span>REWIND TO THE BEGINNING</span><span>RETURN BEFORE MIDNIGHT</span></div>
-        <button id="flip-back" class="line-button">RETURN TO COVER <span>↶</span></button>
+      <div class="intro-bottom">
+        <span>TAKE YOUR TIME.</span>
+        <span>BROWSE THE COLLECTION.</span>
+        <span>FIND SOMETHING WORTH REMEMBERING.</span>
       </div>
     </section>
 
-    <section id="library-panel" class="overlay-panel library-panel" hidden aria-label="Movie index">
-      <button class="panel-close" id="library-close" aria-label="Close movie index">×</button>
-      <div class="panel-eyebrow">THE COLLECTION / PERSONAL ARCHIVE</div>
-      <div class="library-heading"><h2>THE <i>INDEX</i></h2><span>SELECT A TAPE TO FIND IT IN THE STORE</span></div>
-      <div class="library-tools">
-        <label class="search-box"><span>⌕</span><input id="movie-search" type="search" placeholder="Search title, director, year…" autocomplete="off"></label>
-        <select id="genre-filter" class="library-select" aria-label="Filter by genre"><option value="">ALL GENRES</option></select>
-        <select id="library-sort" class="library-select" aria-label="Sort titles"><option value="az">A—Z</option><option value="za">Z—A</option><option value="year-desc">NEWEST</option><option value="year-asc">OLDEST</option></select>
-        <div id="library-count" class="library-count">35 TITLES</div>
-        <button id="import-library" class="import-button" type="button">IMPORT CSV ↥</button>
-        <input id="library-file" type="file" accept=".csv,text/csv" multiple hidden>
+    <header id="site-header" class="site-header" hidden>
+      <div class="header-brand">
+        <span class="header-mark">A</span>
+        <span id="header-eyebrow">SIDE A / PROJECTS STORE</span>
       </div>
-      <div class="tmdb-connect">
-        <label>TMDB READ ACCESS TOKEN <input id="tmdb-token" type="password" placeholder="Optional — posters and full film metadata" autocomplete="off"></label>
-        <button id="save-tmdb" type="button">CONNECT ↗</button>
-        <span id="tmdb-status">Import your Letterboxd CSV; connect TMDB to load real covers on nearby shelves.</span>
-      </div>
-            <section class="tmdb-attribution" aria-label="Credits and data attribution">
-        <a class="tmdb-logo-link" href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" aria-label="The Movie Database">
-          <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg" alt="The Movie Database logo" loading="lazy">
-        </a>
-        <div class="tmdb-credit-copy">
-          <strong>CREDITS / DATA SOURCE</strong>
-          <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
-          <a href="https://www.themoviedb.org/about/logos-attribution" target="_blank" rel="noopener noreferrer">LOGOS & ATTRIBUTION ↗</a>
+      <div class="header-controls">
+        <div class="language-switch compact" aria-label="Language">
+          <button type="button" data-lang="fr" class="is-active" aria-pressed="true">FR</button>
+          <span></span>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
         </div>
+        <button id="recenter-button" class="header-button" type="button">RECENTRER</button>
+        <button id="gyro-button" class="header-button" type="button">ACTIVER LE GYROSCOPE</button>
+        <button id="browse-2d-button" class="header-button" type="button">COLLECTION 2D</button>
+        <button id="header-close" class="header-close" type="button" aria-label="Close menu">×</button>
+      </div>
+    </header>
+
+    <button id="mobile-menu" class="mobile-menu" type="button" hidden aria-label="Open menu">MENU <span>+</span></button>
+    <p id="control-hint" class="control-hint" hidden>Déplace la souris pour regarder · Molette pour zoomer · Échap pour le menu</p>
+
+    <section id="mode-2d" class="mode-2d" hidden>
+      <div class="directory-top">
+        <div>
+          <p class="eyebrow">SIDE A / PORTFOLIO INDEX</p>
+          <h1 id="directory-title">LA COLLECTION</h1>
+          <p id="directory-subtitle" class="directory-subtitle">Projets & applications</p>
+        </div>
+        <button id="directory-back" class="secondary-action" type="button">RETOUR À LA BOUTIQUE</button>
+      </div>
+      <p id="fallback-note" class="fallback-note" hidden>La 3D n’est pas disponible sur cet appareil. La collection reste consultable en 2D.</p>
+      <div class="directory-toolbar">
+        <label for="directory-category" class="visually-hidden">Filtrer par catégorie</label>
+        <select id="directory-category"><option value="">Toutes les catégories</option></select>
+        <span>10 / 10 PROJECTS</span>
+      </div>
+      <section class="directory-section">
+        <h2 id="projects-heading">PROJETS</h2>
+        <div id="directory-projects" class="directory-grid project-grid"></div>
       </section>
-      <div id="movie-list" class="movie-list"></div>
-      <div class="library-footer"><span>FROM A PERSONAL LETTERBOXD ARCHIVE</span><span>SCROLL TO EXPLORE ↓</span></div>
+      <section class="directory-section applications-section">
+        <div class="section-heading-row">
+          <h2 id="applications-heading">APPLICATIONS WEB</h2>
+          <span>INDEPENDENT RACK / 08</span>
+        </div>
+        <div id="directory-apps" class="directory-grid apps-grid"></div>
+      </section>
+      <footer class="directory-footer">
+        <span>ADAM SOPPELSA — PROJECTS STORE</span>
+        <span>FR / EN</span>
+      </footer>
     </section>
 
-    <section id="mobile-controls" class="mobile-controls" aria-label="Touch controls" hidden>
-      <div class="mobile-pad">
-        <button data-move="forward" aria-label="Move forward">↑</button>
-        <div><button data-move="left" aria-label="Move left">←</button><button data-move="back" aria-label="Move back">↓</button><button data-move="right" aria-label="Move right">→</button></div>
-      </div>
-      <div class="mobile-actions">
-        <button id="mobile-run">RUN</button>
-        <button id="mobile-jump">JUMP</button>
-        <button id="mobile-crouch">CROUCH</button>
-        <button id="mobile-flashlight">LIGHT</button>
-        <button id="mobile-examine">EXAMINE</button>
-      </div>
-    </section>
-
+    <dialog id="project-dialog" class="project-dialog">
+      <button id="dialog-close" class="dialog-close" type="button" aria-label="Close project details">×</button>
+      <div id="project-dialog-content"></div>
+    </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <button id="help-toggle" class="help-toggle" aria-expanded="false" title="Show controls" hidden>?</button>
-    <div id="help-card" class="help-card" hidden>
-      <div>Z Q S D / W A S D <span>MOVE</span></div><div>MOUSE <span>LOOK / SELECT</span></div><div>SCROLL <span>WALK</span></div>
-      <div>SHIFT <span>RUN</span></div><div>SPACE <span>JUMP</span></div><div>C <span>CROUCH</span></div>
-      <div>F <span>FLASHLIGHT</span></div><div>E / CLICK <span>TAKE TAPE</span></div><div>M <span>MOVIE INDEX</span></div>
-      <div>R <span>SURVIVAL MODE</span></div><div>V <span>VR MODE</span></div><div>ESC <span>PAUSE</span></div>
-    </div>
-    <div id="fallback" class="fallback" hidden>
-      <div class="boot-brand">cuchillo</div>
-      <h2>YOUR BROWSER<br>ISN'T READY.</h2>
-      <p>Midnight Video needs WebGL 2. Try the latest version of Chrome, Safari or Firefox with hardware acceleration enabled.</p>
-    </div>
   </main>
   <script type="module" src="./main.js"></script>
 </body>
