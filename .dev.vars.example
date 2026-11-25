@@ -1,0 +1,5 @@
+# Copy to `.dev.vars` (git-ignored) for `npx wrangler dev`. Never commit the real file.
+AI_API_KEY=replace-with-your-provider-key
+AI_PROVIDER=anthropic
+AI_MODEL=claude-haiku-5-5
+ALLOWED_ORIGINS=http://localhost:8080

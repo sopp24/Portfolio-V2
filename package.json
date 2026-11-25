@@ -1,0 +1,26 @@
+{
+  "name": "adam-soppelsa-projects-store",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Adam Soppelsa — Projects Store: an immersive 3D record-store portfolio (static site, GitHub Pages).",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "dev": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs && node scripts/sync-static.mjs --check",
+    "sync": "node scripts/sync-static.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@fontsource/anton": "5.3.0",
+    "@fontsource/caveat": "5.3.0",
+    "@fontsource/permanent-marker": "5.3.0",
+    "@fontsource/playfair-display": "5.3.0",
+    "@fontsource/poppins": "5.3.0",
+    "@fontsource/special-elite": "5.3.0",
+    "esbuild": "^0.25.0",
+    "three": "0.187.0"
+  }
+}
