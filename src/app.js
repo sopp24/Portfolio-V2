@@ -638,11 +638,13 @@ async function toggleGyroscope() {
   if (cameraController.isGyroscopeEnabled()) {
     cameraController.disableGyroscope();
     $("gyro-button").textContent = COPY[language].gyroOn;
+    $("gyro-button").setAttribute("aria-pressed", "false");
     showToast(language === "fr" ? "Gyroscope désactivé." : "Gyroscope disabled.");
     return;
   }
   const enabled = await cameraController.enableGyroscope();
   $("gyro-button").textContent = enabled ? COPY[language].gyroOff : COPY[language].gyroOn;
+  $("gyro-button").setAttribute("aria-pressed", String(enabled));
   showToast(enabled ? COPY[language].gyroOk : COPY[language].gyroError);
 }
 
@@ -787,6 +789,7 @@ async function toggleStoreSound() {
   const enabled = await storeAudio.setEnabled(next);
   audioEnabled = enabled;
   $("sound-button").textContent = enabled ? COPY[language].soundOn : next ? COPY[language].soundUnavailable : COPY[language].soundOff;
+  $("sound-button").setAttribute("aria-pressed", String(enabled));
   showToast(enabled
     ? (language === "fr" ? "Ambiance sonore activée." : "Ambient sound enabled.")
     : next
