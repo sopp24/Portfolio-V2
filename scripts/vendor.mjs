@@ -31,7 +31,14 @@ const fonts = [
   ["permanent-marker", "permanent-marker-latin-400-normal"],
   ["special-elite", "special-elite-latin-400-normal"],
   ["playfair-display", "playfair-display-latin-700-normal"],
-  ["playfair-display", "playfair-display-latin-700-italic"]
+  ["playfair-display", "playfair-display-latin-700-italic"],
+  // modern set (art direction v2): wide display, grotesque UI, mono HUD
+  ["unbounded", "unbounded-latin-400-normal"], ["unbounded", "unbounded-latin-600-normal"],
+  ["unbounded", "unbounded-latin-800-normal"], ["unbounded", "unbounded-latin-900-normal"],
+  ["space-grotesk", "space-grotesk-latin-400-normal"], ["space-grotesk", "space-grotesk-latin-500-normal"],
+  ["space-grotesk", "space-grotesk-latin-600-normal"], ["space-grotesk", "space-grotesk-latin-700-normal"],
+  ["jetbrains-mono", "jetbrains-mono-latin-400-normal"], ["jetbrains-mono", "jetbrains-mono-latin-500-normal"],
+  ["jetbrains-mono", "jetbrains-mono-latin-700-normal"]
 ];
 for (const [pkg, file] of fonts) {
   await copyFile(p("node_modules/@fontsource", pkg, "files", file + ".woff2"), p("assets/fonts", file + ".woff2"));
