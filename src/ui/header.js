@@ -1,5 +1,5 @@
 // Discreet menu: appears with Escape (desktop) or the MENU button (touch), never permanently.
-import { $, $$, trapFocus } from "./dom.js";
+import { $, $$, trapFocus, syncRange } from "./dom.js";
 import { t } from "../core/i18n.js";
 import { getPref, setPref } from "../core/storage.js";
 
@@ -22,6 +22,7 @@ export function createMenu({ world, audio, radio, isTouch, onGo, onLanguage, ens
     opt.sfx.checked = !!state.sfx;
     opt.ambience.checked = !!state.ambience;
     opt.volume.value = String(Math.round((state.master ?? .7) * 100));
+    syncRange(opt.volume);
     opt.gyro.checked = world.isGyroEnabled();
     const stored = getPref("quality");
     opt.quality.value = stored && ["high", "medium", "low"].includes(stored) ? stored : "auto";
@@ -31,12 +32,12 @@ export function createMenu({ world, audio, radio, isTouch, onGo, onLanguage, ens
   function show() {
     if (open) return;
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    open = true; menu.hidden = false; sync();
+    open = true; menu.hidden = false; button.setAttribute("aria-expanded", "true"); sync();
     $("#menu-close").focus({ preventScroll: true });
   }
   function hide() {
     if (!open) return;
-    open = false; menu.hidden = true;
+    open = false; menu.hidden = true; button.setAttribute("aria-expanded", "false");
     if (opener && opener.isConnected && !opener.hidden && opener !== document.body) opener.focus({ preventScroll: true });
     else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     opener = null;
@@ -61,7 +62,7 @@ export function createMenu({ world, audio, radio, isTouch, onGo, onLanguage, ens
   });
   opt.sfx.addEventListener("change", async () => { if (opt.sfx.checked) await ensureAudio({ music: false }); audio.setSfxEnabled(opt.sfx.checked); sync(); });
   opt.ambience.addEventListener("change", async () => { if (opt.ambience.checked) await ensureAudio({ music: false }); audio.setAmbienceEnabled(opt.ambience.checked); sync(); });
-  opt.volume.addEventListener("input", () => audio.setMasterVolume(Number(opt.volume.value) / 100));
+  opt.volume.addEventListener("input", () => { syncRange(opt.volume); audio.setMasterVolume(Number(opt.volume.value) / 100); });
 
   // view -------------------------------------------------------------------
   $("#opt-recenter").addEventListener("click", () => { world.recenter(); hide(); });

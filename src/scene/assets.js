@@ -1,6 +1,6 @@
 // Builds the shared artwork atlases (decor covers, posters, stickers) and exposes UV helpers.
 import * as THREE from "three";
-import { drawDecorAtlas, drawPosterAtlas, drawStickerAtlas, drawAppCase, ensureFonts, tex } from "./artwork.js";
+import { drawDecorAtlas, drawPosterAtlas, drawStickerAtlas, drawAppCase, ensureFonts, tex, projectTheme, PALETTE } from "./artwork.js";
 import { textureFrom } from "./util.js";
 
 export async function buildAssets(quality, applications, onStep = () => {}) {
@@ -39,4 +39,4 @@ export function atlasPlane(width, height, cell, flipU = false) {
   return g;
 }
 
-export { drawAppCase, tex };
+export { drawAppCase, tex, projectTheme, PALETTE };

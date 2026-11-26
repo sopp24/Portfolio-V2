@@ -1,5 +1,5 @@
 // Bottom dock shown while a record or an application case is in hand.
-import { $ } from "./dom.js";
+import { $, h, ico } from "./dom.js";
 import { t, L } from "../core/i18n.js";
 
 export function createRecordDock({ world, findEntity, categories, onShowSheet, onHideSheet, sfx }) {
@@ -13,6 +13,12 @@ export function createRecordDock({ world, findEntity, categories, onShowSheet, o
     flip: $("#dock-flip"), open: $("#dock-open"), details: $("#dock-details"), ret: $("#dock-return"),
     appOpen: $("#dock-app-open"), appRepo: $("#dock-app-repo"), appRet: $("#dock-app-return")
   };
+
+  // button label + keycap hint (the keys are real shortcuts handled in app.js; keycaps are hidden on touch devices)
+  function setBtn(btn, text, key) {
+    btn.replaceChildren(h("span", { text }), key ? h("kbd", { text: key, "aria-hidden": "true" }) : null);
+    if (key) btn.setAttribute("aria-keyshortcuts", key);
+  }
 
   els.flip.addEventListener("click", () => world.flipRecord());
   els.open.addEventListener("click", () => world.toggleSleeve());
@@ -30,10 +36,10 @@ export function createRecordDock({ world, findEntity, categories, onShowSheet, o
       els.title.textContent = entity ? entity.name : "";
       els.hint.textContent = entity ? L(entity.description) : "";
       if (entity) {
-        els.appOpen.href = entity.url; els.appOpen.textContent = t("dock.openApp") + " ↗";
-        els.appRepo.href = entity.repository; els.appRepo.textContent = t("dock.repo") + " ↗";
+        els.appOpen.href = entity.url; els.appOpen.replaceChildren(h("span", { text: t("dock.openApp") }), ico("ext"));
+        els.appRepo.href = entity.repository; els.appRepo.replaceChildren(h("span", { text: t("dock.repo") }), ico("ext"));
       }
-      els.appRet.textContent = t("dock.returnApp");
+      setBtn(els.appRet, t("dock.returnApp"), "R");
     } else {
       els.recordActions.hidden = false; els.appActions.hidden = true;
       const first = entity && entity.categories && entity.categories[0];
@@ -41,10 +47,10 @@ export function createRecordDock({ world, findEntity, categories, onShowSheet, o
       els.eyebrow.textContent = held.kind === "music" ? "SIDE A · " + t("dock.music").toUpperCase() : "SIDE A · " + (cat ? L(cat).toUpperCase() : "");
       els.title.textContent = entity ? L(entity.title) : "";
       els.hint.textContent = t("dock.drag");
-      els.flip.textContent = held.flipped ? t("dock.unflip") : t("dock.flip");
-      els.open.textContent = held.open ? t("dock.close") : t("dock.open");
-      els.details.textContent = t("dock.details");
-      els.ret.textContent = t("dock.return");
+      setBtn(els.flip, held.flipped ? t("dock.unflip") : t("dock.flip"), "F");
+      setBtn(els.open, held.open ? t("dock.close") : t("dock.open"), "O");
+      setBtn(els.details, t("dock.details"), "D");
+      setBtn(els.ret, t("dock.return"), "R");
       els.open.disabled = els.flip.disabled = held.state === "returning";
     }
   }

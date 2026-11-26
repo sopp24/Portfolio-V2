@@ -2,7 +2,7 @@
 // visible at >= 200x200 px, so it lives in this card; "hide" is a user choice that moves the card
 // off-screen AND pauses the music, so the player is never playing while hidden.
 // The hidden card is `inert` (no focusable controls).
-import { $ } from "./dom.js";
+import { $, ico, syncRange } from "./dom.js";
 import { t } from "../core/i18n.js";
 
 export function createRadio({ audio, isTouch }) {
@@ -26,19 +26,21 @@ export function createRadio({ audio, isTouch }) {
     if (s.randomStart === "applied") extras.push(t("audio.random.applied"));
     if (s.randomStart === "unavailable") extras.push(t("audio.random.unavailable"));
     status.textContent = [label, ...extras].join(" · ");
-    playBtn.textContent = s.state === "playing" ? "❚❚" : "▶";
+    playBtn.replaceChildren(ico(s.state === "playing" ? "pause" : "play"));
     playBtn.setAttribute("aria-label", s.state === "playing" ? t("audio.pause") : t("audio.play"));
-    muteBtn.textContent = audio.music.isMuted() ? "🔇" : "♪";
+    muteBtn.replaceChildren(ico(audio.music.isMuted() ? "mute" : "volume"));
     muteBtn.setAttribute("aria-label", audio.music.isMuted() ? t("audio.unmute") : t("audio.mute"));
     card.hidden = !enabled;
     open.hidden = !enabled || !collapsed;
     card.classList.toggle("is-offscreen", collapsed);
     card.inert = collapsed;
+    card.classList.toggle("is-live", s.state === "playing");
   }
 
   playBtn.addEventListener("click", () => audio.music.toggle());
   muteBtn.addEventListener("click", () => { audio.music.setMuted(!audio.music.isMuted()); render(); });
-  volume.addEventListener("input", () => audio.music.setVolume(Number(volume.value) / 100));
+  volume.addEventListener("input", () => { syncRange(volume); audio.music.setVolume(Number(volume.value) / 100); });
+  syncRange(volume);
   $("#radio-collapse").addEventListener("click", () => { if (audio.music.isPlaying()) audio.music.pause(); collapsed = true; render(); });
   audio.music.setVolume(Number(volume.value) / 100); // the slider and the player start from the same value
   open.addEventListener("click", () => { collapsed = false; render(); });

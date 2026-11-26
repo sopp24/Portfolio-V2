@@ -72,6 +72,7 @@ export async function boot() {
   info.addEventListener("keydown", (e) => trapFocus(info, e));
   info.addEventListener("click", (e) => { if (e.target === info) info.close(); });
 
+  const experience = $("#experience");
   const liner = $("#liner-panel");
   let linerRef = null;
   let sheetOpener = null;
@@ -83,11 +84,13 @@ export async function boot() {
     const index = held.kind === "project" ? PROJECTS.indexOf(entity) : 20 + MUSIC_PROJECTS.indexOf(entity);
     $("#liner-content").replaceChildren(renderProjectSheet(entity, CATEGORIES, { index, kind: held.kind }));
     liner.hidden = false; liner.scrollTop = 0;
+    experience.classList.add("has-sheet"); // lets the CSS move the record dock out from under the sheet
     world && world.setPresentShift(window.innerWidth > 860 ? -.2 : 0);
   }
   function hideSheet() {
     const wasOpen = !liner.hidden;
     liner.hidden = true; linerRef = null; world && world.setPresentShift(0);
+    experience.classList.remove("has-sheet");
     if (wasOpen && sheetOpener && sheetOpener.isConnected && !sheetOpener.hidden) sheetOpener.focus({ preventScroll: true });
     sheetOpener = null;
   }
@@ -195,7 +198,7 @@ export async function boot() {
 
   world.on("hover", (h) => hud.onHover(h));
   world.on("sound", (name) => sfx(name));
-  world.on("held", (h) => dock.update(h));
+  world.on("held", (h) => { dock.update(h); hud.suppressHint(!!h); });
   world.on("select", (sel) => handleSelect(sel));
   world.on("quality", (q) => { if (q.reason === "auto") toast(t("toast.quality", { tier: q.tier || "" })); });
   world.on("context-lost", () => { contextLost = true; toast(t("toast.contextLost")); showDirectory(t("toast.contextLost")); });

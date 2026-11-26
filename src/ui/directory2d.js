@@ -1,7 +1,9 @@
 // 2D collection: a complete alternative to the 3D store (no WebGL needed). It keeps the shop's
 // principles — bins per category, sleeves with a disc peeking out, a separate SOPP Agents rack —
 // and doubles as the crawlable, keyboard-friendly, low-power version.
-import { $, h } from "./dom.js";
+import { $, h, ico } from "./dom.js";
+
+const TONES = ["cyan", "sun", "coral", "violet", "mint", "sky"];
 import { t, L, getLanguage } from "../core/i18n.js";
 
 const coverCache = new Map();
@@ -40,12 +42,12 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
     const lang = getLanguage();
     const page = h("div", { class: "d2" });
     const top = h("header", { class: "d2-top" },
-      h("div", { class: "brand" }, h("span", { class: "brand-mark", "aria-hidden": "true", text: "A" }), h("span", { text: t("store.name") })),
+      h("div", { class: "brand" }, h("span", { class: "brand-mark", "aria-hidden": "true", text: "A" }), h("span", { class: "brand-name", text: t("store.name") })),
       h("div", { class: "actions" },
         h("div", { class: "lang-switch", role: "group", "aria-label": "Language / Langue" },
           ...["fr", "en"].map((code) => h("button", { type: "button", id: `dir-lang-${code}`, "aria-pressed": String(lang === code), text: code.toUpperCase(), onclick: () => onLanguage(code) }))),
-        canEnter3d() ? h("button", { type: "button", id: "dir-primary", class: "btn btn-primary", text: t("dir.back"), onclick: onBack })
-          : (canRetry3d() ? h("button", { type: "button", id: "dir-primary", class: "btn btn-primary", text: t("dir.enter3d"), onclick: onEnter3d }) : null)
+        canEnter3d() ? h("button", { type: "button", id: "dir-primary", class: "btn btn-primary", onclick: onBack }, ico("back"), t("dir.back"))
+          : (canRetry3d() ? h("button", { type: "button", id: "dir-primary", class: "btn btn-primary", onclick: onEnter3d }, t("dir.enter3d"), ico("send")) : null)
       )
     );
     page.append(top);
@@ -54,7 +56,7 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
       h("h1", { id: "dir-title", text: data.profile.name.toUpperCase() }),
       h("p", { class: "eyebrow", text: t("intro.subtitle") + " · " + t("dir.title") }),
       h("p", { text: L(data.profile.headline) }),
-      h("div", { class: "chips", style: "display:flex;gap:.5rem;flex-wrap:wrap" }, h("span", { class: "chip chip-solid", text: L(data.profile.availabilityLine) }))
+      h("div", { class: "chips" }, h("span", { class: "chip chip-solid", text: L(data.profile.availabilityLine) }))
     );
     if (note) hero.append(h("p", { class: "d2-note", role: "status", text: note }));
     page.append(hero);
@@ -70,13 +72,13 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
     if (filter) {
       const category = data.categories.find((c) => c.id === filter);
       const items = data.projects.filter((p) => (p.categories || []).includes(filter));
-      projects.append(h("div", { class: "bin" }, h("h3", { text: category ? L(category) : filter }), h("div", { class: "sleeve-grid" }, items.map((p) => sleeve(p, indexOf(p))))));
+      projects.append(h("div", { class: "bin", dataset: { tone: TONES[Math.max(0, data.categories.indexOf(category)) % TONES.length] } }, h("h3", { text: category ? L(category) : filter }), h("div", { class: "sleeve-grid" }, items.map((p) => sleeve(p, indexOf(p))))));
     } else {
-      for (const category of data.categories) {
+      data.categories.forEach((category, ci) => {
         const items = data.projects.filter((p) => p.categories[0] === category.id);
-        if (!items.length) continue;
-        projects.append(h("div", { class: "bin" }, h("h3", { text: L(category) }), h("div", { class: "sleeve-grid" }, items.map((p) => sleeve(p, indexOf(p))))));
-      }
+        if (!items.length) return;
+        projects.append(h("div", { class: "bin", dataset: { tone: TONES[ci % TONES.length] } }, h("h3", { text: L(category) }), h("div", { class: "sleeve-grid" }, items.map((p) => sleeve(p, indexOf(p))))));
+      });
     }
     page.append(projects);
 
@@ -88,8 +90,8 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
         h("h3", { text: app.name }),
         h("p", { text: L(app.description) }),
         h("div", { class: "row" },
-          h("a", { class: "btn btn-small btn-primary", href: app.url, target: "_blank", rel: "noopener noreferrer", text: t("dir.openApp") + " ↗" }),
-          h("a", { class: "btn btn-small", href: app.repository, target: "_blank", rel: "noopener noreferrer", text: t("dock.repo") + " ↗" })
+          h("a", { class: "btn btn-small btn-primary", href: app.url, target: "_blank", rel: "noopener noreferrer" }, t("dir.openApp"), ico("ext")),
+          h("a", { class: "btn btn-small", href: app.repository, target: "_blank", rel: "noopener noreferrer" }, t("dock.repo"), ico("ext"))
         )
       ))));
     page.append(apps);
@@ -108,7 +110,7 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
     cols.append(h("div", { class: "d2-card" },
       h("h3", { text: t("dir.music") }),
       h("p", { text: t("about.musicIntro") }),
-      h("div", { class: "chips", style: "display:flex;gap:.4rem;flex-wrap:wrap" }, (profile.music.practices[lang] || profile.music.practices.fr).map((x) => h("span", { class: "chip", text: x }))),
+      h("div", { class: "chips" }, (profile.music.practices[lang] || profile.music.practices.fr).map((x) => h("span", { class: "chip", text: x }))),
       h("ul", null, profile.music.projects.map((p) => h("li", null, p.name, p.confirmed ? "" : " · " + t("about.toConfirm"))))
     ));
     const links = profile.contact.links.filter((l) => l.url);
@@ -116,7 +118,7 @@ export function createDirectory({ data, onOpenProject, onOpenApp, onAbout, onCv,
       h("h3", { text: t("dir.contact") }),
       profile.cv.url ? h("a", { class: "btn btn-small btn-primary", href: profile.cv.url, download: profile.cv.fileName || "", text: t("cv.download") }) : h("p", { class: "d2-note", text: t("cv.missing") }),
       profile.contact.email ? h("a", { class: "btn btn-small", href: "mailto:" + profile.contact.email, text: profile.contact.email }) : h("p", { text: t("contact.emailMissing") }),
-      h("div", { class: "row", style: "display:flex;gap:.5rem;flex-wrap:wrap" }, links.map((l) => h("a", { class: "btn btn-small", href: l.url, target: "_blank", rel: "noopener noreferrer", text: l.label + " ↗" }))),
+      h("div", { class: "row" }, links.map((l) => h("a", { class: "btn btn-small", href: l.url, target: "_blank", rel: "noopener noreferrer" }, l.label, ico("ext")))),
       h("button", { type: "button", class: "btn btn-small", text: t("contact.title"), onclick: onContact }),
       h("button", { type: "button", class: "btn btn-small", text: t("cv.title"), onclick: onCv })
     ));

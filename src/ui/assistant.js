@@ -1,6 +1,6 @@
 // The shopkeeper chat. Real AI only when the backend is configured and answering; otherwise it says so
 // plainly and answers from the local catalogue (never pretends).
-import { $, h, trapFocus } from "./dom.js";
+import { $, h, ico, trapFocus } from "./dom.js";
 import { t, L, getLanguage } from "../core/i18n.js";
 
 export function createAssistant({ world, client, findEntity, onAction, sfx }) {
@@ -28,7 +28,7 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
   function bubble(role, text, { note = false, thinking = false } = {}) {
     const el = h("div", { class: `msg ${note ? "msg-note" : role === "user" ? "msg-user" : "msg-bot"}${thinking ? " msg-thinking" : ""}`, text });
     log.append(el);
-    log.scrollTop = log.scrollHeight;
+    reveal(el);
     return el;
   }
 
@@ -45,9 +45,16 @@ export function createAssistant({ world, client, findEntity, onAction, sfx }) {
     if (!actions || !actions.length) return;
     const row = h("div", { class: "msg-actions" });
     for (const action of actions.slice(0, 3)) {
-      row.append(h("button", { type: "button", class: "btn btn-small", text: t("chat.go", { label: actionLabel(action) }) + " ↗", onclick: () => onAction(action) }));
+      row.append(h("button", { type: "button", class: "btn btn-small", onclick: () => onAction(action) }, t("chat.go", { label: actionLabel(action) }), ico("ext")));
     }
     messageEl.append(row);
+    reveal(messageEl);
+  }
+
+  // keep the newest answer in view: its start when it is long, otherwise the bottom of the log
+  function reveal(el) {
+    if (el.offsetHeight > log.clientHeight - 24) log.scrollTop = el.offsetTop - log.offsetTop - 8;
+    else log.scrollTop = log.scrollHeight;
   }
 
   function renderChips() {

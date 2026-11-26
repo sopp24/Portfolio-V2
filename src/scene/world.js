@@ -1,7 +1,7 @@
 // The world: renderer, scene assembly, intro choreography, render loop, quality governor and the
 // public API the UI talks to. Nothing here knows about DOM panels: the UI subscribes to events.
 import * as THREE from "three";
-import { ROOM, CAMERA, SUN } from "./layout.js";
+import { ROOM, CAMERA } from "./layout.js";
 import { detectTier, stepDown, TIERS, prefersReducedMotion } from "./quality.js";
 import { createMaterials } from "./materials.js";
 import { buildAssets, atlasPlane } from "./assets.js";
@@ -14,7 +14,7 @@ import {
   buildTurntable, buildCounterClutter, buildSpeakers, buildLuckyCat, buildDocuments, buildAppsRack, buildAboutCorner, buildListeningCorner, buildClutter
 } from "./props.js";
 import { buildShopkeeper, updateShopkeeper, buildCustomers, updateCustomers } from "./people.js";
-import { buildLighting } from "./lighting.js";
+import { buildLighting, HAZE } from "./lighting.js";
 import { buildDetails } from "./details.js";
 import { createPostFX } from "./postfx.js";
 import { createInteraction } from "./interaction.js";
@@ -39,10 +39,15 @@ export async function createWorld({ canvas, projects, categories, applications, 
   const progress = (label) => { steps.done = Math.min(steps.total, steps.done + 1); onProgress(steps.done / steps.total, label); };
 
   // --------------------------------------------------------------------------------- renderer
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance", alpha: false, stencil: false, preserveDrawingBuffer: !!new URLSearchParams(location.search).get("capture") });
+  // `?capture=1` = deterministic frames for screenshots/tests: keep the drawing buffer and freeze the adaptive governor (a software
+  // renderer would otherwise lower the pixel ratio / tier mid-capture and make every screenshot a different quality).
+  const captureMode = !!new URLSearchParams(location.search).get("capture");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance", alpha: false, stencil: false, preserveDrawingBuffer: captureMode });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = .92;
+  // Tone mapping + grade live in ONE custom pass (postfx.js: colour-preserving "Neutral" shoulder + filmic grade); the renderer itself
+  // only writes linear HDR into the composer, so no renderer tone mapping here.
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = 1;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.info.autoReset = false; // reset once per frame (below): otherwise stats() only ever sees the last post-processing pass
@@ -50,7 +55,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   let ratio = Math.min(deviceRatio, quality.dprCap);
   renderer.setPixelRatio(ratio);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
-  renderer.setClearColor(0xcfc3a8, 1);
+  renderer.setClearColor(HAZE.color, 1);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, window.innerWidth / window.innerHeight, .08, 120);
@@ -60,7 +65,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   // --------------------------------------------------------------------------------- context
   const musicProjects = MUSIC_PROJECTS;
   const ctx = {
-    scene, quality, lang: language, camera, renderer,
+    scene, quality, lang: language, camera, renderer, reducedMotion,
     owned: [], localized: [], pickRoots: [], lights: {}, neonMaterials: [], neonLights: [], updaters: [], decorMaterial: null
   };
   progress("renderer");
@@ -73,7 +78,8 @@ export async function createWorld({ canvas, projects, categories, applications, 
   ctx.assets = assets;
   await nextFrame();
 
-  scene.environment = createEnvironment(renderer);
+  scene.environment = createEnvironment(renderer, { size: quality.envSize });
+  materials.applyEnvironment?.(scene.environment); // glossy materials reflect the daylight stand-in a bit harder than matte ones
   progress("environment");
 
   // shared helper materials / batching
@@ -141,7 +147,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   const reflection = createFloorReflection({ renderer, scene, camera, material: materials.floor, hide: [room.floor, lighting.shafts, lighting.dust].filter(Boolean) });
   reflection.setEnabled(!!quality.reflections);
   // --------------------------------------------------------------------------------- post + controls + interaction
-  let postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio });
+  let postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio, aoHide: [lighting.shafts], reducedMotion });
   progress("postfx");
 
   const interfaceSelector = "#site-header, .screen-overlay, .record-dock, .liner-panel, .dialog, dialog, .mode-2d, .assistant, .mobile-controls, button, a, input, select, textarea, .toast, .radio-card, .hud-card";
@@ -158,8 +164,8 @@ export async function createWorld({ canvas, projects, categories, applications, 
     onSelect: (info) => emit("select", info),
     onHeldChange: (info) => emit("held", info),
     onSound: (name) => emit("sound", name),
-    // a record held close to the camera would be blown out by the point lights standing right behind the visitor
-    onHold: (amount) => { for (const l of ctx.lights.bounce || []) l.intensity = (l.userData.base ??= l.intensity) * (1 - .88 * amount); }
+    // a record held close to the camera would be blown out by the lights standing right behind the visitor (bounce, street, sky fill, sun)
+    onHold: (amount) => lighting.setHold(amount)
   });
   progress("controls");
 
@@ -361,7 +367,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   }
 
   function adapt(dt) {
-    if (state.transition) return;
+    if (state.transition || captureMode) return;
     governor.acc += dt; governor.frames++;
     governor.cooldown -= dt;
     if (governor.acc < 1.2) return;
@@ -393,9 +399,10 @@ export async function createWorld({ canvas, projects, categories, applications, 
     quality = next;
     ctx.quality = next;
     reflection.setEnabled(!!next.reflections);
+    lighting.setQuality?.(next);
     ratio = Math.min(deviceRatio, quality.dprCap);
     postfx.dispose();
-    postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio });
+    postfx = createPostFX({ renderer, scene, camera, quality, width: window.innerWidth, height: window.innerHeight, pixelRatio: ratio, aoHide: [lighting.shafts], reducedMotion });
     lighting.sun.shadow.mapSize.set(quality.shadowMap, quality.shadowMap);
     lighting.sun.shadow.map?.dispose(); lighting.sun.shadow.map = null;
     applySize();
@@ -462,7 +469,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
     getProjectsInStore: () => gondola.records.map((r) => r.project.id),
     stats() { return { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries, ratio, tier: quality.id }; },
     resize: onResize,
-    _debug: { scene, camera, renderer, look, interaction, state, postfx: () => postfx, lighting, room, ctx },
+    _debug: { scene, camera, renderer, look, interaction, state, postfx: () => postfx, lighting, room, ctx, reflection },
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);
@@ -475,6 +482,5 @@ export async function createWorld({ canvas, projects, categories, applications, 
       renderer.dispose();
     }
   };
-  void SUN;
   return api;
 }

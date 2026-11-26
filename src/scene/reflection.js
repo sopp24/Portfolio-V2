@@ -1,6 +1,6 @@
 // Planar floor reflection (high tier): the shop is rendered once more through a mirror at y = 0 into a
-// half-resolution HDR target, then blended into the linoleum's shader with a Fresnel term and a
-// roughness-driven blur. Sunlit crates, sleeves and neon now glint in the floor like a real waxed shop floor.
+// half-resolution HDR target, then blended into the glossy graphic floor's shader with a Fresnel term, a roughness-driven blur
+// and an edge fade. Sunlit crates, sleeves, windows and neon glint in the sealed floor like a polished game-hub floor.
 import * as THREE from "three";
 
 export function createFloorReflection({ renderer, scene, camera, material, hide = [], scale = .5 }) {
@@ -36,9 +36,12 @@ export function createFloorReflection({ renderer, scene, camera, material, hide 
           refl += texture2D(tReflect, ruv + vec2(0.0,  1.0) * uReflTexel * blur).rgb * 0.18;
           refl += texture2D(tReflect, ruv + vec2(0.0, -1.0) * uReflTexel * blur).rgb * 0.18;
           float ndv = clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0);
-          float fres = 0.05 + 0.95 * pow(1.0 - ndv, 4.0);
+          float fres = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
           float mask = smoothstep(0.75, 0.25, roughnessFactor);
-          outgoingLight += refl * uReflStrength * (0.18 + 0.6 * fres) * (0.35 + 0.65 * mask);
+          // fade the mirror image out toward the edge of the reflection target (no smeared border) and tame fireflies from HDR glints
+          vec2 edge = smoothstep(0.0, 0.07, ruv) * (1.0 - smoothstep(0.93, 1.0, ruv));
+          refl = min(refl, vec3(5.0)) * edge.x * edge.y;
+          outgoingLight += refl * uReflStrength * (0.15 + 0.62 * fres) * (0.35 + 0.65 * mask);
         }
         #include <opaque_fragment>`);
   };

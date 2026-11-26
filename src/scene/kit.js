@@ -1,6 +1,6 @@
 // Small building blocks shared by the furniture / props builders.
 import * as THREE from "three";
-import { createCanvas, textureFrom } from "./util.js";
+import { createCanvas, textureFrom, roundRectPath } from "./util.js";
 import { drawSignBoard, FONT } from "./artwork.js";
 
 // A localized canvas texture: `draw(lang)` returns a canvas. Re-rendered on language change.
@@ -16,7 +16,7 @@ export function addSign(ctx, { text, draw = null, width = 1, height = .25, posit
     width: Math.round(width * 1024), height: Math.round(height * 1024), bg, fg, border, font, sub: typeof sub === "function" ? sub(lang) : sub
   }));
   const texture = localizedTexture(ctx, drawer);
-  const material = new THREE.MeshStandardMaterial({ map: texture, roughness: .6, metalness: 0, emissive: emissive ? new THREE.Color(0xffffff) : new THREE.Color(0), emissiveMap: emissive ? texture : null, emissiveIntensity: emissive });
+  const material = new THREE.MeshStandardMaterial({ map: texture, roughness: .88, metalness: 0, envMapIntensity: .35, emissive: emissive ? new THREE.Color(0xffffff) : new THREE.Color(0), emissiveMap: emissive ? texture : null, emissiveIntensity: emissive });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
   mesh.position.set(...position);
   mesh.rotation.set(rotationX, rotationY, 0, "YXZ");
@@ -71,13 +71,16 @@ export function addCardboardBox(ctx, w, h, d, position, rotY = 0, face = 0) {
   if (!ctx.boxKit) {
     const c = createCanvas(256, 160);
     const g = c.getContext("2d");
-    g.fillStyle = "#f1ede2"; g.fillRect(0, 0, 256, 160);
-    g.fillStyle = "#1c1b19";
-    for (let i = 0, x = 14; x < 150; i++) { const bw = 2 + ((i * 7) % 4); g.fillRect(x, 16, bw, 46); x += bw + 2 + ((i * 5) % 3); } // barcode
-    for (let i = 0; i < 5; i++) g.fillRect(14, 78 + i * 15, 118 - ((i * 23) % 40), 5);
-    g.strokeStyle = "#c2382b"; g.lineWidth = 6; g.strokeRect(160, 14, 82, 82);
-    g.fillStyle = "#c2382b"; g.beginPath(); g.moveTo(201, 24); g.lineTo(228, 58); g.lineTo(212, 58); g.lineTo(212, 86); g.lineTo(190, 86); g.lineTo(190, 58); g.lineTo(174, 58); g.closePath(); g.fill();
-    g.font = "700 20px sans-serif"; g.fillStyle = "#1c1b19"; g.fillText("FRAGILE", 150, 128);
+    g.fillStyle = "#FFF6E3"; g.fillRect(0, 0, 256, 160);
+    g.fillStyle = "#12162B"; g.fillRect(0, 0, 256, 8);
+    for (let i = 0, x = 14; x < 150; i++) { const bw = 2 + ((i * 7) % 4); g.fillRect(x, 20, bw, 40); x += bw + 2 + ((i * 5) % 3); } // barcode
+    g.font = `700 11px ${FONT.mono}`; g.textBaseline = "alphabetic"; g.textAlign = "left";
+    g.fillText("SIDE A · STOCK 0042", 14, 76);
+    for (let i = 0; i < 3; i++) { g.fillStyle = i ? "rgba(18,22,43,.35)" : "#12162B"; g.fillRect(14, 88 + i * 12, 112 - i * 26, 5); }
+    g.fillStyle = "#FF5B4A"; roundRectPath(g, 160, 18, 82, 82, 14); g.fill();
+    g.fillStyle = "#FFF6E3"; g.beginPath(); g.moveTo(201, 28); g.lineTo(228, 60); g.lineTo(212, 60); g.lineTo(212, 88); g.lineTo(190, 88); g.lineTo(190, 60); g.lineTo(174, 60); g.closePath(); g.fill();
+    g.fillStyle = "#12162B"; g.font = `900 22px ${FONT.display}`; g.fillText("FRAGILE", 14, 140);
+    g.fillStyle = "#FFC83D"; g.fillRect(150, 118, 92, 22); g.fillStyle = "#12162B"; g.font = `700 11px ${FONT.mono}`; g.textAlign = "center"; g.fillText("THIS SIDE UP", 196, 133);
     const label = textureFrom(c, { srgb: true, repeat: false, anisotropy: ctx.quality.anisotropy });
     const labelMat = new THREE.MeshStandardMaterial({ map: label, roughness: .75, envMapIntensity: .5, name: "boxLabel" });
     const tapeMat = new THREE.MeshStandardMaterial({ color: 0xd6c392, roughness: .3, metalness: 0, envMapIntensity: .8, name: "tape" });

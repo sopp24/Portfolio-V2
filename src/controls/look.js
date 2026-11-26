@@ -4,11 +4,23 @@
 //  - Gyroscope: opt-in (permission aware), relative to the pose when it was enabled.
 //  - Keyboard: arrow keys look, +/- zoom (accessibility).
 // The camera position never changes: only yaw, pitch and field of view.
+// Camera feel (art direction v2): yaw/pitch follow a CRITICALLY DAMPED spring (eased start and stop, no instant top speed like the old
+// exponential chase) and the camera banks a hair into fast turns; both are disabled with reduced motion (the spring stays, the bank goes).
 import * as THREE from "three";
 import { CAMERA } from "../scene/layout.js";
 
 const clamp = THREE.MathUtils.clamp;
 const wrap180 = (deg) => ((deg + 540) % 360) - 180;
+
+// Critically damped smoothing (Unity-style SmoothDamp): returns [value, velocity]. `smooth` ~ time (s) to settle on the target.
+function damp(current, target, velocity, smooth, dt) {
+  const omega = 2 / Math.max(.0001, smooth);
+  const x = omega * dt;
+  const e = 1 / (1 + x + .48 * x * x + .235 * x * x * x);
+  const change = current - target;
+  const temp = (velocity + omega * change) * dt;
+  return [target + (change + temp) * e, (velocity - omega * temp) * e];
+}
 
 export function createLookControls({ camera, canvas, isOverInterface = () => false, reducedMotion = false, onPointer = () => {}, onTap = () => {}, onChange = () => {} }) {
   const home = { yaw: 0, pitch: -.035, fov: CAMERA.fov };
@@ -19,6 +31,8 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
   let enabled = true;
   let targetYaw = home.yaw, targetPitch = home.pitch, targetFov = home.fov;
   let yaw = targetYaw, pitch = targetPitch;
+  let yawVel = 0, pitchVel = 0;                      // spring velocities (rad/s)
+  let roll = 0;
   let pointer = { x: 0, y: 0, active: false, type: "mouse" };
   let dragOffsetYaw = 0, dragOffsetPitch = 0;       // touch/gyro-induced offsets
   let gyro = { enabled: false, a0: null, b0: null, g0: null, yaw: 0, pitch: 0 };
@@ -203,13 +217,19 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
       }
     }
     if (gyro.enabled) { ty = clamp(ty + gyro.yaw, -limits.yaw, limits.yaw); tp = clamp(tp + gyro.pitch, -limits.down, limits.up); }
-    const k = 1 - Math.exp(-(glide ? 3.2 : 6.5) * d);
-    yaw += (ty - yaw) * k;
-    pitch += (tp - pitch) * k;
+    // critically damped spring: pointer steering reaches 90% in ~0.3 s, programmatic glides (recommendations, recenter) take their time
+    const smooth = glide ? .55 : .26;
+    [yaw, yawVel] = damp(yaw, ty, yawVel, smooth, d);
+    [pitch, pitchVel] = damp(pitch, tp, pitchVel, smooth, d);
+    yaw = clamp(yaw, -limits.yaw, limits.yaw);
+    pitch = clamp(pitch, -limits.down, limits.up);
     sway += d;
     const bob = reducedMotion ? 0 : 1;
+    // bank into fast turns (max ~0.45 deg), eased so it never snaps
+    const bank = clamp(yawVel * .0065, -.008, .008) * bob;
+    roll += (bank - roll) * (1 - Math.exp(-9 * d));
     camera.position.set(CAMERA.position.x + Math.sin(sway * .31) * .004 * bob, CAMERA.position.y + Math.sin(sway * .52) * .0035 * bob, CAMERA.position.z);
-    camera.rotation.set(pitch + Math.sin(sway * .43) * .0012 * bob, yaw, Math.sin(sway * .27) * .0009 * bob, "YXZ");
+    camera.rotation.set(pitch + Math.sin(sway * .43) * .0012 * bob, yaw, Math.sin(sway * .27) * .0009 * bob + roll, "YXZ");
     const f = camera.fov + (targetFov - camera.fov) * (1 - Math.exp(-6 * d));
     if (Math.abs(f - camera.fov) > .005) { camera.fov = f; camera.updateProjectionMatrix(); }
   }
@@ -236,8 +256,10 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
     setZoom(fov) { targetFov = clamp(fov, CAMERA.zoomMinFov * fovScale, CAMERA.zoomMaxFov * fovScale); },
     getTargetFov: () => targetFov,
     // Debug / tests: jump straight to a pose (radians, degrees for fov) without easing
-    setPose(nextYaw, nextPitch, fov) { glide = null; targetYaw = yaw = clamp(nextYaw, -limits.yaw, limits.yaw); targetPitch = pitch = clamp(nextPitch, -limits.down, limits.up); if (fov) { targetFov = fov; camera.fov = fov; camera.updateProjectionMatrix(); } },
+    setPose(nextYaw, nextPitch, fov) { glide = null; yawVel = pitchVel = 0; roll = 0; targetYaw = yaw = clamp(nextYaw, -limits.yaw, limits.yaw); targetPitch = pitch = clamp(nextPitch, -limits.down, limits.up); if (fov) { targetFov = fov; camera.fov = fov; camera.updateProjectionMatrix(); } },
     getState: () => ({ yaw, pitch, fov: camera.fov }),
+    // angular speed of the view (rad/s): lets the renderer react to camera motion
+    getSpeed: () => Math.hypot(yawVel, pitchVel),
     getHome: () => ({ ...home, fov: home.fov * scaleFor() }),
     setLimits(next) { Object.assign(limits, next); },
     isGliding: () => !!glide,

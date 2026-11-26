@@ -51,13 +51,15 @@ function labelTexture(project, index) {
   g.fillStyle = c0; g.beginPath(); g.arc(128, 128, 128, 0, RING); g.fill();
   g.fillStyle = c1; g.beginPath(); g.arc(128, 128, 118, 0, RING); g.fill();
   g.fillStyle = c0; g.beginPath(); g.arc(128, 128, 96, 0, RING); g.fill();
-  g.fillStyle = "#f3e9d1";
-  g.font = `400 26px ${FONT.display}`; g.textAlign = "center"; g.textBaseline = "middle";
+  // lettering colour follows the label colour so the SIDE A mark stays readable on pale artwork
+  const lum = (hex) => { const v = parseInt(String(hex).replace("#", "").slice(0, 6), 16); return (((v >> 16) & 255) * .2126 + ((v >> 8) & 255) * .7152 + (v & 255) * .0722) / 255; };
+  g.fillStyle = lum(c0) > .62 ? "#12162b" : "#fff6e3";
+  g.font = `900 26px ${FONT.display}`; g.textAlign = "center"; g.textBaseline = "middle";
   g.fillText("SIDE A", 128, 92);
-  g.font = `500 11px ${FONT.sans}`;
+  g.font = `700 11px ${FONT.sans}`;
   const title = String((project.title && project.title.fr) || project.id).toUpperCase();
   g.fillText(title.length > 24 ? title.slice(0, 23) + "…" : title, 128, 148);
-  g.font = `10px ${FONT.type}`; g.fillText(`CAT. ${String(index + 1).padStart(3, "0")} · 33⅓ RPM`, 128, 168);
+  g.font = `700 10px ${FONT.type}`; g.fillText(`CAT. ${String(index + 1).padStart(3, "0")} · 33⅓ RPM`, 128, 168);
   g.fillStyle = c2; g.beginPath(); g.arc(128, 128, 8, 0, RING); g.fill();
   g.fillStyle = "#151515"; g.beginPath(); g.arc(128, 128, 3.2, 0, RING); g.fill();
   return textureFrom(c, { srgb: true, repeat: false });
@@ -84,7 +86,7 @@ export function createRecord({ project, index, quality, materials, edgeMaterial,
   }
 
   const makeFace = (map) => new THREE.MeshPhysicalMaterial({
-    map, roughness: .62, metalness: 0, clearcoat: .1, clearcoatRoughness: .4, normalMap: paperNormal || null,
+    map, roughness: .55, metalness: 0, clearcoat: .22, clearcoatRoughness: .32, normalMap: paperNormal || null,
     normalScale: new THREE.Vector2(.25, .25), envMapIntensity: .8, name: "sleeveFace"
   });
   const frontMat = makeFace(frontTexture);

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1b2420">
-  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#fff6e3">
+  <meta name="color-scheme" content="light">
   <title>Adam Soppelsa — Projects Store</title>
   <meta name="description" content="Adam Soppelsa — Projects Store : un portfolio immersif en 3D dans un disquaire indépendant. Communication, stratégie, création, web, audiovisuel, musique et data. Master 2, disponible dès septembre, ouvert à l’international.">
   <link rel="canonical" href="https://sopp24.github.io/Portfolio-V2/">
@@ -23,8 +23,9 @@
   <!-- Shopkeeper AI backend (Cloudflare Worker URL). Leave empty for catalogue mode. See docs/BACKEND.md. -->
   <meta name="assistant-endpoint" content="">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="assets/fonts/anton-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/fonts/poppins-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/unbounded-latin-900-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/space-grotesk-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/jetbrains-mono-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="assets/fonts/fonts.css">
   <link rel="stylesheet" href="styles/app.css">
   <script type="importmap">
@@ -36,8 +37,8 @@
   <noscript><style>
     body { overflow: auto !important; }
     #experience, #skip-link { display: none !important; }
-    #seo-content { position: static !important; width: auto !important; height: auto !important; margin: 0 auto !important; padding: 2rem 1.25rem; max-width: 44rem; overflow: visible !important; clip: auto !important; white-space: normal !important; color: #f4ead2; }
-    #seo-content a, .noscript a { color: #e1a63a; }
+    #seo-content { position: static !important; width: auto !important; height: auto !important; margin: 0 auto !important; padding: 2rem 1.25rem; max-width: 44rem; overflow: visible !important; clip: auto !important; white-space: normal !important; color: #12162b; background: #fff6e3; font-family: "Space Grotesk", system-ui, sans-serif; }
+    #seo-content a, .noscript a { color: #5638e6; }
   </style></noscript>
 </head>
 <body>
@@ -48,22 +49,29 @@
     <div class="screen-vignette" aria-hidden="true"></div>
 
     <!-- LOADING: progress reflects real build steps, never a fake timer -->
-    <section id="loading" class="loading" role="status" aria-live="polite">
-      <div class="loading-card">
-        <div class="loading-mark" aria-hidden="true"><span>A</span></div>
-        <p class="loading-title" data-i18n="loading.title">Le disquaire prépare les bacs…</p>
-        <div class="loading-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="loading-fill"></span></div>
-        <p class="loading-meta"><span id="loading-label"></span><span id="loading-percent">0%</span></p>
+    <section id="loading" class="loading" role="status" aria-live="polite" aria-labelledby="loading-title">
+      <div class="loading-card brk">
+        <p class="loading-hud" aria-hidden="true"><span data-i18n="store.name">SIDE A RECORDS</span><span data-i18n="loading.hud">CHARGEMENT</span></p>
+        <div class="loading-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="loading-title">
+          <svg class="ring" viewBox="0 0 160 160" aria-hidden="true" focusable="false"><circle class="ring-track" cx="80" cy="80" r="74" pathLength="100"/><circle class="ring-fill" id="loading-fill" cx="80" cy="80" r="74" pathLength="100"/></svg>
+          <div class="vinyl" aria-hidden="true"><span>A</span></div>
+        </div>
+        <p class="loading-brand" aria-hidden="true" data-i18n="store.name">SIDE A RECORDS</p>
+        <p id="loading-title" class="loading-title" data-i18n="loading.title">Le disquaire prépare les bacs…</p>
+        <p class="loading-meta"><span id="loading-label" class="loading-label"></span><span id="loading-percent" class="loading-percent" aria-hidden="true">0%</span></p>
       </div>
     </section>
 
     <!-- INTRO: closed shop seen from the street -->
     <section id="intro" class="intro" hidden aria-labelledby="intro-title">
       <div class="intro-top">
-        <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span data-i18n="store.name">SIDE A RECORDS</span></div>
-        <div class="lang-switch" role="group" aria-label="Language / Langue">
-          <button type="button" data-lang="fr" aria-pressed="true">FR</button>
-          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span class="brand-name" data-i18n="store.name">SIDE A RECORDS</span></div>
+        <div class="intro-tools">
+          <span class="hud-chip intro-clock" aria-hidden="true"><span class="hud-dot"></span><span id="intro-clock">--:--</span></span>
+          <div class="lang-switch" role="group" aria-label="Language / Langue">
+            <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </div>
         </div>
       </div>
       <div class="intro-main">
@@ -72,50 +80,57 @@
         <h1 id="intro-title" class="intro-title"><span class="name" data-i18n="intro.title">ADAM SOPPELSA</span><span class="sub" data-i18n="intro.subtitle">PROJECTS STORE</span></h1>
         <p class="lead" data-i18n="intro.text">Un portfolio à explorer comme une collection de disques.</p>
         <div class="intro-actions">
-          <button type="button" id="enter-sound" class="btn btn-primary" data-i18n="intro.enterSound">ENTRER AVEC LE SON</button>
-          <button type="button" id="enter-silent" class="btn" data-i18n="intro.enterSilent">ENTRER SANS LE SON</button>
+          <button type="button" id="enter-sound" class="btn btn-primary btn-lg"><span class="ico ico-volume" aria-hidden="true"></span><span data-i18n="intro.enterSound">ENTRER AVEC LE SON</span></button>
+          <button type="button" id="enter-silent" class="btn btn-lg"><span class="ico ico-mute" aria-hidden="true"></span><span data-i18n="intro.enterSilent">ENTRER SANS LE SON</span></button>
         </div>
         <p class="intro-note" data-i18n="intro.soundNote">Le son n’est jamais lancé sans ton accord.</p>
-        <button type="button" id="intro-direct" class="link-btn" hidden data-i18n="intro.returning">Ce n’est pas votre première visite ? Aller directement aux projets.</button>
-        <button type="button" id="intro-2d" class="link-btn" data-i18n="intro.2d">Consulter la collection en 2D</button>
+        <div class="intro-links">
+          <button type="button" id="intro-direct" class="link-btn" hidden data-i18n="intro.returning">Ce n’est pas votre première visite ? Aller directement aux projets.</button>
+          <button type="button" id="intro-2d" class="link-btn" data-i18n="intro.2d">Consulter la collection en 2D</button>
+        </div>
       </div>
       <div class="intro-foot" aria-hidden="true">
-        <span data-i18n="intro.hint1">TAKE YOUR TIME.</span><span data-i18n="intro.hint2">BROWSE THE COLLECTION.</span><span data-i18n="intro.hint3">FIND SOMETHING WORTH REMEMBERING.</span>
+        <div class="ticker">
+          <span class="ticker-run"><span data-i18n="intro.hint1">TAKE YOUR TIME.</span><span data-i18n="intro.hint2">BROWSE THE COLLECTION.</span><span data-i18n="intro.hint3">FIND SOMETHING WORTH REMEMBERING.</span></span>
+          <span class="ticker-run"><span data-i18n="intro.hint1">TAKE YOUR TIME.</span><span data-i18n="intro.hint2">BROWSE THE COLLECTION.</span><span data-i18n="intro.hint3">FIND SOMETHING WORTH REMEMBERING.</span></span>
+        </div>
       </div>
     </section>
 
     <!-- HUD -->
-    <button type="button" id="menu-button" class="menu-button" hidden aria-haspopup="dialog" aria-controls="site-header"><span data-i18n="hud.menuButton">MENU</span><kbd>ESC</kbd></button>
-    <p id="hud-hint" class="hud-hint" hidden></p>
+    <div id="hud-frame" class="hud-frame" hidden aria-hidden="true"></div>
+    <div id="hud-status" class="hud-status" hidden aria-hidden="true"><span class="hud-chip"><span class="hud-dot"></span><span id="hud-status-text">SIDE A</span><span class="hud-sep">/</span><span id="hud-clock">--:--</span></span></div>
+    <button type="button" id="menu-button" class="menu-button" hidden aria-haspopup="dialog" aria-expanded="false" aria-controls="site-header" aria-keyshortcuts="Escape"><span class="ico ico-menu" aria-hidden="true"></span><span data-i18n="hud.menuButton">MENU</span><kbd>ESC</kbd></button>
+    <div id="hud-hint" class="hud-hint" hidden></div>
     <div id="hover-label" class="hover-label" hidden role="presentation"></div>
     <div id="mobile-controls" class="mobile-controls" hidden>
-      <button type="button" id="mc-recenter" data-i18n-aria="hud.recenter" aria-label="Recentrer">⌖</button>
-      <button type="button" id="mc-zoom-in" data-i18n-aria="hud.zoomIn" aria-label="Zoom +">+</button>
-      <button type="button" id="mc-zoom-out" data-i18n-aria="hud.zoomOut" aria-label="Zoom −">−</button>
+      <button type="button" id="mc-recenter" data-i18n-aria="hud.recenter" aria-label="Recentrer"><span class="ico ico-target" aria-hidden="true"></span></button>
+      <button type="button" id="mc-zoom-in" data-i18n-aria="hud.zoomIn" aria-label="Zoom +"><span class="ico ico-plus" aria-hidden="true"></span></button>
+      <button type="button" id="mc-zoom-out" data-i18n-aria="hud.zoomOut" aria-label="Zoom −"><span class="ico ico-minus" aria-hidden="true"></span></button>
     </div>
 
     <!-- MENU (Escape / MENU button) -->
     <header id="site-header" class="menu" hidden role="dialog" aria-modal="false" aria-labelledby="menu-title">
       <div class="menu-bar">
-        <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span id="menu-title" data-i18n="menu.title">Menu de la boutique</span></div>
-        <button type="button" id="menu-close" class="icon-btn" data-i18n-aria="menu.close" aria-label="Fermer le menu">✕</button>
+        <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span id="menu-title" class="brand-name" data-i18n="menu.title">Menu de la boutique</span></div>
+        <div class="menu-bar-r"><kbd class="menu-esc" aria-hidden="true">ESC</kbd><button type="button" id="menu-close" class="icon-btn" data-i18n-aria="menu.close" aria-label="Fermer le menu"><span class="ico ico-close" aria-hidden="true"></span></button></div>
       </div>
       <div class="menu-grid">
-        <section class="menu-group" aria-labelledby="mg-lang">
+        <section class="menu-group" data-tone="sun" aria-labelledby="mg-lang">
           <h2 id="mg-lang" data-i18n="menu.language">Langue</h2>
           <div class="lang-switch" role="group" aria-label="Language / Langue">
             <button type="button" data-lang="fr" aria-pressed="true">FR</button>
             <button type="button" data-lang="en" aria-pressed="false">EN</button>
           </div>
         </section>
-        <section class="menu-group" aria-labelledby="mg-audio">
+        <section class="menu-group" data-tone="cyan" aria-labelledby="mg-audio">
           <h2 id="mg-audio" data-i18n="menu.audio">Son</h2>
           <label class="switch"><input type="checkbox" id="opt-music"><span class="switch-ui"></span><span data-i18n="menu.music">Musique</span></label>
           <label class="switch"><input type="checkbox" id="opt-sfx" checked><span class="switch-ui"></span><span data-i18n="menu.sfx">Effets sonores</span></label>
           <label class="switch"><input type="checkbox" id="opt-ambience" checked><span class="switch-ui"></span><span data-i18n="menu.sound">Son de la boutique</span></label>
           <label class="range"><span data-i18n="menu.volume">Volume</span><input type="range" id="opt-volume" min="0" max="100" value="70"></label>
         </section>
-        <section class="menu-group" aria-labelledby="mg-view">
+        <section class="menu-group" data-tone="violet" aria-labelledby="mg-view">
           <h2 id="mg-view" data-i18n="menu.view">Vue</h2>
           <button type="button" id="opt-recenter" class="btn btn-small" data-i18n="menu.recenter">RECENTRER</button>
           <label class="switch"><input type="checkbox" id="opt-hints"><span class="switch-ui"></span><span data-i18n="menu.hints">Repérer les objets interactifs</span></label>
@@ -124,7 +139,7 @@
             <select id="opt-quality"><option value="auto" data-i18n="menu.quality.auto">Auto</option><option value="high" data-i18n="menu.quality.high">Élevée</option><option value="medium" data-i18n="menu.quality.medium">Moyenne</option><option value="low" data-i18n="menu.quality.low">Légère</option></select>
           </label>
         </section>
-        <section class="menu-group" aria-labelledby="mg-go">
+        <section class="menu-group" data-tone="coral" aria-labelledby="mg-go">
           <h2 id="mg-go" data-i18n="menu.go">Aller à</h2>
           <div class="menu-links">
             <button type="button" class="btn btn-small" data-go="shopkeeper" data-i18n="menu.shopkeeper">LE DISQUAIRE</button>
@@ -139,7 +154,8 @@
     </header>
 
     <!-- RECORD DOCK: actions while a record / app is in hand -->
-    <aside id="record-dock" class="record-dock" hidden aria-live="polite">
+    <aside id="record-dock" class="record-dock brk" hidden aria-live="polite">
+      <div class="dock-disc" aria-hidden="true"><span></span></div>
       <div class="dock-copy">
         <p class="dock-eyebrow" id="dock-eyebrow"></p>
         <h2 id="dock-title"></h2>
@@ -160,50 +176,53 @@
 
     <!-- LINER NOTES: full project sheet -->
     <aside id="liner-panel" class="liner-panel" hidden aria-labelledby="liner-title" role="complementary">
-      <button type="button" class="icon-btn liner-close" id="liner-close" data-i18n-aria="liner.close" aria-label="Fermer la fiche">✕</button>
+      <button type="button" class="icon-btn liner-close" id="liner-close" data-i18n-aria="liner.close" aria-label="Fermer la fiche"><span class="ico ico-close" aria-hidden="true"></span></button>
       <div id="liner-content"></div>
     </aside>
 
     <!-- SHOPKEEPER CHAT -->
     <aside id="assistant" class="assistant" hidden aria-labelledby="assistant-title">
       <div class="assistant-head">
-        <div>
-          <p class="assistant-kicker" data-i18n="chat.subtitle">Pose-lui tes questions sur Adam</p>
-          <h2 id="assistant-title" data-i18n="chat.title">LE DISQUAIRE</h2>
-          <p class="assistant-status" id="assistant-status" role="status"></p>
+        <div class="assistant-id">
+          <span class="brand-mark assistant-mark" aria-hidden="true">A</span>
+          <div class="assistant-id-text">
+            <p class="assistant-kicker" data-i18n="chat.subtitle">Pose-lui tes questions sur Adam</p>
+            <h2 id="assistant-title" data-i18n="chat.title">LE DISQUAIRE</h2>
+          </div>
         </div>
         <div class="assistant-tools">
-          <button type="button" class="icon-btn" id="assistant-reset" data-i18n-aria="chat.reset" data-i18n-title="chat.reset" aria-label="Nouvelle conversation">↺</button>
-          <button type="button" class="icon-btn" id="assistant-close" data-i18n-aria="chat.close" aria-label="Fermer la conversation">✕</button>
+          <button type="button" class="icon-btn" id="assistant-reset" data-i18n-aria="chat.reset" data-i18n-title="chat.reset" aria-label="Nouvelle conversation"><span class="ico ico-reset" aria-hidden="true"></span></button>
+          <button type="button" class="icon-btn" id="assistant-close" data-i18n-aria="chat.close" aria-label="Fermer la conversation"><span class="ico ico-close" aria-hidden="true"></span></button>
         </div>
       </div>
+      <p class="assistant-status" id="assistant-status" role="status"></p>
       <div id="assistant-log" class="assistant-log" role="log" aria-live="polite" aria-relevant="additions"></div>
       <div id="assistant-chips" class="assistant-chips" aria-label="Suggestions"></div>
       <form id="assistant-form" class="assistant-form" autocomplete="off">
         <label class="visually-hidden" for="assistant-input" data-i18n="chat.placeholder">Écris ta question…</label>
         <input id="assistant-input" type="text" maxlength="600" data-i18n-placeholder="chat.placeholder" placeholder="Écris ta question…" required>
-        <button type="submit" class="btn btn-primary" id="assistant-send" data-i18n="chat.send">ENVOYER</button>
+        <button type="submit" class="btn btn-primary" id="assistant-send"><span data-i18n="chat.send">ENVOYER</span><span class="ico ico-send" aria-hidden="true"></span></button>
       </form>
       <p class="assistant-foot" data-i18n="chat.footnote">Les réponses s’appuient uniquement sur le contenu publié.</p>
     </aside>
 
     <!-- RADIO: official YouTube player must stay visible (>=200x200) -->
     <aside id="radio-card" class="radio-card" hidden aria-label="Radio">
-      <div class="radio-head"><span class="radio-title" data-i18n="audio.radio">RADIO DE LA BOUTIQUE</span><button type="button" id="radio-collapse" class="icon-btn" data-i18n-aria="audio.hide" aria-label="Masquer la radio">–</button></div>
+      <div class="radio-head"><span class="radio-title"><span class="live-dot" aria-hidden="true"></span><span data-i18n="audio.radio">RADIO DE LA BOUTIQUE</span></span><button type="button" id="radio-collapse" class="icon-btn icon-btn-sm" data-i18n-aria="audio.hide" aria-label="Masquer la radio"><span class="ico ico-minus" aria-hidden="true"></span></button></div>
       <div id="radio-player" class="radio-player"></div>
       <div class="radio-controls">
-        <button type="button" id="radio-play" class="btn btn-small">▶</button>
-        <button type="button" id="radio-mute" class="btn btn-small">♪</button>
+        <button type="button" id="radio-play" class="icon-btn icon-btn-sm"><span class="ico ico-play" aria-hidden="true"></span></button>
+        <button type="button" id="radio-mute" class="icon-btn icon-btn-sm"><span class="ico ico-note" aria-hidden="true"></span></button>
         <input type="range" id="radio-volume" min="0" max="100" value="70" aria-label="Volume">
       </div>
       <p id="radio-status" class="radio-status" role="status"></p>
       <p class="radio-note" data-i18n="audio.note">Lecteur YouTube officiel.</p>
     </aside>
-    <button type="button" id="radio-open" class="radio-open" hidden data-i18n-aria="audio.show" aria-label="Afficher la radio">♪</button>
+    <button type="button" id="radio-open" class="radio-open icon-btn" hidden data-i18n-aria="audio.show" aria-label="Afficher la radio"><span class="ico ico-note" aria-hidden="true"></span></button>
 
     <!-- GENERIC INFO DIALOG (about / cv / contact / poster / easter eggs) -->
     <dialog id="info-dialog" class="dialog" aria-labelledby="info-title">
-      <button type="button" class="icon-btn dialog-close" id="info-close" data-i18n-aria="liner.close" aria-label="Fermer">✕</button>
+      <button type="button" class="icon-btn dialog-close" id="info-close" data-i18n-aria="liner.close" aria-label="Fermer"><span class="ico ico-close" aria-hidden="true"></span></button>
       <div id="info-content"></div>
     </dialog>
 

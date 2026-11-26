@@ -1,6 +1,6 @@
 // Content panels: project sheet (liner notes), About, CV, Contact, poster info.
 // Rendering never uses innerHTML with data. Empty / null fields are never displayed.
-import { h } from "./dom.js";
+import { h, ico } from "./dom.js";
 import { t, L, getLanguage } from "../core/i18n.js";
 
 const hasText = (value) => !!L(value);
@@ -25,6 +25,9 @@ function section(title, ...content) {
 export function renderProjectSheet(project, categories, { index = null, kind = "project" } = {}) {
   const lang = getLanguage();
   const root = h("article", { class: "liner" });
+  // colour band = the three artwork colours of the sleeve (validated hex only)
+  const band = (project.artwork || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c));
+  if (band.length) root.append(h("div", { class: "liner-band", "aria-hidden": "true" }, band.map((c) => h("span", { style: "background:" + c }))));
   const cat = index !== null ? `SIDE A · CAT. ${String(index + 1).padStart(3, "0")}` : "SIDE A";
   root.append(h("p", { class: "kicker", text: kind === "music" ? `${cat} · ${t("dock.music").toUpperCase()}` : cat }));
   root.append(h("h2", { id: "liner-title", text: L(project.title) }));
@@ -55,14 +58,14 @@ export function renderProjectSheet(project, categories, { index = null, kind = "
   if (images.length) {
     root.append(section(t("liner.documents"), h("div", { class: "gallery" }, images.map((img) => {
       const src = img.src || img;
-      return h("img", { src, alt: L(img.alt) || L(project.title), loading: "lazy", style: "width:100%;border-radius:6px;margin-bottom:.5rem" });
+      return h("img", { class: "gallery-img", src, alt: L(img.alt) || L(project.title), loading: "lazy" });
     }))));
   }
   const links = [...(project.links || []), ...(project.documents || []), ...(project.videos || [])].filter((l) => l && l.url && isSafeUrl(l.url));
   if (project.externalUrl && isSafeUrl(project.externalUrl)) links.unshift({ label: t("liner.externalLink"), url: project.externalUrl });
   if (links.length) {
     root.append(section(t("liner.links"), h("ul", { class: "link-list" }, links.map((l) =>
-      h("li", null, h("a", { class: "btn btn-small", href: l.url, target: "_blank", rel: "noopener noreferrer", text: (L(l.label) || l.url) + " ↗" }))))));
+      h("li", null, h("a", { class: "btn btn-small", href: l.url, target: "_blank", rel: "noopener noreferrer" }, L(l.label) || l.url, ico("ext")))))));
   }
   const notes = [];
   if (project.visualStatus === "provisional") notes.push(t("liner.provisionalNote"));
@@ -86,14 +89,14 @@ export function renderAbout(profile, { onCv, onContact, onAsk } = {}) {
   if (!profile.status.degreeTitle || !profile.status.institution) root.append(h("p", { class: "pending", text: t("about.pendingDegree") }));
 
   root.append(section(t("about.skills"), h("div", { class: "two" }, profile.skillGroups.map((group) =>
-    h("div", null, h("p", { text: L(group) , style: "font-weight:600;margin-bottom:.35rem" }), h("div", { class: "chips" }, list(group.items).map((item) => h("span", { class: "chip", text: item }))))))));
+    h("div", null, h("p", { class: "skill-title", text: L(group) }), h("div", { class: "chips" }, list(group.items).map((item) => h("span", { class: "chip", text: item }))))))));
 
   // Music is part of the identity, not a footnote
   const music = h("div", { class: "two" });
-  music.append(h("div", null, h("p", { text: t("about.musicIntro") }), h("h3", { text: t("about.practices"), style: "margin-top:.9rem" }), h("div", { class: "chips" }, list(profile.music.practices).map((p) => h("span", { class: "chip", text: p })))));
+  music.append(h("div", null, h("p", { text: t("about.musicIntro") }), h("h3", { class: "mt", text: t("about.practices") }), h("div", { class: "chips" }, list(profile.music.practices).map((p) => h("span", { class: "chip", text: p })))));
   const releases = h("div", null, h("h3", { text: t("about.releases") }), h("ul", null, profile.music.projects.map((p) => h("li", null, p.name, " ", p.confirmed ? "" : h("span", { class: "chip chip-warn", text: t("about.toConfirm") })))));
   if (profile.music.historical && profile.music.historical.yearsOfPractice) {
-    releases.append(h("p", { class: "pending", style: "margin-top:.8rem", text: t("about.historicalMusic", { years: profile.music.historical.yearsOfPractice, streams: L(profile.music.historical.streamsOrUses) }) }));
+    releases.append(h("p", { class: "pending mt", text: t("about.historicalMusic", { years: profile.music.historical.yearsOfPractice, streams: L(profile.music.historical.streamsOrUses) }) }));
   }
   music.append(releases);
   root.append(section(t("about.music"), music));
@@ -103,7 +106,7 @@ export function renderAbout(profile, { onCv, onContact, onAsk } = {}) {
   for (const e of profile.education) path.push({ label: L(e.title), meta: e.institution || "", confirmed: e.confirmed });
   for (const e of profile.experience) path.push({ label: `${L(e.title)} — ${e.organisation}${e.location ? ", " + e.location : ""}`, meta: e.year ? String(e.year) : "", confirmed: e.confirmed });
   if (path.length) {
-    root.append(section(t("about.path"), h("p", { class: "pending", text: t("about.pathNote"), style: "margin-bottom:.7rem" }),
+    root.append(section(t("about.path"), h("p", { class: "pending mb", text: t("about.pathNote") }),
       h("ul", { class: "timeline" }, path.map((p) => h("li", null, h("strong", { text: p.label }), p.meta ? h("span", { text: p.meta }) : null, p.confirmed ? null : h("span", { class: "chip chip-warn", text: t("about.toConfirm") }))))));
   }
 
@@ -146,8 +149,8 @@ export function renderContact(profile) {
   const links = profile.contact.links.filter((l) => l.url && isSafeUrl(l.url));
   const items = h("ul", { class: "link-list" });
   if (profile.contact.email) items.append(h("li", null, h("a", { class: "btn btn-primary", href: "mailto:" + profile.contact.email, text: profile.contact.email })));
-  for (const link of links) items.append(h("li", null, h("a", { class: "btn", href: link.url, target: "_blank", rel: "noopener noreferrer", text: link.label + " ↗" })));
-  if (profile.portfolioV1) items.append(h("li", null, h("a", { class: "btn btn-small", href: profile.portfolioV1, target: "_blank", rel: "noopener noreferrer", text: t("contact.legacy") + " ↗" })));
+  for (const link of links) items.append(h("li", null, h("a", { class: "btn", href: link.url, target: "_blank", rel: "noopener noreferrer" }, link.label, ico("ext"))));
+  if (profile.portfolioV1) items.append(h("li", null, h("a", { class: "btn btn-small", href: profile.portfolioV1, target: "_blank", rel: "noopener noreferrer" }, t("contact.legacy"), ico("ext"))));
   root.append(items);
   if (!profile.contact.email) root.append(h("p", { class: "pending", text: t("contact.emailMissing") }));
   if (profile.contact.links.some((l) => !l.url)) root.append(h("p", { class: "pending", text: t("contact.linksMissing") }));
