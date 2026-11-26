@@ -45,7 +45,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
   renderer.toneMappingExposure = .92;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.info.autoReset = true;
+  renderer.info.autoReset = false; // reset once per frame (below): otherwise stats() only ever sees the last post-processing pass
   const deviceRatio = window.devicePixelRatio || 1;
   let ratio = Math.min(deviceRatio, quality.dprCap);
   renderer.setPixelRatio(ratio);
@@ -355,6 +355,7 @@ export async function createWorld({ canvas, projects, categories, applications, 
     updateShopkeeper(shopkeeper, dt, elapsed, { cameraPosition: camPos, greeting: state.greeting, talking: state.talking, beat: state.musicPlaying ? 1 : 0 });
     updateCustomers(customers, dt, elapsed);
     reflection.update();
+    renderer.info.reset();
     postfx.render(dt, elapsed);
     adapt(dt);
   }

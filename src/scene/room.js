@@ -209,6 +209,7 @@ export function buildRoom(ctx) {
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(ROOM.cx, H, ROOM.cz);
   ceiling.receiveShadow = false;
+  ceiling.castShadow = true; // the roof blocks the sun: daylight enters through the windows only, like the light shafts show
   scene.add(ceiling);
   // troffers (emissive fluorescent panels)
   for (const z of [-4.2, -1.6, .9, 3.3]) {

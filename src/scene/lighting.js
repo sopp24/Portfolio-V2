@@ -95,7 +95,7 @@ export function buildLighting(ctx) {
   scene.fog = new THREE.Fog(0xcfbf9a, 9, 48);
 
   // ---------------------------------------------------------------- sun
-  const sun = new THREE.DirectionalLight(SUN.color, 4.7);
+  const sun = new THREE.DirectionalLight(SUN.color, 5.5);
   const target = new THREE.Object3D();
   target.position.set(0, 0, -.5);
   sun.target = target;
@@ -119,7 +119,7 @@ export function buildLighting(ctx) {
     { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 10, angle: .55 },
     { pos: [-2.6, 3.16, -2.2], at: [-3.5, 1.6, -1.2], intensity: 16, angle: .55 },
     { pos: [.4, 3.16, 3.9], at: [1.0, 1.0, 4.4], intensity: 14, angle: .8 }
-  ].slice(0, quality.spots + 3);
+  ].slice(0, quality.spots + (quality.id === "high" ? 3 : quality.id === "medium" ? 2 : 1));
   const rails = [];
   spotDefs.forEach((def, i) => {
     const light = new THREE.SpotLight(0xffd29a, def.intensity, 11, def.angle, .75, 2);

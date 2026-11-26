@@ -124,6 +124,6 @@ export function createPostFX({ renderer, scene, camera, quality, width, height, 
       if (vignette !== undefined) grade.uniforms.uVignette.value = vignette;
       if (ca !== undefined) grade.uniforms.uCA.value = ca;
     },
-    dispose() { composer.dispose?.(); target.dispose(); }
+    dispose() { for (const pass of composer.passes || []) { try { pass.dispose?.(); } catch { /* ignore */ } } composer.dispose?.(); target.dispose(); }
   };
 }

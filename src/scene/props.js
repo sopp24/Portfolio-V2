@@ -55,7 +55,7 @@ export function buildTurntable(ctx, position) {
   mesh(new THREE.CylinderGeometry(.0035, .0035, .27, 8), m.steel, { position: [0, 0, .135], rotation: [PI / 2, 0, 0], parent: arm });
   mesh(woodBox(.026, .008, .04, { bevel: .002, tile: .2 }), m.plasticBlack, { position: [0, -.004, .285], parent: arm });
   mesh(new THREE.CylinderGeometry(.012, .012, .05, 12), m.steel, { position: [0, 0, -.03], rotation: [PI / 2, 0, 0], parent: arm });
-  arm.rotation.y = .74;
+  arm.rotation.y = -.74;
   armPivot.add(arm);
   group.add(armPivot);
   // start/stop and speed controls
@@ -64,7 +64,7 @@ export function buildTurntable(ctx, position) {
   group.userData.pick = { kind: "turntable", id: "main" };
   group.userData.update = (dt, elapsed, state) => {
     if (state.playing) platter.rotation.y -= dt * 3.49;
-    const target = state.playing ? .74 : .3;
+    const target = state.playing ? -.74 : -.3;
     arm.rotation.y += (target - arm.rotation.y) * Math.min(1, dt * 3);
   };
   ctx.scene.add(group);
@@ -387,8 +387,9 @@ export function buildAboutCorner(ctx, profile, musicProjects) {
   const aboutPick = new THREE.Group();
   aboutPick.userData.pick = { kind: "about", id: "about" };
   plaque.removeFromParent();
+  aboutPick.position.set(x + .045, 2.52, zc); // hover scales the group: pivot at the plaque, not at the world origin
   aboutPick.add(plaque);
-  plaque.position.set(x + .045, 2.52, zc);
+  plaque.position.set(0, 0, 0);
   ctx.scene.add(aboutPick);
   ctx.pickRoots.push(aboutPick);
   out.interactive.push(aboutPick);

@@ -61,7 +61,7 @@ export function buildGondola(ctx, projects, categories) {
   for (let i = 0; i < 5; i++) {
     const w = rand.range(.32, .4);
     const bh = rand.range(.22, .3);
-    addCardboardBox(ctx, w, bh, .33, [cx - span / 2 + .35 + i * (span / 5), .24 + .015 + bh / 2, frontZ + .02 + rand.range(-.04, .04)], rand.range(-.06, .06), 0);
+    addCardboardBox(ctx, w, bh, .33, [cx - span / 2 + .35 + i * (span / 5), .236 + bh / 2, frontZ + .02 + rand.range(-.04, .04)], rand.range(-.06, .06), 0);
   }
 
   const filler = ctx.filler;

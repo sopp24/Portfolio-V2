@@ -175,7 +175,7 @@ export function disposeRecord(record) {
 // ---------------------------------------------------------------------------------------------
 // Instanced filler sleeves with per-instance atlas cell
 // ---------------------------------------------------------------------------------------------
-export function createFillerSystem({ decorAtlas, quality, edgeMaterial, capacity = 900 }) {
+export function createFillerSystem({ decorAtlas, quality, edgeMaterial, capacity = 1300 }) {
   const { size: S } = SLEEVE;
   const geometry = new THREE.BoxGeometry(S, S, .0032);
   const uvAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
@@ -204,7 +204,7 @@ export function createFillerSystem({ decorAtlas, quality, edgeMaterial, capacity
   function addRow(parent, { origin, rotY = 0, width = S, count, lean = .16, pitch = .0105, skip = 0, jitter = .004 }) {
     rotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
     for (let i = 0; i < count; i++) {
-      if (n >= capacity) return;
+      if (n >= capacity) { console.warn("Filler sleeves: capacity reached, some records are not drawn."); break; }
       const cell = decorAtlas.cells[Math.floor(rand() * decorAtlas.cells.length)];
       const flip = rand() < .5;
       uvAttr.setXYZW(n, flip ? cell.u1 : cell.u0, cell.v0, flip ? cell.u0 - cell.u1 : cell.u1 - cell.u0, cell.v1 - cell.v0);

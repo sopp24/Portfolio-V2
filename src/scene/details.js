@@ -98,7 +98,7 @@ export function buildDetails(ctx) {
   void rand;
 
   // ---------------------------------------------------------------- floor wear: traffic paths, scuffs, dust, paper scraps, door mat
-  {
+  if (ctx.quality.id !== "low") {
     const W = ROOM.width, D = ROOM.depth, px = 1024, py = Math.round(1024 * D / W);
     const c = createCanvas(px, py);
     const g = c.getContext("2d");
@@ -113,11 +113,12 @@ export function buildDetails(ctx) {
         g.beginPath(); pts.forEach(([x, z], i) => (i ? g.lineTo(X(x), Y(z)) : g.moveTo(X(x), Y(z)))); g.stroke();
       }
     };
-    g.filter = "blur(10px)";
+    const canBlur = "filter" in g;
+    if (canBlur) g.filter = "blur(10px)";
     path([[.7, ROOM.zFront - .3], [.7, 1.8], [1.6, -.4], [2.3, -2.9]], .9, .1, "rgba(60,44,24,A)");
     path([[-2.2, 2.0], [1.0, 1.9], [2.6, 1.2]], .8, .08, "rgba(60,44,24,A)");
     path([[1.4, -.3], [2.8, -.8], [3.1, -2.6]], .7, .07, "rgba(60,44,24,A)");
-    g.filter = "none";
+    if (canBlur) g.filter = "none";
     // scuffs & heel marks
     for (let i = 0; i < 520; i++) {
       const x = ROOM.x0 + .1 + R() * (W - .2), z = ROOM.zBack + .1 + R() * (D - .2);

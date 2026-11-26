@@ -105,8 +105,10 @@ export function createInteraction({ scene, camera, canvas, pickRoots, records, a
     if (root && (root.userData.pick.kind === "project" || root.userData.pick.kind === "music" || root.userData.pick.kind === "app")) onSound("hover");
   }
 
+  let lastTap = 0;
   function handleTap(point) {
     if (!active || held) return;
+    lastTap = performance.now();
     setPointer(point);
     const root = pick();
     if (root) activate(root);
@@ -114,6 +116,7 @@ export function createInteraction({ scene, camera, canvas, pickRoots, records, a
 
   function handleClick(event) {
     if (event.button !== 0 || !active || held) return;
+    if (performance.now() - lastTap < 600) return; // the click synthesized after a touch tap: already handled
     setPointer({ x: event.clientX, y: event.clientY, type: "mouse" });
     const root = pick();
     if (root) activate(root);

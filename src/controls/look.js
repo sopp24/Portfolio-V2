@@ -61,7 +61,8 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
   function onWheel(event) {
     if (disposed || !enabled || isOverInterface(event.target)) return;
     event.preventDefault();
-    targetFov = clamp(targetFov + event.deltaY * .03, CAMERA.zoomMinFov * fovScale, CAMERA.zoomMaxFov * fovScale);
+    const unit = event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 400 : 1; // Firefox reports lines, not pixels
+    targetFov = clamp(targetFov + event.deltaY * unit * .03, CAMERA.zoomMinFov * fovScale, CAMERA.zoomMaxFov * fovScale);
     onChange();
   }
 
@@ -79,7 +80,7 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
     }
   }
   function onTouchMove(event) {
-    if (disposed || !enabled) return;
+    if (disposed || !enabled || pointerLock) return; // a held record is being spun: the drag must not also pan the camera
     if (event.cancelable) event.preventDefault();
     if (event.touches.length === 1 && touch) {
       const t = event.touches[0];
@@ -101,6 +102,7 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
     if (event.touches.length === 0) {
       if (tapCandidate && performance.now() - tapCandidate.time < 450 && !isOverInterface(event.target)) onTap({ x: tapCandidate.x, y: tapCandidate.y, type: "touch" });
       touch = null; tapCandidate = null; pinch = 0;
+      onPointer(null); // a finger that lifted is no pointer: stop hover-picking against stale coordinates
     } else if (event.touches.length === 1) {
       const t = event.touches[0];
       touch = { x: t.clientX, y: t.clientY }; pinch = 0;
@@ -124,10 +126,11 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
   function onOrientation(event) {
     if (!gyro.enabled || event.alpha === null || event.beta === null) return;
     const angle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-    const landscape = Math.abs(angle) === 90;
+    const norm = ((angle % 360) + 360) % 360;
+    const landscape = norm === 90 || norm === 270;
     if (gyro.a0 === null) { gyro.a0 = event.alpha; gyro.b0 = landscape ? (event.gamma || 0) : event.beta; return; }
     const dAlpha = wrap180(event.alpha - gyro.a0);
-    const pitchDeg = landscape ? (angle === 90 ? -(event.gamma || 0) : (event.gamma || 0)) : event.beta;
+    const pitchDeg = landscape ? (norm === 90 ? -(event.gamma || 0) : (event.gamma || 0)) : event.beta;
     const dPitch = pitchDeg - gyro.b0;
     gyro.yaw = clamp(THREE.MathUtils.degToRad(dAlpha), -limits.yaw, limits.yaw);
     gyro.pitch = clamp(THREE.MathUtils.degToRad(dPitch), -limits.down, limits.up);
@@ -220,6 +223,10 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
   canvas.addEventListener("touchcancel", onTouchEnd, { passive: true });
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
+  const onBlur = () => keys.clear();            // an alt-tab must not leave an arrow key "held"
+  const onOrient = () => { gyro.a0 = null; gyro.b0 = null; }; // re-baseline the gyroscope after a rotation
+  window.addEventListener("blur", onBlur);
+  window.addEventListener("orientationchange", onOrient);
 
   return {
     update, recenter, lookAtPoint, enableGyroscope, disableGyroscope,
@@ -246,6 +253,8 @@ export function createLookControls({ camera, canvas, isOverInterface = () => fal
       canvas.removeEventListener("touchcancel", onTouchEnd);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("orientationchange", onOrient);
     }
   };
 }

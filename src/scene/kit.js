@@ -37,7 +37,7 @@ export function addContactShadow(ctx, { x, y = .004, z, width, depth, opacity = 
     g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
     decalTexture = textureFrom(c, { srgb: false, repeat: false, mipmaps: false });
   }
-  const mat = new THREE.MeshBasicMaterial({ color: 0x000000, alphaMap: decalTexture, transparent: true, opacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const mat = new THREE.MeshBasicMaterial({ color: 0x000000, map: decalTexture, transparent: true, opacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat);
   mesh.rotation.set(-Math.PI / 2, 0, rotationY);
   mesh.position.set(x, y, z);
