@@ -334,3 +334,15 @@ button,input,select{touch-action:manipulation;-webkit-tap-highlight-color:transp
   .record-dock,.liner-panel{max-height:86dvh;overflow:auto}
   .mobile-controls{gap:6px}
 }
+
+
+/* Projects Store — finitions iOS : contrôles et fenêtres */
+.lang-switch button,.assistant-chips button{min-height:44px}
+@media(max-width:860px){
+  .dialog{
+    max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding-bottom:calc(1.2rem + var(--safe-bottom));
+  }
+}
