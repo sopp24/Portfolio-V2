@@ -2,11 +2,11 @@
 // neon vinyl on the ink corner, sticker accents, the entrance mat, slowly turning hanging records, palette pennants.
 // v2 is CLEAN: the v1 wall grime, water stains and floor scuffs are gone (cleaner albedos, coloured shadows do the depth).
 import * as THREE from "three";
+import { mergeGeometries } from "three-addons";
 import { ROOM, COUNTER } from "./layout.js";
 import { createCanvas, textureFrom } from "./util.js";
 import { FONT } from "./artwork.js";
-import { makeNeonMaterial } from "./materials.js";
-import { PAL, NEON, fitPx } from "./room.js";
+import { PAL, NEON, fitPx, neonShared } from "./room.js";
 
 const PI = Math.PI;
 
@@ -24,11 +24,11 @@ export function buildDetails(ctx) {
   ctx.neonLights = ctx.neonLights || [];
   const H = ROOM.height;
   const zb = ROOM.zBack;
-  const neon = (hex, base) => { const mat = makeNeonMaterial(hex, base); ctx.neonMaterials.push(mat); ctx.owned.push(mat); return mat; };
+  const neon = (hex, base) => neonShared(ctx, hex, base);
 
   // ---------------------------------------------------------------- neon accents
   const coral = neon(NEON.coral, 3.2), cyan = neon(NEON.cyan, 3.4), sun = neon(NEON.sun, 2.8);
-  const strip = (w, h, d, mat, pos) => { const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); mesh.position.set(...pos); scene.add(mesh); return mesh; };
+  const strip = (w, h, d, mat, pos) => B.add(new THREE.BoxGeometry(w, h, d), mat, pos, [0, 0, 0], { cast: false, receive: false });
   // cove strip under the ceiling line on the back wall (coral | cyan)
   strip(3.55, .035, .035, coral, [-1.8, H - .13, zb + .07]);
   strip(3.55, .035, .035, cyan, [1.8, H - .13, zb + .07]);
@@ -102,20 +102,26 @@ export function buildDetails(ctx) {
   // ---------------------------------------------------------------- hanging records (slow turn)
   const discs = [];
   const labelColors = [PAL.coral, PAL.sun, PAL.cyan, PAL.violet, PAL.mint, PAL.paper, PAL.coral];
+  // one shared label material per colour; both label faces are ONE merged mesh and the thread is part of the static batch
+  // (the disc turns on its own axis, the cord from the ceiling stays put): 4 draws per disc -> 2
+  const discLabelMats = new Map();
+  const labelMatFor = (hex) => {
+    if (!discLabelMats.has(hex)) { const mat = new THREE.MeshStandardMaterial({ color: hex, roughness: .5 }); ctx.owned.push(mat); discLabelMats.set(hex, mat); }
+    return discLabelMats.get(hex);
+  };
+  const labelGeo = (() => {
+    const a = new THREE.CircleGeometry(.036, 24), b = new THREE.CircleGeometry(.036, 24);
+    a.translate(0, 0, .0025); b.rotateY(PI); b.translate(0, 0, -.0025);
+    return mergeGeometries([a, b]);
+  })();
   for (let i = 0; i < 7; i++) {
     const g = new THREE.Group();
     const x = -2.6 + i * .68 + (i % 2) * .15, z = 1.1 + (i * 37 % 11) * .12, y = 2.25 + (i % 3) * .28;
     g.position.set(x, y, z);
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(.11, .11, .004, 40), m.vinyl);
     disc.rotation.x = PI / 2; disc.castShadow = true; g.add(disc);
-    for (const side of [1, -1]) {
-      const labelMat = new THREE.MeshStandardMaterial({ color: labelColors[i % labelColors.length], roughness: .5 });
-      ctx.owned.push(labelMat);
-      const l = new THREE.Mesh(new THREE.CircleGeometry(.036, 24), labelMat);
-      l.position.z = side * .0025; l.rotation.y = side === 1 ? 0 : PI; g.add(l);
-    }
-    const thread = new THREE.Mesh(new THREE.CylinderGeometry(.0012, .0012, H - y, 4), m.steel);
-    thread.position.y = (H - y) / 2 + .15; g.add(thread);
+    g.add(new THREE.Mesh(labelGeo, labelMatFor(labelColors[i % labelColors.length])));
+    B.add(new THREE.CylinderGeometry(.0012, .0012, H - y, 4), m.steel, [x, y + (H - y) / 2 + .15, z], [0, 0, 0], { cast: false });
     g.rotation.y = i * .7;
     scene.add(g);
     discs.push({ g, speed: .15 + (i % 3) * .08, phase: i * 1.3, y });

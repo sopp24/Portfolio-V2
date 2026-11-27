@@ -2,7 +2,7 @@
 import { buildHead, jawWeight, surfaceZ } from "./head.js";
 import { HEAD_C, proximityWeights, boneManifest, BONE_INDEX } from "./rig.js";
 import { translate, placeHead, sub3, add3, scale3, norm3 } from "./util.js";
-import { strand, smoothstep, clamp, mix, union } from "./sdf.js";
+import { strand, ribbon, smoothstep, clamp, mix, union } from "./sdf.js";
 import { buildHand, withAO, boundsFrom, tint } from "./parts.js";
 
 export const LODS = {
@@ -27,12 +27,29 @@ export function headWeights(head, HS = 1) {
   };
 }
 
-// brows: polylines following the brow ridge
+// brows. Two styles:
+//  - default: a thin tube following the brow ridge (older characters);
+//  - slab: true  -> the v2 "signature brow": a thick, dark, cleanly edged slab (flattened ribbon) that lies on the brow ridge,
+//    thick at the inner end, angled, tapering to a point. Tune with def.brows = { slab: true, thick, arch, tilt, y, length, inner, color }.
 export function browParts(head, def, q, HS = 1) {
   const hc = HEAD_C;
-  const b = { thick: 1, arch: 1, tilt: 0, color: [0.1, 0.07, 0.06], length: 1, y: 0, ...(def.brows || {}) };
+  const b = { thick: 1, arch: 1, tilt: 0, color: [0.1, 0.07, 0.06], length: 1, y: 0, slab: false, inner: 1, ...(def.brows || {}) };
   const parts = [];
   for (const [name, s] of [["browL", 1], ["browR", -1]]) {
+    if (b.slab) {
+      const xs = [0.007, 0.018, 0.032, 0.047 * b.length, 0.0605 * b.length];
+      const ys = [0.0292, 0.0322 + 0.0015 * b.arch, 0.0356 + 0.0022 * b.arch, 0.0352 + 0.0012 * b.arch - 0.002 * b.tilt, 0.0298 - 0.005 * b.tilt].map((y) => y + b.y);
+      const pts = xs.map((x, i) => {
+        const z = surfaceZ(head.raw, s * x, ys[i], 0.16, 0.0) - 0.0009;
+        return [s * x * HS + hc[0], ys[i] * HS + hc[1], z * HS + hc[2]];
+      });
+      const shape = ribbon(pts, [0.0066 * b.thick * b.inner * HS, 0.0011 * b.thick * HS], [0.0031 * HS, 0.0014 * HS], hc);
+      parts.push({
+        name, material: "hair", shape, ...boundsFrom(pts, 0.014), h: q.brow.h, tris: q.brow.tris,
+        color: withAO(() => b.color, shape, { strength: 0.2 }), rigid: "head", lockBorder: false
+      });
+      continue;
+    }
     const xs = [0.010, 0.022, 0.036, 0.05 * b.length, 0.0625 * b.length];
     const ys = [0.0438, 0.0462 + 0.002 * b.arch, 0.0470 + 0.0035 * b.arch, 0.0452 + 0.002 * b.arch - 0.002 * b.tilt, 0.0405 - 0.004 * b.tilt].map((y) => y + b.y);
     const rs = [0.0044, 0.0046, 0.0042, 0.0031, 0.0014].map((r) => r * b.thick);
@@ -66,10 +83,12 @@ export function handParts(def, q) {
 }
 
 export function buildCharacter(def, lod = "hi") {
-  const q = LODS[lod];
+  // def.lods = { hi: {head: {h, tris}, ...}, lo: {...} } overrides the shared LOD budgets for one character (hero characters get a finer head)
+  const q = Object.fromEntries(Object.entries(LODS[lod]).map(([k, v]) => [k, { ...v, ...((def.lods && def.lods[lod] && def.lods[lod][k]) || {}) }]));
   const hc = HEAD_C;
   const HS = def.headScale ?? 1.1;
-  const head = buildHead(def.head);
+  // def.headBuilder: pass buildHeadV2 (head-v2.js) for the stylised v2 face; default is the realistic head.js face
+  const head = (def.headBuilder || buildHead)(def.head);
   const headShape = placeHead(head.shape, hc, HS);
   const local = (p) => [(p[0] - hc[0]) / HS, (p[1] - hc[1]) / HS, (p[2] - hc[2]) / HS];
   const parts = [];
@@ -77,7 +96,7 @@ export function buildCharacter(def, lod = "hi") {
   parts.push({
     name: "head", material: "skin", shape: headShape,
     min: [-0.12 * HS + hc[0], -0.27 * HS + hc[1], -0.14 * HS + hc[2]], max: [0.12 * HS + hc[0], 0.15 * HS + hc[1], 0.16 * HS + hc[2]],
-    h: q.head.h, tris: q.head.tris, color: withAO(hcolor, headShape, { small: 0.006, large: 0.03, strength: 0.38 }), weights: headWeights(head, HS),
+    h: q.head.h, tris: q.head.tris, color: withAO(hcolor, headShape, { small: 0.006, large: 0.03, strength: def.headAO ?? 0.38 }), weights: headWeights(head, HS),
     extra: { eyeCenters: head.eyeCenters.map((c) => [c[0] * HS + hc[0], c[1] * HS + hc[1], c[2] * HS + hc[2]]), headScale: HS }
   });
   parts.push(...browParts(head, def, q, HS));

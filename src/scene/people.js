@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { SHOPKEEPER_POS } from "./layout.js";
 import { loadCharacter } from "./character.js";
-import { addGlasses, addHeadphones } from "./character-accessories.js";
+import { addHeadphones } from "./character-accessories.js";
 import * as legacy from "./people-legacy.js";
 
 const BASE = new URL("../../assets/characters/", import.meta.url).href;
@@ -20,10 +20,10 @@ async function load(id, quality) {
   }
 }
 
-function addPickProxies(character) {
+function addPickProxies(character, { headRadius = 0.17, headY = 0.1 } = {}) {
   const mat = new THREE.MeshBasicMaterial({ visible: false });
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), mat);
-  head.position.set(0, 0.1, 0.01);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(headRadius, 12, 10), mat);
+  head.position.set(0, headY, 0.01);
   character.bones.head.add(head);
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.42, 4, 10), mat);
   torso.position.set(0, 0.0, 0);
@@ -40,18 +40,30 @@ function addPickProxies(character) {
 // ---------------------------------------------------------------------------------------------
 // shopkeeper
 // ---------------------------------------------------------------------------------------------
+// The boss is built at a slightly stylised scale (big head, narrow shoulders). world.focus('shopkeeper') aims the camera at
+// pickRoot.worldPosition + (0, 1.42, 0), so the character hangs from an invisible anchor lifted by FOCUS_LIFT: the hero zoom
+// (chat) then frames the FACE instead of the chest. userData.focus* are hints for the framing code (fov for the hero zoom).
+const BOSS_SCALE = 1.0;
+const FOCUS_LIFT = 0.17;
+
 export async function buildShopkeeper(ctx) {
   const c = await load("shopkeeper", ctx.quality);
   if (!c) { const rig = legacy.buildShopkeeper(ctx); rig.legacy = true; return rig; }
-  addGlasses(c, { color: 0x1b1713, radius: 0.0172, metal: 0.55 });
-  c.root.position.copy(SHOPKEEPER_POS);
+  const anchor = new THREE.Group();
+  anchor.name = "shopkeeper-anchor";
+  anchor.position.set(SHOPKEEPER_POS.x, SHOPKEEPER_POS.y + FOCUS_LIFT, SHOPKEEPER_POS.z);
+  c.root.position.set(0, -FOCUS_LIFT, 0);
   c.root.rotation.y = -0.2;
-  c.root.scale.setScalar(0.97);
-  c.root.userData.pick = { kind: "shopkeeper", id: "shopkeeper" };
-  addPickProxies(c);
-  ctx.scene.add(c.root);
-  ctx.pickRoots.push(c.root);
-  return { char: c, root: c.root, greeting: 0, talking: 0 };
+  c.root.scale.setScalar(BOSS_SCALE);
+  anchor.add(c.root);
+  anchor.userData.pick = { kind: "shopkeeper", id: "shopkeeper" };
+  anchor.userData.markerHeight = 1.9 - FOCUS_LIFT;
+  anchor.userData.focusFov = 15; // suggested hero-zoom fov (world.js currently uses 27)
+  anchor.userData.focusY = 1.42 + FOCUS_LIFT;
+  addPickProxies(c, { headRadius: 0.2, headY: 0.1 });
+  ctx.scene.add(anchor);
+  ctx.pickRoots.push(anchor);
+  return { char: c, root: anchor, greeting: 0, talking: 0 };
 }
 
 export function updateShopkeeper(rig, dt, elapsed, opts) {

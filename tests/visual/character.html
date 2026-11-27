@@ -24,7 +24,7 @@ const key = new THREE.DirectionalLight(0xffe0c0, +(q.get("key") || 3.2)); key.po
 const rim = new THREE.DirectionalLight(0x9ab8ff, 1.2); rim.position.set(-1.5, 2, -1.2); scene.add(rim);
 const fill = new THREE.DirectionalLight(0xffd0b0, .5); fill.position.set(-1.2, 1.2, 1.4); scene.add(fill);
 import { loadCharacter } from "../../src/scene/character.js";
-const ch = await loadCharacter(q.get("id") || "visitor-a", { lod: q.get("lod") || "lo", base: "../../assets/characters/" });
+const ch = await loadCharacter(q.get("id") || "visitor-a", { lod: q.get("lod") || "lo", base: q.get("base") || "../../assets/characters/" });
 scene.add(ch.root);
 const only = q.get("parts") ? q.get("parts").split(",") : null;
 if (only) for (const [name, mesh] of Object.entries(ch.meshes)) mesh.visible = only.includes(name);

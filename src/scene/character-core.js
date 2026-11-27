@@ -98,6 +98,7 @@ function detailTexture() {
 const DETAIL_VERT_PARS = "varying vec3 vObjPos; varying vec3 vObjNrm;";
 const DETAIL_FRAG_PARS = `
 uniform sampler2D tDetail; uniform float uDetailScale; uniform float uDetailBump; uniform float uDetailAlbedo;
+uniform vec3 uRimColor; uniform float uRimPower; uniform float uRimStrength;
 varying vec3 vObjPos; varying vec3 vObjNrm;
 float triDetail(vec3 p, vec3 n) {
   vec3 w = pow(abs(n), vec3(4.0)); w /= (w.x + w.y + w.z + 1e-5);
@@ -115,10 +116,11 @@ vec3 perturbDetail(vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDirectio
  *  - triplanar micro-detail bump (skin pores / fabric weave) in object space,
  *  - optional wrapped diffuse + tinted terminator (cheap subsurface scattering).
  */
-export function patchCharacterMaterial(material, { detailScale = 60, detailBump = 0.4, detailAlbedo = 0.0, sss = null, key = "char" } = {}) {
+export function patchCharacterMaterial(material, { detailScale = 60, detailBump = 0.4, detailAlbedo = 0.0, sss = null, rim = null, key = "char" } = {}) {
   const uniforms = {
     tDetail: { value: detailTexture() }, uDetailScale: { value: detailScale }, uDetailBump: { value: detailBump }, uDetailAlbedo: { value: detailAlbedo },
-    uSSSWrap: { value: sss ? sss.wrap : 0 }, uSSSColor: { value: new THREE.Color(sss ? sss.color : 0xffffff) }
+    uSSSWrap: { value: sss ? sss.wrap : 0 }, uSSSColor: { value: new THREE.Color(sss ? sss.color : 0xffffff) },
+    uRimColor: { value: new THREE.Color(rim ? rim.color : 0x000000) }, uRimPower: { value: rim ? rim.power : 3 }, uRimStrength: { value: rim ? rim.strength : 0 }
   };
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
@@ -146,19 +148,24 @@ export function patchCharacterMaterial(material, { detailScale = 60, detailBump 
           normal = perturbDetail(-vViewPosition, normal, dHdxy, faceDirection);
         }`)
       .replace("#include <color_fragment>", `#include <color_fragment>
-        diffuseColor.rgb *= 1.0 + (triDetail(vObjPos * 0.5, normalize(vObjNrm)) - 0.5) * uDetailAlbedo;`);
+        diffuseColor.rgb *= 1.0 + (triDetail(vObjPos * 0.5, normalize(vObjNrm)) - 0.5) * uDetailAlbedo;`)
+      // painted-look edge glow: a soft, tinted fresnel term (the "strong rim response" of the stylised characters), independent of the lights
+      .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+        if (uRimStrength > 0.0) totalEmissiveRadiance += uRimColor * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), uRimPower) * uRimStrength;`);
   };
-  material.customProgramCacheKey = () => "character-" + key + (sss ? "-sss" : "");
+  material.customProgramCacheKey = () => "character-" + key + (sss ? "-sss" : "") + (rim ? "-rim" : "");
   material.userData.uniforms = uniforms;
   return material;
 }
 
+// Skin, art direction v2: smooth painted-looking skin. Almost no pore detail; a wrapped diffuse with a warm red-orange terminator
+// (cheap subsurface scattering), a faint sheen at grazing angles and a soft warm fresnel rim.
 export function skinMaterial() {
   const m = new THREE.MeshPhysicalMaterial({
-    vertexColors: true, roughness: 0.52, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.45,
-    sheen: 0.5, sheenColor: new THREE.Color(0xffd7c0), sheenRoughness: 0.55, envMapIntensity: 0.8, name: "skin"
+    vertexColors: true, roughness: 0.6, metalness: 0, clearcoat: 0.04, clearcoatRoughness: 0.5,
+    sheen: 0.6, sheenColor: new THREE.Color(0xffc8a8), sheenRoughness: 0.5, envMapIntensity: 0.75, name: "skin"
   });
-  return patchCharacterMaterial(m, { detailScale: 95, detailBump: 0.5, detailAlbedo: 0.06, sss: { wrap: 0.42, color: 0xe58f74 }, key: "skin" });
+  return patchCharacterMaterial(m, { detailScale: 60, detailBump: 0.05, detailAlbedo: 0.0, sss: { wrap: 0.5, color: 0xc06c5c }, rim: { color: 0xf0a888, power: 3.2, strength: 0.08 }, key: "skin" });
 }
 
 export function clothMaterial({ roughness = 0.9, detailScale = 120, bump = 1.2, sheen = 0.12 } = {}) {
@@ -168,11 +175,12 @@ export function clothMaterial({ roughness = 0.9, detailScale = 120, bump = 1.2, 
   return patchCharacterMaterial(m, { detailScale, detailBump: bump, detailAlbedo: 0.12, key: "cloth" });
 }
 
-export function hairMaterial({ roughness = 0.5, clearcoat = 0.14 } = {}) {
+// Hair, art direction v2: clean and glossy (sculpted clumps, no strands): a soft specular band from the clearcoat, a warm sheen.
+export function hairMaterial({ roughness = 0.46, clearcoat = 0.26 } = {}) {
   const m = new THREE.MeshPhysicalMaterial({
-    vertexColors: true, roughness, metalness: 0, clearcoat, clearcoatRoughness: 0.3, sheen: 0.22, sheenColor: new THREE.Color(0xd8c8c0), sheenRoughness: 0.5, envMapIntensity: 1.0, name: "hair"
+    vertexColors: true, roughness, metalness: 0, clearcoat, clearcoatRoughness: 0.22, sheen: 0.5, sheenColor: new THREE.Color(0xb88a6a), sheenRoughness: 0.4, envMapIntensity: 1.1, name: "hair"
   });
-  return patchCharacterMaterial(m, { detailScale: 220, detailBump: 0.35, detailAlbedo: 0.08, sss: { wrap: 0.25, color: 0xffb080 }, key: "hair" });
+  return patchCharacterMaterial(m, { detailScale: 40, detailBump: 0.04, detailAlbedo: 0.0, sss: { wrap: 0.2, color: 0x6a4030 }, rim: { color: 0xe0a070, power: 3.0, strength: 0.1 }, key: "hair" });
 }
 
 export function plainMaterial({ roughness = 0.6, metalness = 0 } = {}) {
@@ -185,4 +193,10 @@ export function leatherMaterial({ roughness = 0.34, clearcoat = 0.4 } = {}) {
   return patchCharacterMaterial(m, { detailScale: 320, detailBump: 0.45, detailAlbedo: 0.04, key: "leather" });
 }
 
-export const MATERIAL_FACTORY = { skin: skinMaterial, cloth: clothMaterial, knit: () => clothMaterial({ roughness: 0.95, detailScale: 90, bump: 2.0, sheen: 0.18 }), denim: () => clothMaterial({ roughness: 0.85, detailScale: 160, bump: 1.6 }), hair: hairMaterial, fur: () => hairMaterial({ roughness: 0.7, clearcoat: 0.03 }), plain: plainMaterial, shoe: () => plainMaterial({ roughness: 0.5 }), leather: leatherMaterial };
+// Soft cloth (hoodie, tee): large-scale soft shading, velvety sheen at the edges, no visible weave.
+export function softClothMaterial({ roughness = 0.86, sheenColor = 0x9fb2cc } = {}) {
+  const m = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness, metalness: 0, sheen: 0.4, sheenColor: new THREE.Color(sheenColor), sheenRoughness: 0.75, envMapIntensity: 0.5, name: "soft" });
+  return patchCharacterMaterial(m, { detailScale: 30, detailBump: 0.35, detailAlbedo: 0.04, sss: { wrap: 0.25, color: 0x6a86b8 }, rim: { color: 0x9ab6e8, power: 2.6, strength: 0.14 }, key: "soft" });
+}
+
+export const MATERIAL_FACTORY = { soft: softClothMaterial, skin: skinMaterial, cloth: clothMaterial, knit: () => clothMaterial({ roughness: 0.95, detailScale: 90, bump: 2.0, sheen: 0.18 }), denim: () => clothMaterial({ roughness: 0.85, detailScale: 160, bump: 1.6 }), hair: hairMaterial, fur: () => hairMaterial({ roughness: 0.7, clearcoat: 0.03 }), plain: plainMaterial, shoe: () => plainMaterial({ roughness: 0.5 }), leather: leatherMaterial };

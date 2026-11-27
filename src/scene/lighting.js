@@ -13,11 +13,11 @@ export const DAY_SUN = {
   // direction light TRAVELS (from the windows into the shop): toward +x, downward, toward -z
   direction: new THREE.Vector3(.50, -.38, -.78).normalize(),
   color: 0xffdba6,
-  intensity: 6.8
+  intensity: 7.6
 };
 const SUN_DISTANCE = 30;
 export const HAZE = { color: 0xd6e8f2, near: 4, far: 46 };
-const ENV_BASE = .4;
+const ENV_BASE = .36;
 const BOUNCE = 4.2;   // warm floor-bounce points beside the windows (they stand 1 m from the sill: keep them gentle or the sill clips)
 const FONT_FALLBACK = '"Unbounded Black", "Unbounded", "Arial Black", Arial, sans-serif';
 
@@ -216,7 +216,7 @@ export function buildLighting(ctx) {
   // ---------------------------------------------------------------- warm track spots (practicals)
   const spotDefs = [
     { pos: [-2.0, 3.16, .9], at: [-1.9, .95, .1], intensity: 5.5, angle: .6 },
-    { pos: [2.5, 3.16, -2.4], at: [2.5, 1.15, -3.7], intensity: 8.5, angle: .5 },
+    { pos: [2.5, 3.16, -2.4], at: [2.56, 1.38, -3.95], intensity: 8.5, angle: .52 },   // counter key: aimed at the shopkeeper's chest/face (and the counter top), not just the counter
     { pos: [-2.4, 3.16, 3.9], at: [-3.0, 1.0, 4.2], intensity: 8, angle: .7 },
     { pos: [-.2, 3.16, .9], at: [-.3, .95, .1], intensity: 5.5, angle: .6 },
     { pos: [-.8, 3.16, -.7], at: [-.8, 1.25, -1.05], intensity: 5.5, angle: .55 },
@@ -343,7 +343,7 @@ export function buildLighting(ctx) {
   const shaftMats = [];
   const openings = [FRONT.windowA, FRONT.windowB, { x0: FRONT.door.x0, x1: FRONT.door.x1 }];
   const rand = rng(5);
-  const SHAFT_BASE = .11;
+  const SHAFT_BASE = .18;
   if (quality.shafts) {
     for (const win of openings) {
       const count = Math.max(3, Math.round((win.x1 - win.x0) / .38));
@@ -447,9 +447,11 @@ export function buildLighting(ctx) {
     state.level += (state.target - state.level) * (1 - Math.exp(-3 * dt));
     // neon: stuttering ignition then a faint breathing hum
     if (state.neonTarget > state.neon) state.flicker += dt;
+    // reduced motion: a plain smooth ramp (no ~10 Hz stutter, no hum) and frozen shaft/dust drift
+    const motion = ctx.reducedMotion ? 0 : 1;
     const ignite = state.neonTarget > .5 ? Math.min(1, state.flicker / 1.1) : 0;
-    const stutter = ignite < 1 ? (Math.sin(elapsed * 61) > .2 || Math.sin(elapsed * 23) > .5 ? 1 : .08) : 1;
-    state.neon = state.neonTarget > .5 ? ignite * stutter * (.96 + Math.sin(elapsed * 2.1) * .04) : state.neon * (1 - Math.min(1, dt * 8));
+    const stutter = ignite < 1 && motion ? (Math.sin(elapsed * 61) > .2 || Math.sin(elapsed * 23) > .5 ? 1 : .08) : 1;
+    state.neon = state.neonTarget > .5 ? ignite * stutter * (.96 + Math.sin(elapsed * 2.1) * .04 * motion) : state.neon * (1 - Math.min(1, dt * 8));
     if (state.neonTarget < .5) state.flicker = 0;
     apply();
     if (canopy && !ctx.reducedMotion) {
@@ -457,8 +459,9 @@ export function buildLighting(ctx) {
       sway.right.set(1, 0, 0).applyQuaternion(canopy.quaternion); sway.up.set(0, 1, 0).applyQuaternion(canopy.quaternion);
       canopy.position.copy(canopy.userData.home).addScaledVector(sway.right, Math.sin(elapsed * .21) * .5 + Math.sin(elapsed * .53) * .08).addScaledVector(sway.up, Math.sin(elapsed * .17) * .22);
     }
-    for (const mat of shaftMats) { mat.uniforms.uTime.value = elapsed; }
-    if (dust) dust.material.uniforms.uTime.value = elapsed;
+    const drift = motion ? elapsed : 0;
+    for (const mat of shaftMats) { mat.uniforms.uTime.value = drift; }
+    if (dust) dust.material.uniforms.uTime.value = drift;
   };
   out.setShaftIntensity = (v) => { for (const mat of shaftMats) mat.uniforms.uIntensity.value = v; };
   out.dust = dust;

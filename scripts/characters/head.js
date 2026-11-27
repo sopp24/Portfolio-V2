@@ -137,12 +137,14 @@ export function buildHead(opts = {}) {
   return { P, shape: finalSkull, raw: skull, eyeCenters, colorFn, lips, slit, cavity, sockets, bounds: { min: [-0.12, -0.27, -0.14], max: [0.12, 0.15, 0.16] } };
 }
 
-// jaw weight: 1 for the lower face (below the mouth line) fading to 0 above it, and 0 behind the jaw pivot
+// jaw weight: 1 for the lower face (below the mouth line) fading to 0 above it, and 0 behind the jaw pivot.
+// P.mouthY (head-local y of the mouth line) lets a head with other proportions (head-v2.js) reuse it; default = the realistic head.
 export function jawWeight(p, P) {
-  const below = smoothstep(-0.0575, -0.0745, p[1]);              // lower lip level and under
-  const lipZone = smoothstep(0.012, 0.0, Math.abs(p[1] + 0.0628)) * (p[1] < -0.0628 ? 1 : 0.0); // lower lip belongs to the jaw
+  const my = P && P.mouthY !== undefined ? P.mouthY : -0.0628;
+  const below = smoothstep(my + 0.0053, my - 0.0117, p[1]);        // lower lip level and under
+  const lipZone = smoothstep(0.012, 0.0, Math.abs(p[1] - my)) * (p[1] < my ? 1 : 0.0); // lower lip belongs to the jaw
   const front = smoothstep(-0.045, 0.0, p[2]);
-  const neckFade = 1 - smoothstep(-0.11, -0.16, p[1]);
+  const neckFade = 1 - smoothstep(my - 0.0472, my - 0.0972, p[1]);
   const side = 1 - smoothstep(0.062, 0.085, Math.abs(p[0]));
   return clamp(Math.max(below, lipZone) * front * neckFade * (0.55 + 0.45 * side), 0, 1);
 }

@@ -5,12 +5,11 @@
 import * as THREE from "three";
 import { ROOM, COUNTER } from "./layout.js";
 import { rng, createCanvas, textureFrom, woodBox, roundRectPath } from "./util.js";
-import { SLEEVE, createRecord, getGrooveSet } from "./records.js";
+import { SLEEVE, createRecord, getGrooveSet, boxMesh } from "./records.js";
 import { atlasPlane, drawAppCase } from "./assets.js";
 import { addSign, addContactShadow, addCardboardBox, localizedTexture } from "./kit.js";
 import { FONT, drawSignBoard } from "./artwork.js";
-import { makeNeonMaterial } from "./materials.js";
-import { PAL, NEON, fitPx, pickMat } from "./room.js";
+import { PAL, NEON, fitPx, pickMat, neonShared, bakeStatic } from "./room.js";
 
 const PI = Math.PI;
 const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -24,7 +23,7 @@ function mesh(geometry, material, { position, rotation, scale, cast = true, rece
   if (parent) parent.add(m);
   return m;
 }
-const neonOf = (ctx, hex, base = 3) => { const mat = makeNeonMaterial(hex, base); ctx.neonMaterials.push(mat); ctx.owned.push(mat); return mat; };
+const neonOf = neonShared;
 const ledMat = (ctx, hex, k = 2.2) => { const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(k) }); ctx.owned.push(mat); return mat; };
 const lacquer = (ctx, hex, rough = .35) => { const mat = new THREE.MeshPhysicalMaterial({ color: hex, roughness: rough, clearcoat: .8, clearcoatRoughness: .16 }); ctx.owned.push(mat); return mat; };
 
@@ -108,7 +107,8 @@ export function buildTurntable(ctx, position) {
 // ---------------------------------------------------------------------------------------------
 // POS tablet, card reader, bell, mug, shop bag, loose records
 // ---------------------------------------------------------------------------------------------
-function posScreen(ctx) {
+function drawPosScreen(lang) {
+  const fr = lang === "fr";
   const W = 512, H = 360;
   const c = createCanvas(W, H), g = c.getContext("2d");
   g.fillStyle = PAL.ink0; g.fillRect(0, 0, W, H);
@@ -117,11 +117,12 @@ function posScreen(ctx) {
   g.fillStyle = PAL.mint; g.beginPath(); g.arc(34, 34, 9, 0, PI * 2); g.fill();
   g.fillStyle = PAL.paper; g.textAlign = "left"; g.textBaseline = "middle"; g.font = `700 22px ${FONT.mono}`; g.fillText("SIDE A · POS", 56, 34);
   g.textAlign = "right"; g.fillStyle = PAL.sun; g.fillText("PLAYER 1", W - 28, 34);
-  g.textAlign = "center"; fitPx(g, "READY", FONT.display, 900, 360, 110); g.fillStyle = PAL.paper; g.fillText("READY", W / 2, 150);
+  const ready = fr ? "PRÊT" : "READY";
+  g.textAlign = "center"; fitPx(g, ready, FONT.display, 900, 360, 110); g.fillStyle = PAL.paper; g.fillText(ready, W / 2, 150);
   g.fillStyle = PAL.coral; roundRectPath(g, 70, 232, 160, 62, 16); g.fill();
   g.fillStyle = PAL.cyan; roundRectPath(g, 282, 232, 160, 62, 16); g.fill();
-  g.fillStyle = PAL.ink; g.font = `700 24px ${FONT.mono}`; g.fillText("NEW", 150, 264); g.fillText("PLAY", 362, 264);
-  return textureFrom(c, { srgb: true, repeat: false, anisotropy: ctx.quality.anisotropy });
+  g.fillStyle = PAL.ink; g.font = `700 24px ${FONT.mono}`; g.fillText(fr ? "NOUVEAU" : "NEW", 150, 264); g.fillText(fr ? "LIRE" : "PLAY", 362, 264);
+  return c;
 }
 
 export function buildCounterClutter(ctx) {
@@ -136,7 +137,7 @@ export function buildCounterClutter(ctx) {
   const tablet = new THREE.Group();
   tablet.position.set(rx, y + .28, rz + .02); tablet.rotation.x = -.22;
   mesh(woodBox(.3, .21, .016, { bevel: .01, tile: .4 }), ink, { parent: tablet });
-  const screenMat = new THREE.MeshBasicMaterial({ map: posScreen(ctx), color: new THREE.Color(1.05, 1.05, 1.05) });
+  const screenMat = new THREE.MeshBasicMaterial({ map: localizedTexture(ctx, drawPosScreen), color: new THREE.Color(1.05, 1.05, 1.05) });
   ctx.owned.push(screenMat);
   mesh(new THREE.PlaneGeometry(.275, .183), screenMat, { position: [0, 0, .0085], parent: tablet, cast: false });
   ctx.scene.add(tablet);
@@ -231,6 +232,7 @@ export function buildLuckyCat(ctx) {
   root.add(paw);
   mesh(new THREE.CapsuleGeometry(.018, .05, 6, 10), ceramic, { position: [-.075, .075, .03], rotation: [0, 0, .25], parent: root });
   root.userData.update = (dt, elapsed) => { paw.rotation.z = -.35 + Math.sin(elapsed * 2.4) * .3; };
+  bakeStatic(root);
   ctx.scene.add(root);
   ctx.pickRoots.push(root);
   return root;
@@ -267,9 +269,11 @@ export function buildDocuments(ctx, profile) {
   const covMat = new THREE.MeshStandardMaterial({ map: tabTexture, roughness: .6, normalMap: ctx.paperNormal, normalScale: new THREE.Vector2(.3, .3) });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xe8a826, roughness: .7 });
   ctx.owned.push(covMat, edgeMat);
-  mesh(new THREE.BoxGeometry(.24, .008, .32), [edgeMat, edgeMat, covMat, edgeMat, edgeMat, edgeMat], { position: [0, .004, 0], parent: folder });
+  for (const [h, py] of [[.008, .004], [.004, .022]]) {
+    const board = boxMesh(.24, h, .32, [edgeMat, edgeMat, covMat, edgeMat, edgeMat, edgeMat]);
+    board.position.set(0, py, 0); board.castShadow = true; board.receiveShadow = true; folder.add(board);
+  }
   mesh(woodBox(.225, .012, .3, { bevel: .001 }), m.paper, { position: [0, .012, .0], parent: folder });
-  mesh(new THREE.BoxGeometry(.24, .004, .32), [edgeMat, edgeMat, covMat, edgeMat, edgeMat, edgeMat], { position: [0, .022, 0], parent: folder });
   folder.userData.pick = { kind: "cv", id: "cv" };
   folder.userData.hoverLift = true;
   ctx.scene.add(folder);
@@ -303,6 +307,7 @@ export function buildDocuments(ctx, profile) {
   mesh(new THREE.BoxGeometry(.09, .004, .02), pickMat(m, "plasticCoral", "paper"), { position: [0, .002, 0], parent: cards });
   // single card lying flat, larger and readable when hovered (click target)
   mesh(new THREE.PlaneGeometry(.17, .097), cardMat, { position: [.0, .005, .09], rotation: [-PI / 2, 0, .2], parent: cards, cast: false });
+  bakeStatic(cards);
   cards.userData.pick = { kind: "contact", id: "contact" };
   cards.userData.hoverLift = true;
   ctx.scene.add(cards);
@@ -369,7 +374,7 @@ export function buildAppsRack(ctx, applications) {
     ctx.localized.push({ texture: art, draw: (lang) => drawAppCase(app, i, lang, artSize) });
     const face = new THREE.MeshStandardMaterial({ map: art, roughness: .5, envMapIntensity: .6, emissive: 0xffffff, emissiveMap: art, emissiveIntensity: .3 });
     ctx.owned.push(face);
-    mesh(new THREE.BoxGeometry(.38, .47, .055), [caseInk, caseInk, caseInk, caseInk, face, caseInk], { parent: group });
+    group.add(boxMesh(.38, .47, .055, [caseInk, caseInk, caseInk, caseInk, face, caseInk]));
     group.userData.pick = { kind: "app", id: app.id };
     group.userData.home = { position: group.position.clone(), quaternion: group.quaternion.clone(), scale: group.scale.clone() };
     group.userData.appIndex = i;
@@ -410,7 +415,6 @@ export function buildAppsRack(ctx, applications) {
     const sideL = mesh(sideGeo, sideMat, { position: [-wd / 2 - .001, 0, 0], parent: cab, cast: false });
     const sideR = mesh(sideGeo, sideMat, { position: [wd / 2 + .001, 0, 0], parent: cab, cast: false });
     sideR.scale.x = -1;
-    void sideL;
     // marquee (self-lit, pulses gently)
     const mqCanvas = createCanvas(512, 190), mg = mqCanvas.getContext("2d");
     mg.fillStyle = PAL.ink0; mg.fillRect(0, 0, 512, 190);
@@ -425,10 +429,11 @@ export function buildAppsRack(ctx, applications) {
     const calm = reducedMotion();
     ctx.updaters.push((dt, elapsed) => { mqMat.emissiveIntensity = calm ? .9 : .85 + Math.sin(elapsed * 1.7) * .12; });
     // screen: level-select list of the apps
+    const drawScreen = (lang) => {
     const scCanvas = createCanvas(320, 256), sg = scCanvas.getContext("2d");
     sg.fillStyle = "#07122a"; sg.fillRect(0, 0, 320, 256);
     sg.fillStyle = PAL.mint; sg.font = `700 17px ${FONT.mono}`; sg.textAlign = "left"; sg.textBaseline = "middle";
-    sg.fillText("SELECT AGENT", 18, 24);
+    sg.fillText(lang === "fr" ? "CHOISIS TON AGENT" : "SELECT AGENT", 18, 24);
     sg.fillStyle = PAL.cyan; sg.fillRect(18, 38, 284, 3);
     applications.slice(0, 8).forEach((app, i) => {
       const yy = 64 + i * 22;
@@ -436,11 +441,12 @@ export function buildAppsRack(ctx, applications) {
       sg.fillStyle = i === 1 ? PAL.mint : PAL.paper; sg.font = `700 14px ${FONT.mono}`;
       const label = String(app.name).toUpperCase(); sg.fillText((i === 1 ? "> " : "  ") + (label.length > 24 ? label.slice(0, 23) + "…" : label), 18, yy);
     });
-    sg.fillStyle = PAL.sun; sg.font = `700 14px ${FONT.mono}`; sg.textAlign = "center"; sg.fillText("PRESS START", 160, 240);
+    sg.fillStyle = PAL.sun; sg.font = `700 14px ${FONT.mono}`; sg.textAlign = "center"; sg.fillText(lang === "fr" ? "APPUIE SUR START" : "PRESS START", 160, 240);
     sg.fillStyle = "rgba(0,0,0,.28)"; for (let yy = 0; yy < 256; yy += 3) sg.fillRect(0, yy, 320, 1);
-    const scTex = textureFrom(scCanvas, { srgb: true, repeat: false, anisotropy: ctx.quality.anisotropy });
-    const scMat = new THREE.MeshBasicMaterial({ map: scTex, color: new THREE.Color(1.1, 1.1, 1.1) });
-    ctx.owned.push(scMat, scTex);
+    return scCanvas;
+    };
+    const scMat = new THREE.MeshBasicMaterial({ map: localizedTexture(ctx, drawScreen), color: new THREE.Color(1.1, 1.1, 1.1) });
+    ctx.owned.push(scMat);
     mesh(new THREE.PlaneGeometry(.5, .4), scMat, { position: [0, 1.28, .26 + .004], rotation: [-.17, 0, 0], parent: cab, cast: false });
     // control panel: stick + buttons
     const panel = new THREE.Group();
@@ -450,12 +456,14 @@ export function buildAppsRack(ctx, applications) {
     mesh(new THREE.SphereGeometry(.026, 16, 12), pickMat(m, "plasticCoral", "paintedCoral"), { position: [-.15, .11, 0], parent: panel, cast: false });
     [[.0, "plasticSun"], [.07, "plasticCyan"], [.14, "plasticMint"], [.21, "plasticCoral"]].forEach(([bx, key], i) => mesh(new THREE.CylinderGeometry(.021, .023, .018, 16), pickMat(m, key, "steel"), { position: [bx, .01, i % 2 ? .03 : -.02], parent: panel, cast: false }));
     mesh(new THREE.CylinderGeometry(.012, .012, .012, 12), pickMat(m, "plasticBeige", "steel"), { position: [.1, .008, .075], parent: panel, cast: false });
+    bakeStatic(panel);
     cab.add(panel);
     // coin door with two lit slots
     mesh(woodBox(.22, .16, .012, { bevel: .004, tile: .3 }), m.blackMetal, { position: [0, .42, .4 + .004], parent: cab, cast: false });
     for (const sx of [-.05, .05]) mesh(new THREE.BoxGeometry(.03, .05, .004), ledMat(ctx, sx < 0 ? NEON.coral : NEON.sun, 2.4), { position: [sx, .42, .4 + .012], parent: cab, cast: false });
     // cyan light lines up the front edges of the marquee box
     for (const sx of [-wd / 2 + .02, wd / 2 - .02]) mesh(new THREE.BoxGeometry(.012, .26, .012), neonOf(ctx, NEON.cyan, 3.2), { position: [sx, 1.64, .31], parent: cab, cast: false });
+    bakeStatic(cab, [sideL, sideR]);
     ctx.scene.add(cab);
     addContactShadow(ctx, { x: x - .42, z: zc + w / 2 + .62, width: 1.1, depth: 1.2, opacity: .4 });
   }
@@ -488,7 +496,7 @@ function guitar(ctx) {
   mesh(woodBox(.06, .17, .02, { bevel: .006, tile: .5 }), pickMat(m, "lacquerSun", "oak"), { position: [0, .93, .0], parent: g });
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) mesh(new THREE.CylinderGeometry(.006, .006, .02, 8), m.steel, { position: [s * .032, .88 + i * .045, -.01], rotation: [PI / 2, 0, 0], parent: g, cast: false });
   for (let i = 0; i < 6; i++) mesh(new THREE.CylinderGeometry(.0006, .0006, 1.08, 3), m.steel, { position: [-.0125 + i * .005, .32, .047], parent: g, cast: false });
-  return g;
+  return bakeStatic(g);
 }
 
 function miniKeyboard(ctx) {
@@ -503,7 +511,7 @@ function miniKeyboard(ctx) {
   for (let i = 0; i < 25; i++) mesh(keyGeo, white, { position: [-.222 + i * .0185, .041, .015], parent: g, cast: false });
   const pattern = [0, 1, 3, 4, 5];
   for (let i = 0; i < 24; i++) if (pattern.includes(i % 7)) mesh(blackGeo, pickMat(m, "lacquerInk", "plasticBlack"), { position: [-.2125 + i * .0185, .049, -.006], parent: g, cast: false });
-  return g;
+  return bakeStatic(g);
 }
 
 export function buildAboutCorner(ctx, profile, musicProjects) {
@@ -560,15 +568,18 @@ export function buildAboutCorner(ctx, profile, musicProjects) {
   mesh(new THREE.PlaneGeometry(.46, .29), cardMat, { position: [-.34, .05, .022], rotation: [0, 0, -.03], parent: boardGroup, cast: false });
   const rand = rng(9);
   const pinMats = [PAL.coral, PAL.cyan, PAL.sun].map((c) => { const mat = new THREE.MeshStandardMaterial({ color: c, roughness: .35 }); ctx.owned.push(mat); return mat; });
+  const flyerMat = new THREE.MeshStandardMaterial({ map: ctx.assets.poster.texture, roughness: .75 });
+  ctx.owned.push(flyerMat);
   mesh(new THREE.SphereGeometry(.011, 10, 8), pinMats[0], { position: [-.34, .18, .032], parent: boardGroup, cast: false });
   // gig flyers pinned around (generative, decorative)
   for (let i = 0; i < 6; i++) {
     const ref = ctx.assets.poster.cells[(i * 2 + 1) % ctx.assets.poster.cells.length];
     const w = .15 + rand() * .05, h = w * 1.42;
     const px = .02 + (i % 3) * .21 + rand() * .03, py = .22 - Math.floor(i / 3) * .3 + rand() * .04;
-    mesh(atlasPlane(w, h, ref), new THREE.MeshStandardMaterial({ map: ctx.assets.poster.texture, roughness: .75 }), { position: [px, py, .021], rotation: [0, 0, (rand() - .5) * .22], parent: boardGroup, cast: false });
+    mesh(atlasPlane(w, h, ref), flyerMat, { position: [px, py, .021], rotation: [0, 0, (rand() - .5) * .22], parent: boardGroup, cast: false });
     mesh(new THREE.SphereGeometry(.008, 8, 6), pinMats[i % 3], { position: [px, py + h * .44, .026], parent: boardGroup, cast: false });
   }
+  bakeStatic(boardGroup);
   ctx.scene.add(boardGroup);
   // guitar + mini keyboard
   const gtr = guitar(ctx);

@@ -9,8 +9,7 @@ import { SLEEVE, createRecord } from "./records.js";
 import { atlasPlane } from "./assets.js";
 import { addSign, addBin, addContactShadow, addCardboardBox, localizedTexture } from "./kit.js";
 import { FONT, drawSignBoard } from "./artwork.js";
-import { makeNeonMaterial } from "./materials.js";
-import { PAL, NEON, fitPx, pickMat } from "./room.js";
+import { PAL, NEON, fitPx, pickMat, neonShared } from "./room.js";
 
 const TAB_LABELS = {
   communication: { fr: "COMMUNICATION", en: "COMMUNICATION" },
@@ -42,7 +41,7 @@ function accentSet(ctx) {
   ];
 }
 
-const neonOf = (ctx, hex, base = 3) => { const mat = makeNeonMaterial(hex, base); ctx.neonMaterials.push(mat); ctx.owned.push(mat); return mat; };
+const neonOf = neonShared;
 
 // ---------------------------------------------------------------------------------------------
 // Central gondola: 2 tiers x 3 bins, each bin = 3 columns of records
@@ -81,6 +80,10 @@ export function buildGondola(ctx, projects, categories) {
     const span = tier.span;
     B.box(span + .12, .05, depth, cream, [cx, tier.y - .025, tier.z], [0, 0, 0], { bevel: .01, tile: 1.1 });
     B.box(span + .12, .11, .03, ink, [cx, tier.y - .105, tier.z + depth / 2 - .015], [0, 0, 0], { bevel: .006 });
+    // the wall's coral / sun / cyan belt, repeated on the fixture's front apron so furniture and architecture read as one system
+    [["lacquerCoral", "paintedCoral", -.079], ["lacquerSun", "paintedSun", -.097], ["lacquerCyan", "paintedCyan", -.115]].forEach(([a, b, dy]) => {
+      B.box(span + .1, .012, .006, pickMat(m, a, b), [cx, tier.y + dy, tier.z + depth / 2 + .002], [0, 0, 0], { bevel: .002, cast: false });
+    });
     B.box(span + .12, .06, .03, ink, [cx, tier.y - .08, tier.z - depth / 2 + .015], [0, 0, 0], { bevel: .006 });
     for (const lx of [-span / 2 + .03, -span / 6, span / 6, span / 2 - .03]) {
       for (const lz of [depth / 2 - .05, -depth / 2 + .05]) B.box(.05, tier.y - .05, .05, m.blackMetal, [cx + lx, (tier.y - .05) / 2, tier.z + lz], [0, 0, 0], { bevel: .006, grain: "y" });
@@ -142,7 +145,8 @@ export function buildGondola(ctx, projects, categories) {
   // hanging aisle signs: accent panel on two thin rods, one per bin, self-lit so they read in shade
   tierDefs.forEach((tier) => {
     tier.bins.forEach(({ cat, x: bx, accent }) => {
-      const y = tier.tier === "front" ? 2.28 : 2.52;
+      // staggered: from the entrance the rear row must clear the front row (same x, almost the same sight line), else it is hidden
+      const y = tier.tier === "front" ? 2.24 : 2.72;
       const z = tier.z + .02;
       addSign(ctx, {
         draw: (lang) => drawSignBoard((cat[lang] || cat.fr).toUpperCase(), { width: 1536, height: 256, bg: accent.sign, fg: accent.signFg, border: accent.signFg, font: FONT.display }),
@@ -177,8 +181,10 @@ export function buildDigBins(ctx) {
       filler.addRow(ctx.scene, { origin: [x + .24, floorY, z + (col - 1) * .36], rotY: Math.PI / 2, count: 34, lean: .15 + (i % 2) * .03, pitch: .0112 });
     }
     // divider tab: paper card, ink lettering (mono-width display)
-    const label = ["NEW ARRIVALS", "STAFF PICKS", "ROCK / POP", "ELECTRO / HOUSE"][i];
-    const tab = new THREE.Mesh(new THREE.PlaneGeometry(.5, .1), new THREE.MeshStandardMaterial({ map: localizedTexture(ctx, () => drawSignBoard(label, { width: 1024, height: 205, bg: PAL.paper, fg: PAL.ink, border: PAL.ink, font: FONT.display })), roughness: .6 }));
+    const label = [{ fr: "NOUVEAUTÉS", en: "NEW ARRIVALS" }, { fr: "COUPS DE CŒUR", en: "STAFF PICKS" }, { fr: "ROCK / POP", en: "ROCK / POP" }, { fr: "ÉLECTRO / HOUSE", en: "ELECTRO / HOUSE" }][i];
+    const tabMat = new THREE.MeshStandardMaterial({ map: localizedTexture(ctx, (lang) => drawSignBoard(label[lang] || label.fr, { width: 1024, height: 205, bg: PAL.paper, fg: PAL.ink, border: PAL.ink, font: FONT.display })), roughness: .6 });
+    ctx.owned.push(tabMat);
+    const tab = new THREE.Mesh(new THREE.PlaneGeometry(.5, .1), tabMat);
     tab.position.set(x + .22, floorY + .38, z);
     tab.rotation.set(0, Math.PI / 2, 0);
     ctx.scene.add(tab);
@@ -274,7 +280,7 @@ export function buildWallDisplays(ctx, assets) {
 // ---------------------------------------------------------------------------------------------
 // Counter (checkout), staff-picks wall behind it, right-wall shelving
 // ---------------------------------------------------------------------------------------------
-function counterLogoTexture(ctx) {
+function drawCounterLogo(lang) {
   const W = 1024, H = 420;
   const c = createCanvas(W, H), g = c.getContext("2d");
   g.fillStyle = PAL.ink; g.fillRect(0, 0, W, H);
@@ -295,8 +301,8 @@ function counterLogoTexture(ctx) {
   g.fillStyle = PAL.coral; g.fillText("SIDE A", 396 + px * .04, 222 + px * .04);
   g.fillStyle = PAL.paper; g.fillText("SIDE A", 396, 222);
   g.font = `700 30px ${FONT.mono}`; g.fillStyle = PAL.cyan; g.fillText("PROJECTS STORE", 400, 282);
-  g.fillStyle = PAL.sun; g.fillText("33 1/3 RPM · OPEN 7/7", 400, 330);
-  return textureFrom(c, { srgb: true, repeat: false, anisotropy: ctx.quality.anisotropy });
+  g.fillStyle = PAL.sun; g.fillText(lang === "fr" ? "33 1/3 TOURS · OUVERT 7/7" : "33 1/3 RPM · OPEN 7/7", 400, 330);
+  return c;
 }
 
 export function buildCounter(ctx) {
@@ -312,12 +318,19 @@ export function buildCounter(ctx) {
       B.box(.1, height * .72, .014, coral, [x + side * (width / 2 - .1 - i * .13), height * .46, z + depth / 2 + .006], [0, 0, 0], { bevel: .005, tile: .6 });
     }
   }
-  const logoMat = new THREE.MeshStandardMaterial({ map: counterLogoTexture(ctx), roughness: .5, emissive: 0xffffff, emissiveIntensity: .08 });
+  const logoMat = new THREE.MeshStandardMaterial({ map: localizedTexture(ctx, drawCounterLogo), roughness: .5, emissive: 0xffffff, emissiveIntensity: .08 });
   logoMat.emissiveMap = logoMat.map;
   ctx.owned.push(logoMat);
   const logo = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .492), logoMat);
   logo.position.set(x, height * .46, z + depth / 2 + .0135);
   ctx.scene.add(logo);
+  // coral neon frame around the logo plate (a lit "arcade bezel": stays vivid in daylight)
+  {
+    const tube = neonOf(ctx, NEON.coral, 3), lw = 1.2, lh = .492, t = .012, ly = height * .46, lz = z + depth / 2 + .0135;
+    for (const [w, h, dx, dy] of [[lw + t * 2, t, 0, lh / 2 + t / 2], [lw + t * 2, t, 0, -lh / 2 - t / 2], [t, lh, -lw / 2 - t / 2, 0], [t, lh, lw / 2 + t / 2, 0]]) {
+      B.add(new THREE.BoxGeometry(w, h, t), tube, [x + dx, ly + dy, lz], [0, 0, 0], { cast: false, receive: false });
+    }
+  }
   // cream lacquer top with a crisp ink lip, kick plate
   B.box(width + .06, .05, depth + .06, cream, [x, height - .025, z], [0, 0, 0], { bevel: .014, tile: 1.4 });
   B.box(width + .02, .012, depth + .1, ink, [x, height - .058, z + .01], [0, 0, 0], { bevel: .004 });
@@ -332,6 +345,7 @@ export function buildCounter(ctx) {
   const shelfY = [.12, .6, 1.08, 1.56];
   B.box(uw, .06, ud, ink, [ucx, uh - .03, uz], [0, 0, 0], { bevel: .008 });
   B.box(uw, .02, .02, ink, [ucx, uh - .07, uz + ud / 2 - .01], [0, 0, 0], { bevel: .004 });
+  B.add(new THREE.BoxGeometry(uw - .12, .014, .014), neonOf(ctx, NEON.cyan, 3), [ucx, uh - .1, uz + ud / 2 - .006], [0, 0, 0], { cast: false, receive: false });
   B.box(uw - .1, uh - .08, .03, pickMat(m, "paintedCream", "painted"), [ucx, (uh - .08) / 2 + .04, uz - ud / 2 + .02], [0, 0, 0], { bevel: .004 });
   const colsN = 4, pitch = uw / colsN;
   for (let i = 0; i <= colsN; i++) B.box(.035, uh, ud, ink, [ux0 + i * pitch + (i === colsN ? -.0175 : i === 0 ? .0175 : 0), uh / 2, uz], [0, 0, 0], { bevel: .006 });
@@ -430,7 +444,8 @@ export function buildWindowDisplay(ctx, assets) {
   const y = FRONT.sill + .05;
   const ink = pickMat(m, "paintedInk", "paintedGreen");
   B.box(2.7, .22, .5, pickMat(m, "lacquerViolet", "paintedViolet"), [cx, y + .11, ROOM.zFront - .3], [0, 0, 0], { bevel: .01 });
-  B.box(2.0, .22, .4, pickMat(m, "lacquerSun", "paintedSun"), [cx, y + .33, ROOM.zFront - .35], [0, 0, 0], { bevel: .01 });
+  // coral, not sun: a pale-yellow lacquer clips to white where the sun lands on it (the stage sits right in the beam)
+  B.box(2.0, .22, .4, pickMat(m, "lacquerCoral", "paintedCoral"), [cx, y + .33, ROOM.zFront - .35], [0, 0, 0], { bevel: .01 });
   B.box(2.74, .03, .54, ink, [cx, y + .005, ROOM.zFront - .3], [0, 0, 0], { bevel: .004 });
   for (let i = 0; i < 7; i++) {
     const ref = assets.decor.cells[(i * 3) % assets.decor.cells.length];

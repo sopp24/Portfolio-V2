@@ -5,6 +5,19 @@ import { rng, createCanvas, textureFrom, noiseField, grayCanvas, canvasFromImage
 import { drawProjectCover, drawProjectBack, drawProjectInner, FONT } from "./artwork.js";
 
 export const SLEEVE = { size: .314, t: .0025, gap: .0016, disc: .3048 / 2 };
+
+// A box whose faces are listed as 6 materials [+x, -x, +y, -y, +z, -z]. Consecutive faces that share a material become ONE draw
+// group (a sleeve = edge x4 + front + back is 3 draws instead of 6; a record is 12 of them).
+export function boxMesh(w, h, d, faceMats) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const uniq = [...new Set(faceMats)];
+  geo.clearGroups();
+  let start = 0;
+  for (let i = 1; i <= 6; i++) {
+    if (i === 6 || faceMats[i] !== faceMats[start]) { geo.addGroup(start * 6, (i - start) * 6, uniq.indexOf(faceMats[start])); start = i; }
+  }
+  return new THREE.Mesh(geo, uniq);
+}
 const RING = Math.PI * 2;
 
 // ---------------------------------------------------------------------------------------------
@@ -54,12 +67,12 @@ function labelTexture(project, index) {
   // lettering colour follows the label colour so the SIDE A mark stays readable on pale artwork
   const lum = (hex) => { const v = parseInt(String(hex).replace("#", "").slice(0, 6), 16); return (((v >> 16) & 255) * .2126 + ((v >> 8) & 255) * .7152 + (v & 255) * .0722) / 255; };
   g.fillStyle = lum(c0) > .62 ? "#12162b" : "#fff6e3";
-  g.font = `900 26px ${FONT.display}`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = `900 24px ${FONT.display}`; g.textAlign = "center"; g.textBaseline = "middle";
   g.fillText("SIDE A", 128, 92);
-  g.font = `700 11px ${FONT.sans}`;
+  g.font = `700 11px ${FONT.ui}`;
   const title = String((project.title && project.title.fr) || project.id).toUpperCase();
   g.fillText(title.length > 24 ? title.slice(0, 23) + "…" : title, 128, 148);
-  g.font = `700 10px ${FONT.type}`; g.fillText(`CAT. ${String(index + 1).padStart(3, "0")} · 33⅓ RPM`, 128, 168);
+  g.font = `700 10px ${FONT.mono}`; g.fillText(`CAT. ${String(index + 1).padStart(3, "0")} · 33⅓ RPM`, 128, 168);
   g.fillStyle = c2; g.beginPath(); g.arc(128, 128, 8, 0, RING); g.fill();
   g.fillStyle = "#151515"; g.beginPath(); g.arc(128, 128, 3.2, 0, RING); g.fill();
   return textureFrom(c, { srgb: true, repeat: false });
@@ -96,14 +109,14 @@ export function createRecord({ project, index, quality, materials, edgeMaterial,
   const edge = edgeMaterial;
 
   // back board (carries the back cover on -z and the right inner panel on +z)
-  const back = new THREE.Mesh(new THREE.BoxGeometry(S, S, t), [edge, edge, edge, edge, innerPaper, backPaper]);
+  const back = boxMesh(S, S, t, [edge, edge, edge, edge, innerPaper, backPaper]);
   back.castShadow = true; back.receiveShadow = true;
   group.add(back);
 
   // hinged front cover
   const flap = new THREE.Group();
   flap.position.set(-S / 2, 0, t / 2 + gap + t / 2);
-  const front = new THREE.Mesh(new THREE.BoxGeometry(S, S, t), [edge, edge, edge, edge, frontMat, innerLeftMat]);
+  const front = boxMesh(S, S, t, [edge, edge, edge, edge, frontMat, innerLeftMat]);
   front.position.x = S / 2;
   front.castShadow = true; front.receiveShadow = true;
   flap.add(front);

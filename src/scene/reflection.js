@@ -28,20 +28,26 @@ export function createFloorReflection({ renderer, scene, camera, material, hide 
       .replace("#include <opaque_fragment>", `
         {
           vec2 ruv = vReflUv.xy / vReflUv.w;
-          float blur = 1.0 + roughnessFactor * 5.0;
-          vec3 refl = vec3(0.0);
-          refl += texture2D(tReflect, ruv).rgb * 0.28;
-          refl += texture2D(tReflect, ruv + vec2( 1.0, 0.0) * uReflTexel * blur).rgb * 0.18;
-          refl += texture2D(tReflect, ruv + vec2(-1.0, 0.0) * uReflTexel * blur).rgb * 0.18;
-          refl += texture2D(tReflect, ruv + vec2(0.0,  1.0) * uReflTexel * blur).rgb * 0.18;
-          refl += texture2D(tReflect, ruv + vec2(0.0, -1.0) * uReflTexel * blur).rgb * 0.18;
+          // glossy-floor blur: a 9-tap kernel stretched vertically in mirror space (a vertical sign smears downward on a sealed floor,
+          // which reads as polish instead of the blocky cross of the half-resolution target)
+          float blur = 1.1 + roughnessFactor * 5.5;
+          vec2 px = uReflTexel * blur;
+          vec3 refl = texture2D(tReflect, ruv).rgb * 0.22;
+          refl += texture2D(tReflect, ruv + vec2( 1.3, 0.0) * px).rgb * 0.10;
+          refl += texture2D(tReflect, ruv + vec2(-1.3, 0.0) * px).rgb * 0.10;
+          refl += texture2D(tReflect, ruv + vec2( 0.0, 1.2) * px).rgb * 0.13;
+          refl += texture2D(tReflect, ruv + vec2( 0.0,-1.2) * px).rgb * 0.13;
+          refl += texture2D(tReflect, ruv + vec2( 0.0, 2.8) * px).rgb * 0.08;
+          refl += texture2D(tReflect, ruv + vec2( 0.0,-2.8) * px).rgb * 0.08;
+          refl += texture2D(tReflect, ruv + vec2( 2.2, 1.6) * px).rgb * 0.08;
+          refl += texture2D(tReflect, ruv + vec2(-2.2,-1.6) * px).rgb * 0.08;
           float ndv = clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0);
           float fres = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
           float mask = smoothstep(0.75, 0.25, roughnessFactor);
           // fade the mirror image out toward the edge of the reflection target (no smeared border) and tame fireflies from HDR glints
           vec2 edge = smoothstep(0.0, 0.07, ruv) * (1.0 - smoothstep(0.93, 1.0, ruv));
-          refl = min(refl, vec3(5.0)) * edge.x * edge.y;
-          outgoingLight += refl * uReflStrength * (0.15 + 0.62 * fres) * (0.35 + 0.65 * mask);
+          refl = min(refl, vec3(3.6)) * edge.x * edge.y;
+          outgoingLight += refl * uReflStrength * (0.13 + 0.58 * fres) * (0.35 + 0.65 * mask);
         }
         #include <opaque_fragment>`);
   };

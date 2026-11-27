@@ -9,34 +9,36 @@ const clamp = THREE.MathUtils.clamp;
 // eye textures (cached per colour)
 // ---------------------------------------------------------------------------------------------
 const eyeTextures = new Map();
-function eyeTexture(iris) {
-  const key = iris.join(",");
+// iris: sRGB colour; irisDeg: angular radius of the iris on the eyeball (36 = natural, 42-46 = big stylised eyes); pupil: pupil/iris ratio
+function eyeTexture(iris, irisDeg = 36, pupilRatio = 0.42) {
+  const key = iris.join(",") + "|" + irisDeg + "|" + pupilRatio;
   if (eyeTextures.has(key)) return eyeTextures.get(key);
   const W = 1024, H = 512;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d");
-  g.fillStyle = "#efe9e1"; g.fillRect(0, 0, W, H);
-  // sclera: soft warm shading and a few faint capillaries
-  const sh = g.createLinearGradient(0, 0, W, 0); sh.addColorStop(0, "rgba(190,140,120,.25)"); sh.addColorStop(.25, "rgba(255,255,255,0)"); sh.addColorStop(.75, "rgba(255,255,255,0)"); sh.addColorStop(1, "rgba(190,140,120,.25)");
+  g.fillStyle = "#efeae4"; g.fillRect(0, 0, W, H);
+  // sclera: soft warm shading toward the corners (lids cast a soft shadow) and a few faint capillaries
+  const sh = g.createLinearGradient(0, 0, W, 0); sh.addColorStop(0, "rgba(190,140,120,.3)"); sh.addColorStop(.25, "rgba(255,255,255,0)"); sh.addColorStop(.75, "rgba(255,255,255,0)"); sh.addColorStop(1, "rgba(190,140,120,.3)");
   g.fillStyle = sh; g.fillRect(0, 0, W, H);
-  g.strokeStyle = "rgba(200,90,80,.13)"; g.lineWidth = 1.2;
-  for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2; g.beginPath(); const cx = W * .25, cy = H * .5; g.moveTo(cx + Math.cos(a) * 125, cy + Math.sin(a) * 125); g.quadraticCurveTo(cx + Math.cos(a + .2) * 160, cy + Math.sin(a + .2) * 160, cx + Math.cos(a + .1) * 215, cy + Math.sin(a + .1) * 215); g.stroke(); }
-  const cx = W * 0.25, cy = H * 0.5, R = 96; // iris radius in px (≈34°: slightly larger than life for a stylised, expressive look)
-  const col = (k, a = 1) => `rgba(${Math.round(iris[0] * 255 * k)},${Math.round(iris[1] * 255 * k)},${Math.round(iris[2] * 255 * k)},${a})`;
-  // limbal ring + iris body
-  const body = g.createRadialGradient(cx, cy, R * 0.15, cx, cy, R);
-  body.addColorStop(0, col(1.35)); body.addColorStop(.55, col(1.0)); body.addColorStop(.88, col(.62)); body.addColorStop(1, col(.28));
+  const cx = W * 0.25, cy = H * 0.5, R = (irisDeg / 360) * W; // iris radius in px (1024 px = 360 degrees)
+  g.strokeStyle = "rgba(200,90,80,.1)"; g.lineWidth = 1.2;
+  for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2; g.beginPath(); g.moveTo(cx + Math.cos(a) * (R + 12), cy + Math.sin(a) * (R + 12)); g.quadraticCurveTo(cx + Math.cos(a + .2) * (R + 45), cy + Math.sin(a + .2) * (R + 45), cx + Math.cos(a + .1) * (R + 100), cy + Math.sin(a + .1) * (R + 100)); g.stroke(); }
+  const col = (k, a = 1) => `rgba(${Math.min(255, Math.round(iris[0] * 255 * k))},${Math.min(255, Math.round(iris[1] * 255 * k))},${Math.min(255, Math.round(iris[2] * 255 * k))},${a})`;
+  // iris body (lighter ring near the pupil, dark limbal ring at the edge: the stylised "dark eye" read)
+  const body = g.createRadialGradient(cx, cy, R * 0.1, cx, cy, R);
+  body.addColorStop(0, col(1.5)); body.addColorStop(.5, col(1.05)); body.addColorStop(.86, col(.6)); body.addColorStop(1, col(.2));
   g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
-  // radial fibres
-  for (let i = 0; i < 90; i++) {
-    const a = (i / 90) * Math.PI * 2 + Math.random() * .04;
-    g.strokeStyle = col(Math.random() > .5 ? 1.5 : .55, .35); g.lineWidth = 1.4;
-    g.beginPath(); g.moveTo(cx + Math.cos(a) * R * .3, cy + Math.sin(a) * R * .3); g.lineTo(cx + Math.cos(a) * R * (.85 + Math.random() * .12), cy + Math.sin(a) * R * (.85 + Math.random() * .12)); g.stroke();
+  // radial fibres (soft)
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2 + ((i * 7919) % 100) * 0.0004;
+    g.strokeStyle = col(i % 2 ? 1.7 : .5, .22); g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * R * .34, cy + Math.sin(a) * R * .34); g.lineTo(cx + Math.cos(a) * R * (.8 + (i % 5) * .03), cy + Math.sin(a) * R * (.8 + (i % 5) * .03)); g.stroke();
   }
   // pupil + soft edge
-  const pupil = g.createRadialGradient(cx, cy, R * .22, cx, cy, R * .42);
-  pupil.addColorStop(0, "#030303"); pupil.addColorStop(.8, "#050505"); pupil.addColorStop(1, "rgba(5,5,5,0)");
-  g.fillStyle = pupil; g.beginPath(); g.arc(cx, cy, R * .42, 0, Math.PI * 2); g.fill();
+  const pr = R * pupilRatio;
+  const pupil = g.createRadialGradient(cx, cy, pr * .55, cx, cy, pr * 1.1);
+  pupil.addColorStop(0, "#030303"); pupil.addColorStop(.75, "#050505"); pupil.addColorStop(1, "rgba(5,5,5,0)");
+  g.fillStyle = pupil; g.beginPath(); g.arc(cx, cy, pr * 1.1, 0, Math.PI * 2); g.fill();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; tex.wrapS = THREE.RepeatWrapping;
   eyeTextures.set(key, tex);
@@ -52,7 +54,7 @@ function lidGeometry(radius, skin, rimColor, lower = false) {
   const base = skin.map(lin), rim = rimColor.map(lin);
   for (let i = 0; i < pos.count; i++) {
     const theta = Math.acos(clamp(pos.getY(i) / radius, -1, 1)) / Math.PI; // 0 at the pole
-    const edge = lower ? clamp((0.72 - theta) / 0.05 + 1, 0, 1) * 0 : clamp((theta - 0.52) / 0.06, 0, 1);
+    const edge = lower ? clamp((0.72 - theta) / 0.05 + 1, 0, 1) * 0 : clamp((theta - 0.5) / 0.075, 0, 1);
     for (let k = 0; k < 3; k++) colors[i * 3 + k] = base[k] + (rim[k] - base[k]) * edge;
   }
   g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
@@ -115,14 +117,18 @@ export class Character {
     const rimColor = (style.lidRim || [skin[0] * 0.45, skin[1] * 0.3, skin[2] * 0.28]);
     const headBone = this.bones.head;
     const R = 0.0135 * HS * (eyeDef.size || 1);
-    const tex = eyeTexture(eyeDef.iris);
+    const tex = eyeTexture(eyeDef.iris, eyeDef.irisR, eyeDef.pupil);
     const skinMat = patchCharacterMaterial(new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.5, sheen: 0.4, sheenColor: new THREE.Color(0xffd7c0), clearcoat: 0.1, envMapIntensity: 0.8 }), { detailScale: 95, detailBump: 0.25, sss: { wrap: 0.5, color: 0xff6a4a }, key: "lid" });
     const eyeMat = new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.28, metalness: 0, envMapIntensity: 0.5, name: "eye" });
-    const corneaMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.1, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 2.4, depthWrite: false, name: "cornea" });
+    const corneaMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.08, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.1, depthWrite: false, name: "cornea" });
     const sphereGeo = new THREE.SphereGeometry(R, 40, 28);
+    // painted catch-light (stylised characters): a small white disc fixed to the head, upper-left of the pupil, so the eyes always look alive
+    const catchMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false, name: "catchlight" });
+    const catchGeo = new THREE.CircleGeometry(R * (eyeDef.catch ?? 0.15), 14);
     const corneaGeo = new THREE.SphereGeometry(R * 1.012, 32, 22);
-    const upperGeo = lidGeometry(R * 1.1, skin, rimColor, false);
-    const lowerGeo = lidGeometry(R * 1.1, skin, rimColor, true);
+    const lidR = R * (eyeDef.lidScale ?? 1.1);
+    const upperGeo = lidGeometry(lidR, skin, rimColor, false);
+    const lowerGeo = lidGeometry(lidR, skin, rimColor, true);
     for (const c of centers) {
       const holder = new THREE.Group();
       // eye centre is in character space; convert to head-bone local space
@@ -136,10 +142,16 @@ export class Character {
       const upper = new THREE.Mesh(upperGeo, skinMat);
       const lower = new THREE.Mesh(lowerGeo, skinMat);
       holder.add(ball, upper, lower);
+      if (eyeDef.catch !== 0) {
+        const spark = new THREE.Mesh(catchGeo, catchMat);
+        spark.position.set(-R * 0.3, R * 0.3, R * 1.022 * Math.sqrt(1 - 0.18));
+        spark.castShadow = false; spark.raycast = () => {};
+        holder.add(spark);
+      }
       for (const m of [ball, upper, lower]) { m.castShadow = false; m.receiveShadow = true; m.raycast = () => {}; }
       cornea.castShadow = false; cornea.raycast = () => {};
       headBone.add(holder);
-      this.eyes.push({ holder, ball, upper, lower, side: c[0] >= 0 ? 1 : -1, open: -(eyeDef.lid ?? 0.35) });
+      this.eyes.push({ holder, ball, upper, lower, side: c[0] >= 0 ? 1 : -1, open: -(eyeDef.lid ?? 0.35), lowerOpen: eyeDef.lowerLid ?? 0.04 });
     }
     this.eyeOpen = -(eyeDef.lid ?? 0.35);
     this.setLids(0);
@@ -149,7 +161,7 @@ export class Character {
   setLids(closed) {
     for (const eye of this.eyes) {
       eye.upper.rotation.x = THREE.MathUtils.lerp(eye.open, 1.35, closed);
-      eye.lower.rotation.x = THREE.MathUtils.lerp(0.04, -0.28, closed);
+      eye.lower.rotation.x = THREE.MathUtils.lerp(eye.lowerOpen, -0.28, closed);
     }
   }
 

@@ -5,6 +5,7 @@ import {
 } from "./sdf.js";
 import { JOINTS as J, proximityWeights } from "./rig.js";
 import { norm3, cross3, dot3, add3, sub3, scale3, lerp3 } from "./util.js";
+import { surfaceZ } from "./head.js";
 
 // ---------------------------------------------------------------------------------------------
 // colour helpers
@@ -191,7 +192,7 @@ export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0
     if (flow) {
       const a = Math.atan2(x - flow.center[0], z - flow.center[2]);
       const w = noise3(x * 30, y * 30, z * 30) - 0.5;
-      groove = flow.amp * Math.sin(a * flow.n + w * 5) * smoothstep(0.0, 0.03, h);
+      groove = flow.amp * Math.sin(a * flow.n + w * (flow.warp ?? 5)) * smoothstep(0.0, 0.03, h);
     }
     // curly hair: two octaves of value noise give rounded, clustered curls on the surface
     let curls = 0;
@@ -202,6 +203,85 @@ export function scalpCap({ expand = 0.006, line, topVolume = 0.0, topCenter = [0
     }
     return smax(cap.d(x, y, z) - (thin + (expand - thin) * t) - groove - curls, -h, 0.004);
   }, base.c, base.r + 0.04);
+}
+
+// A point on the skull surface of `sk` (head-local) in the direction (azimuth, elevation) in degrees from the skull centre c:
+// az 0 = straight ahead (+z), +90 = character's left (+x), +-180 = behind; el 0 = level with c, 90 = the crown. Returns { p, n }.
+export function scalpPoint(sk, az, el, c = [0, 0.03, -0.01]) {
+  const a = (az * Math.PI) / 180, e = (el * Math.PI) / 180;
+  const d = [Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e)];
+  const at = (t) => sk.d(c[0] + d[0] * t, c[1] + d[1] * t, c[2] + d[2] * t);
+  let t = 0;
+  const step = 0.002;
+  while (t < 0.3 && at(t) < 0) t += step;
+  let lo = Math.max(0, t - step), hi = t;
+  for (let i = 0; i < 18; i++) { const m = (lo + hi) / 2; if (at(m) < 0) lo = m; else hi = m; }
+  const tt = (lo + hi) / 2;
+  const p = [c[0] + d[0] * tt, c[1] + d[1] * tt, c[2] + d[2] * tt];
+  const e2 = 0.0015;
+  const g = [sk.d(p[0] + e2, p[1], p[2]) - sk.d(p[0] - e2, p[1], p[2]), sk.d(p[0], p[1] + e2, p[2]) - sk.d(p[0], p[1] - e2, p[2]), sk.d(p[0], p[1], p[2] + e2) - sk.d(p[0], p[1], p[2] - e2)];
+  const gl = Math.hypot(g[0], g[1], g[2]) || 1;
+  return { p, n: [g[0] / gl, g[1] / gl, g[2] / gl] };
+}
+
+// A fat round hair clump lying on the scalp: a tube through scalp points given as [azimuth, elevation] (see scalpPoint); each point
+// sits radii[i] * sink above the skin along the normal (a fraction of the tube is buried, the rest stands out as a rounded relief).
+// `tail` = offsets [dx, dy, dz] from the LAST scalp point (radii tailRadii) for a flick that leaves the scalp. over: overlay colour lock.
+export function scalpTube(sk, angles, radii, color, { sink = 0.55, tail = [], tailRadii = [], k = 0.004, over = false } = {}) {
+  const pts = angles.map(([az, el], i) => {
+    const { p, n } = scalpPoint(sk, az, el);
+    return [p[0] + n[0] * radii[i] * sink, p[1] + n[1] * radii[i] * sink, p[2] + n[2] * radii[i] * sink];
+  });
+  const last = pts[pts.length - 1];
+  const all = pts.concat(tail.map((o) => [last[0] + o[0], last[1] + o[1], last[2] + o[2]])), rr = radii.concat(tailRadii);
+  return { shape: strand(all, rr, k), color, over };
+}
+
+// A leaf-shaped hair clump: lens cross-section (wide, thin), fat in the middle and pointed at both ends, lying on the hair surface `surf`
+// (a solid shape, e.g. hairShell(...).solid) along a path given as [azimuth, elevation] points (see scalpPoint). The path is smoothed
+// (Catmull-Rom on the angles) and every sample is projected on the surface. Layered leaves read as sculpted clumps.
+// opts: lift (fraction of thickness above the surface), flick (metres the last third rises away from the scalp), over: overlay colour.
+export function scalpLeaf(surf, angles, wMax, tMax, color, { lift = 0.45, flick = 0, n = 14, over = false, tip = 0.1, center = [0, 0.02, -0.01] } = {}) {
+  const cr = (p0, p1, p2, p3, t) => 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+  const A = angles, m = A.length - 1, path = [];
+  for (let i = 0; i <= n; i++) {
+    const u = (i / n) * m, k = Math.min(m - 1, Math.floor(u)), t = u - k;
+    const P = (j) => A[Math.max(0, Math.min(m, j))];
+    const az = cr(P(k - 1)[0], P(k)[0], P(k + 1)[0], P(k + 2)[0], t), el = cr(P(k - 1)[1], P(k)[1], P(k + 1)[1], P(k + 2)[1], t);
+    const { p, n: nr } = scalpPoint(surf, az, el);
+    const f = flick * Math.pow(Math.max(0, i / n - 0.55) / 0.45, 2) + tMax * lift;
+    path.push([p[0] + nr[0] * f, p[1] + nr[1] * f, p[2] + nr[2] * f]);
+  }
+  let cx = 0, cy = 0, cz = 0;
+  for (const q of path) { cx += q[0]; cy += q[1]; cz += q[2]; }
+  cx /= path.length; cy /= path.length; cz /= path.length;
+  let R = 0;
+  for (const q of path) R = Math.max(R, len3(q[0] - cx, q[1] - cy, q[2] - cz));
+  const prof = (t) => Math.max(tip, Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, t))), 0.7));
+  const shape = {
+    c: [cx, cy, cz], r: R + wMax + tMax,
+    d: (x, y, z) => {
+      let best = Infinity, bt = 0, qx = 0, qy = 0, qz = 0;
+      for (let i = 0; i < n; i++) {
+        const a = path[i], b = path[i + 1];
+        const abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
+        const l2 = abx * abx + aby * aby + abz * abz || 1e-9;
+        const t = clamp(((x - a[0]) * abx + (y - a[1]) * aby + (z - a[2]) * abz) / l2, 0, 1);
+        const px = a[0] + abx * t, py = a[1] + aby * t, pz = a[2] + abz * t;
+        const dd = (x - px) * (x - px) + (y - py) * (y - py) + (z - pz) * (z - pz);
+        if (dd < best) { best = dd; bt = (i + t) / n; qx = px; qy = py; qz = pz; }
+      }
+      const pr = prof(bt), w = wMax * pr, th = tMax * (0.4 + 0.6 * pr);
+      let nx = qx - center[0], ny = qy - center[1], nz = qz - center[2];
+      const nl = len3(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+      const vx = x - qx, vy = y - qy, vz = z - qz;
+      const vn = vx * nx + vy * ny + vz * nz;
+      const tx = vx - vn * nx, ty = vy - vn * ny, tz = vz - vn * nz;
+      const k0 = Math.sqrt((len3(tx, ty, tz) / w) ** 2 + (vn / th) ** 2);
+      return (k0 - 1) * Math.min(w, th);
+    }
+  };
+  return { shape, color, over };
 }
 
 // A hair lock: bezier-swept tapered tube. pts = [p0,p1,p2,p3]; radii = [r0, r1]; colour per lock.
@@ -216,24 +296,57 @@ export function lock(pts, r0, r1, color, { n = 9, profile = 1.0 } = {}) {
   return { shape, color };
 }
 
+// Union of locks + a colour lookup. A lock created with `over: true` (or a distance in metres) is an OVERLAY (a hair streak, a
+// highlight band): where the surface lies on/inside it, its colour wins over the lock underneath.
 export function lockSet(locks, baseColor, { k = 0.006 } = {}) {
   const shapes = locks.map((l) => l.shape);
   const merged = union(k, ...shapes);
   const colorAt = (p) => {
+    for (const l of locks) {
+      if (!l.over) continue;
+      if (l.shape.d(p[0], p[1], p[2]) < (l.over === true ? 0.0006 : l.over)) return l.color || baseColor;
+    }
     let best = Infinity, col = baseColor;
     for (const l of locks) {
+      if (l.over) continue;
       const d = l.shape.d(p[0], p[1], p[2]);
       if (d < best) { best = d; col = l.color || baseColor; }
     }
-    return col;
+    return best < 0.0035 ? col : baseColor; // only points that actually lie on a lock take its colour
   };
   return { shape: merged, colorAt };
 }
 
+// Hair shell: the skull shape offset outward by `thick`, thin at the hairline (so it feathers into the skin) and cut below
+// line(x, z) (y of the hairline). `volume` = optional extra shape smooth-unioned in (a pompadour). Smooth, no strand noise.
+export function hairShell(sk, line, { thick = 0.006, thin = 0.0025, feather = 0.02, volume = null, kVol = 0.025, extra = null } = {}) {
+  const full = (x, y, z) => sk.d(x, y, z) - thick - (extra ? extra(x, y, z) : 0); // the hair surface at full thickness (no hairline cut)
+  const shell = fromFn((x, y, z) => {
+    const h = y - line(x, z);
+    const t = smoothstep(0.0, feather, h);
+    // extra(x, y, z): additional thickness field in metres (pompadour, side volume)
+    let d = sk.d(x, y, z) - (thin + (thick - thin) * t) - (extra ? extra(x, y, z) * t : 0);
+    if (volume) d = smin(d, volume.d(x, y, z) - thick * 0.6 * t, kVol);
+    return smax(d, -h, 0.004);
+  }, sk.c, sk.r + 0.06);
+  shell.solid = { c: sk.c, r: sk.r + 0.06, d: full }; // use this (not the clipped shell) to lay locks on the hair surface with scalpPoint
+  return shell;
+}
+
+// y of the skull's upper surface at (x, z) (marching down from yFrom); handy to lay hair locks on the scalp.
+export function surfaceY(shape, x, z, yFrom = 0.2, yTo = -0.1) {
+  let y = yFrom;
+  const step = 0.002;
+  while (y > yTo && shape.d(x, y, z) > 0) y -= step;
+  let lo = y, hi = y + step;
+  for (let i = 0; i < 16; i++) { const m = (lo + hi) / 2; if (shape.d(x, m, z) > 0) hi = m; else lo = m; }
+  return (lo + hi) / 2;
+}
+
 // Flat sculpted hair clump (ribbon) built from a Bezier path
-export function clump(pts, widths, thick, color, { n = 10, center } = {}) {
+export function clump(pts, widths, thick, color, { n = 10, center, over = false } = {}) {
   const path = bezier3(pts[0], pts[1], pts[2], pts[3], n);
-  return { shape: ribbon(path, widths, thick, center), color };
+  return { shape: ribbon(path, widths, thick, center), color, over };
 }
 
 // A corkscrew hair strand: a helix wrapped around a straight/drooping axis, tapering to a point.
@@ -291,6 +404,92 @@ export function leatherJacketParts(q, { leather, rib, tee = [0.84, 0.83, 0.8], w
   parts.push({ name: "jacket", material: "leather", shape: jacket, ...boundsFrom([[-0.34, 0.94, -0.17], [0.34, 1.64, 0.17]], 0.02), h: q.body.h, tris: q.body.tris, color: withAO(colorJ, jacket, { small: 0.014, large: 0.06, strength: 0.6 }), weights: bodyWeights(BODY_BONES), lockBorder: true });
   const teeCore = intersect(intersect(mass, plane([0, 1.2, 0], [0, -1, 0]), 0.01), ellipsoid(0, 1.44, 0.07, 0.1, 0.12, 0.1), 0.01);
   const teeShape = union(0.008, { c: teeCore.c, r: teeCore.r, d: (x, y, z) => teeCore.d(x, y, z) + 0.014 }, torus([0, 1.47, 0], norm3([0, 0.94, 0.3]), 0.046, 0.011));
-  parts.push({ name: "shirt", material: "cloth", shape: teeShape, ...boundsFrom([[-0.14, 1.2, -0.12], [0.14, 1.54, 0.14]], 0.02), h: q.small.h, tris: q.small.tris * 2, color: withAO(() => tee, teeShape, { strength: 0.3 }), weights: bodyWeights(["chest", "neck", "spine"]), lockBorder: false });
+  parts.push({ name: "shirt", material: "soft", shape: teeShape, ...boundsFrom([[-0.14, 1.2, -0.12], [0.14, 1.54, 0.14]], 0.02), h: q.small.h, tris: q.small.tris * 2, color: withAO(() => tee, teeShape, { strength: 0.3 }), weights: bodyWeights(["chest", "neck", "spine"]), lockBorder: false });
+  return parts;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Large, smooth cloth folds (stylised hero sculpt: a few big soft undulations, no fine weave). Used by hoodieParts().
+// ---------------------------------------------------------------------------------------------
+export function softFolds({ amp = 0.006, scale = 1, elbow = 1.145, wrist = 0.9 } = {}) {
+  return (x, y, z) => {
+    const big = noise3(x * 6.5 * scale + 3.1, y * 6.5 * scale, z * 6.5 * scale + 1.7) - 0.5;
+    const mid = noise3(x * 13 * scale, y * 13 * scale + 5.2, z * 13 * scale) - 0.5;
+    const envElbow = Math.exp(-(((y - elbow) / 0.08) ** 2)), envWrist = Math.exp(-(((y - wrist - 0.05) / 0.07) ** 2));
+    const arm = Math.abs(x) > 0.13 ? 1 : 0;
+    const ridge = Math.sin(y * 95 + big * 9) * (0.4 * envElbow + 0.3 * envWrist) * arm;
+    return amp * (2.2 * big + 0.9 * mid + ridge);
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// HOODIE (art direction v2 boss look): loose hoodie with a thick sculpted hood collar resting around the neck, an open V at
+// the front that shows a white tee, ribbed cuffs, drawstrings with aglets. Returns [hoodie, tee, cords] part specs (character space).
+// opts: { color, rib, tee, cord, width, hem, stiff } — colours are sRGB triples (0..1).
+// ---------------------------------------------------------------------------------------------
+export function hoodieParts(q, { color = [0.34, 0.43, 0.54], rib = null, tee = [0.93, 0.92, 0.89], cord = null, skin = null, width = 0.95, folds = 1, cowl = 1, vTop = 0.1, vBottom = 1.26 } = {}) {
+  const ribC = rib || mul(color, 0.92);
+  const cordC = cord || tint(color, [0.9, 0.92, 0.95], 0.28);
+  const mass = torsoMass({ width, chest: 1.02, belly: 1.06, lowerCut: 0.9 });
+  const rs = [0.063, 0.055, 0.047];
+  const slL = sleeve(1, { r: rs, cuff: 0.004 }), slR = sleeve(-1, { r: rs, cuff: 0.004 });
+  const cuffs = [slL, slR].map((sl) => {
+    const dir = norm3(sub3(sl.wr, sl.el));
+    return torus(add3(sl.wr, scale3(dir, 0.012)), dir, 0.043, 0.0125);
+  });
+  // V opening in the front of the hoodie / hood, showing the tee
+  const half = (y) => 0.006 + Math.max(0, y - vBottom) * (vTop / 0.2);
+  const vCut = fromFn((x, y, z) => smax(smax(Math.abs(x) - half(y), vBottom - y, 0.012), 0.04 - z, 0.01), [0, 1.4, 0.12], 0.4);
+  // hood collar: a thick doughnut resting on the shoulders (front lower), a pile behind the neck, two rolled front edges
+  const C = cowl;
+  const ring = torus([0, 1.525, -0.02], norm3([0, 0.93, 0.36]), 0.1 * C, 0.044 * C);
+  const pile = ellipsoid(0, 1.545, -0.08, 0.115 * C, 0.05 * C, 0.06 * C);
+  const rims = [-1, 1].map((sd) => strand([
+    [sd * 0.06, 1.485, 0.045], [sd * 0.062, 1.455, 0.085], [sd * 0.05, 1.405, 0.115], [sd * 0.03, 1.35, 0.128], [sd * 0.016, 1.3, 0.132]
+  ], [0.032 * C, 0.03 * C, 0.025 * C, 0.02 * C, 0.016 * C], 0.012));
+  let body = union(0.03, subtract(mass, vCut, 0.012), slL.shape, slR.shape, ...cuffs, subtract(union(0.025, ring, pile), vCut, 0.01), ...rims);
+  body = subtract(body, capsule([0, 1.41, -0.012], [0, 1.7, -0.012], 0.047, 0.047), 0.012); // neck hole
+  body = displace(body, softFolds({ amp: 0.0052 * folds }));
+  const colorH = (p) => {
+    const wristD = Math.min(Math.hypot(p[0] - slL.wr[0], p[1] - slL.wr[1], p[2] - slL.wr[2]), Math.hypot(p[0] - slR.wr[0], p[1] - slR.wr[1], p[2] - slR.wr[2]));
+    const cuff = 1 - smoothstep(0.03, 0.058, wristD);
+    const hem = 1 - smoothstep(0.995, 1.03, p[1]);
+    const g = (noise3(p[0] * 2.2 + 4, p[1] * 2.2, p[2] * 2.2) - 0.5) * 0.07;
+    const k = Math.max(cuff, hem);
+    return [color[0] + g + (ribC[0] - color[0]) * k, color[1] + g * 0.9 + (ribC[1] - color[1]) * k, color[2] + g * 0.8 + (ribC[2] - color[2]) * k];
+  };
+  const parts = [];
+  parts.push({ name: "hoodie", material: "soft", shape: body, ...boundsFrom([[-0.36, 0.88, -0.19], [0.36, 1.66, 0.2]], 0.02), h: q.body.h * 0.8, tris: Math.round(q.body.tris * 1.25), color: withAO(colorH, body, { small: 0.016, large: 0.07, strength: 0.6, occluders: capsule([0, 1.4, -0.012], [0, 1.66, -0.012], 0.04, 0.045) }), weights: bodyWeights(BODY_BONES), lockBorder: true });
+
+  // white tee: only the neckline and the chest seen through the V, tucked 1.4 cm under the hoodie
+  const teeCore = intersect(intersect(mass, plane([0, 1.2, 0], [0, -1, 0]), 0.01), ellipsoid(0, 1.42, 0.07, 0.1, 0.13, 0.11), 0.01);
+  // V neckline of the tee: the chest skin shows between the collar and the apex
+  const neckApex = 1.365;
+  const neckV = fromFn((x, y, z) => smax(Math.abs(x) - (0.004 + Math.max(0, y - neckApex) * 0.52), neckApex - y, 0.008), [0, 1.45, 0.1], 0.4);
+  const teeBody = { c: teeCore.c, r: teeCore.r, d: (x, y, z) => teeCore.d(x, y, z) + 0.013 };
+  const teeShape = union(0.008, subtract(teeBody, neckV, 0.008), torus([0, 1.468, -0.002], norm3([0, 0.93, 0.34]), 0.047, 0.0115));
+  parts.push({ name: "shirt", material: "soft", shape: teeShape, ...boundsFrom([[-0.14, 1.2, -0.12], [0.14, 1.54, 0.14]], 0.02), h: q.small.h, tris: q.small.tris * 2, color: withAO(() => tee, teeShape, { small: 0.012, large: 0.05, strength: 0.5, occluders: body }), weights: bodyWeights(["chest", "neck", "spine"]), lockBorder: false });
+
+  if (skin) {
+    // chest skin seen through the tee's V neckline (a thin shell 1.2 cm under the hoodie surface, limited to the neckline region)
+    const chestCore = intersect(teeCore, fromFn((x, y, z) => -neckV.d(x, y, z) + 0.004, neckV.c, neckV.r), 0.006);
+    const chestShape = { c: chestCore.c, r: chestCore.r, d: (x, y, z) => chestCore.d(x, y, z) + 0.0125 };
+    parts.push({ name: "chest", material: "skin", shape: chestShape, ...boundsFrom([[-0.12, 1.3, -0.06], [0.12, 1.5, 0.14]], 0.02), h: q.small.h, tris: q.small.tris * 2, color: withAO((p) => tint(skin, mul(skin, 0.85), smoothstep(1.45, 1.36, p[1]) * 0.6), chestShape, { small: 0.012, large: 0.05, strength: 0.5, occluders: body }), weights: bodyWeights(["chest", "neck", "spine"]), lockBorder: false });
+  }
+  // drawstrings: two cords from the eyelets under the V, hugging the chest, ending in aglets
+  const cordShapes = [];
+  for (const sd of [-1, 1]) {
+    const pts = [], radii = [];
+    const ys = [1.318, 1.29, 1.255, 1.22, 1.19, 1.172];
+    ys.forEach((y, i) => {
+      const x = sd * (0.034 + 0.004 * i + (i > 3 ? 0.004 : 0));
+      const z = surfaceZ(body, x, y, 0.3, 0.0) + 0.0035;
+      pts.push([x, y, z]);
+      radii.push(i === ys.length - 1 ? 0.0062 : 0.0043);
+    });
+    cordShapes.push(strand(pts, radii, 0.002));
+  }
+  const cords = union(0.002, ...cordShapes);
+  parts.push({ name: "cords", material: "soft", shape: cords, ...boundsFrom([[-0.09, 1.15, 0.05], [0.09, 1.34, 0.16]], 0.012), h: 0.0017, tris: 1400, color: withAO(() => cordC, cords, { strength: 0.2 }), weights: bodyWeights(["chest", "spine"]), lockBorder: false });
   return parts;
 }

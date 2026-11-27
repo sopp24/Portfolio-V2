@@ -5,7 +5,7 @@
 // The layout contract (src/scene/layout.js) is untouched: only the rendering language changed.
 import * as THREE from "three";
 import { ROOM, FRONT, FOOTPRINTS } from "./layout.js";
-import { createCanvas, textureFrom, rng, applyBoxUV, woodBox } from "./util.js";
+import { createCanvas, textureFrom, rng, applyBoxUV, woodBox, StaticBatcher } from "./util.js";
 import { drawSignBoard, FONT } from "./artwork.js";
 import { atlasPlane } from "./assets.js";
 import { makeNeonMaterial } from "./materials.js";
@@ -26,6 +26,31 @@ export function fitPx(g, text, family, weight, maxW, startPx, minPx = 10) {
   for (; px > minPx; px -= 2) { g.font = `${weight} ${px}px ${family}`; if (g.measureText(text).width <= maxW) break; }
   g.font = `${weight} ${px}px ${family}`;
   return px;
+}
+
+// One emissive material per neon colour for the whole set (the static batcher merges per material: a fresh material per tube is a draw call each).
+// It joins ctx.neonMaterials, so it follows the lights-on ramp like every other tube.
+export function neonShared(ctx, hex, base = 3) {
+  ctx.neonKit = ctx.neonKit || new Map();
+  let mat = ctx.neonKit.get(hex);
+  if (!mat) { mat = makeNeonMaterial(hex, base); ctx.neonMaterials.push(mat); ctx.owned.push(mat); ctx.neonKit.set(hex, mat); }
+  return mat;
+}
+
+// Merge a group's loose, static, single-material meshes into one mesh per material (draw calls follow the number of materials,
+// not the number of parts: the mini keyboard alone was 44 draws). `keep` meshes (animated / mirrored ones) stay as they are.
+// Negative-scale children must be kept: baking a mirrored matrix into the geometry would flip its winding.
+export function bakeStatic(group, keep = []) {
+  const sb = new StaticBatcher();
+  let baked = 0;
+  for (const child of [...group.children]) {
+    if (!child.isMesh || child.isInstancedMesh || Array.isArray(child.material) || keep.includes(child)) continue;
+    child.updateMatrix();
+    sb.add(child.geometry, child.material, undefined, undefined, { matrix: child.matrix, cast: child.castShadow, receive: child.receiveShadow });
+    group.remove(child); baked++;
+  }
+  if (baked) sb.build(group, "baked");
+  return group;
 }
 
 // Fallback-safe material lookup (the material library is shared with other agents).
@@ -198,8 +223,7 @@ export function buildRoom(ctx) {
   const zF = ROOM.zFront;
   const frame = pickMat(m, "paintedInk", "paintedGreen");
   const inkLacquer = pickMat(m, "lacquerInk", "paintedInk");
-  const neon = (hex, base = 3) => { const mat = makeNeonMaterial(hex, base); ctx.neonMaterials.push(mat); ctx.owned.push(mat); return mat; };
-  const neonCyan = neon(NEON.cyan, 3.4), neonCoral = neon(NEON.coral, 3.2), neonSun = neon(NEON.sun, 2.8);
+  const neonCyan = neonShared(ctx, NEON.cyan, 3.3), neonCoral = neonShared(ctx, NEON.coral, 3.1), neonSun = neonShared(ctx, NEON.sun, 2.8);
 
   // ---------------------------------------------------------------- floor: crisp graphic checker, 0.6 m tiles aligned to the room
   const floorGeo = new THREE.PlaneGeometry(ROOM.width, ROOM.depth);
@@ -522,8 +546,10 @@ export function buildRoom(ctx) {
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x35d99d, roughness: .6, flatShading: true });
     ctx.owned.push(potMat, potInk, leafMat);
     for (const [x, mat] of [[-.02, potInk], [1.65, potMat]]) {
-      const pot = new THREE.Mesh(new THREE.CylinderGeometry(.2, .16, .42, 20), mat); pot.position.set(x, .21, zF + .7); exterior.add(pot);
-      for (let i = 0; i < 9; i++) { const lf = new THREE.Mesh(new THREE.ConeGeometry(.045, .6 + (i % 3) * .12, 5), leafMat); const a = i / 9 * Math.PI * 2; lf.position.set(x + Math.cos(a) * .08, .42 + .3, zF + .7 + Math.sin(a) * .08); lf.rotation.set(Math.sin(a) * .35, 0, -Math.cos(a) * .35); exterior.add(lf); }
+      const planter = new THREE.Group();
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(.2, .16, .42, 20), mat); pot.position.set(x, .21, zF + .7); planter.add(pot);
+      for (let i = 0; i < 9; i++) { const lf = new THREE.Mesh(new THREE.ConeGeometry(.045, .6 + (i % 3) * .12, 5), leafMat); const a = i / 9 * Math.PI * 2; lf.position.set(x + Math.cos(a) * .08, .42 + .3, zF + .7 + Math.sin(a) * .08); lf.rotation.set(Math.sin(a) * .35, 0, -Math.cos(a) * .35); planter.add(lf); }
+      exterior.add(bakeStatic(planter));
     }
   }
   // opposite towers: flat saturated blocks with crisp window grids
@@ -555,6 +581,7 @@ export function buildRoom(ctx) {
   add(woodBox(4.22, .06, 1.72, { bevel: .02, tile: 2 }), creamMat, [0, .45, 0]);
   for (const x of [-1.4, 1.4]) for (const z of [-.85, .85]) add(new THREE.CylinderGeometry(.33, .33, .22, 24), tireMat, [x, .33, z], [Math.PI / 2, 0, 0]);
   for (const z of [-.6, .6]) add(new THREE.SphereGeometry(.12, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(1, .92, .7).multiplyScalar(2.5) }), [2.1, .66, z]);
+  bakeStatic(car);
   exterior.add(car);
   const post = new THREE.Group();
   post.position.set(3.4, 0, zF + 3.3);
@@ -568,6 +595,7 @@ export function buildRoom(ctx) {
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.12, .18, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0x4a3a52, roughness: 1 })); trunk.position.y = 1.3; trunk.castShadow = true; tree.add(trunk);
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x35d99d, roughness: .7, flatShading: true });
   for (let i = 0; i < 6; i++) { const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(.9 + (i % 3) * .2, 1), leafMat); blob.position.set(Math.sin(i * 1.9) * .8, 3 + (i % 3) * .4, Math.cos(i * 2.3) * .8); blob.castShadow = true; tree.add(blob); }
+  bakeStatic(tree);
   exterior.add(tree);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(90, 32, 16), new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false, depthWrite: false, color: new THREE.Color(1.28, 1.28, 1.28) }));
   sky.renderOrder = -10;

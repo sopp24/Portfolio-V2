@@ -49,7 +49,7 @@ export function createMaterials(quality, onStep = () => {}) {
   const oak = woodSet(T, { seed: 3, tones: ["#6b3f1d", "#c98f50"], boards: 4, knots: 3, name: "oak" }); tick("wood");
   const pine = woodSet(T, { seed: 9, tones: ["#cf9d62", "#efd09a"], boards: 5, knots: 4, name: "pine", grainContrast: .8 }); tick("wood");
   const plaster = plasterSet(T, { seed: 11 }); tick("plaster");
-  const floor = checkerFloorSet(T, { seed: 21, a: "#1d2350", b: "#f3e8d0", tiles: 8, accents: ["#ff5b4a", "#ffc83d", "#19d5e8"] }); tick("floor");
+  const floor = checkerFloorSet(T, { seed: 21, a: "#212a66", b: "#ecdcb9", tiles: 8, accents: ["#ff5b4a", "#ffc83d", "#19d5e8"] }); tick("floor");
   const tile = ceilingTileSet(Math.min(T, 512), { seed: 31 }); tick("ceiling");
   const metal = brushedMetalSet(Math.min(T, 512), { seed: 41 });
   const cardboard = cardboardSet(Math.min(T, 512), { seed: 51 });
@@ -139,6 +139,26 @@ export function createMaterials(quality, onStep = () => {}) {
 
   // ---- Glass: faint sky tint, restrained reflection (a strong one milks the street view and the interior seen through it)
   m.glass = physical({ color: 0xe6f5ff, roughness: .03, metalness: 0, transmission: 0, transparent: true, opacity: .1, ior: 1.5, specularIntensity: .45, side: THREE.DoubleSide, depthWrite: false, name: "glass" });
+  // Stylised diagonal sheen (the classic game-window glare): a wide soft band + a thin one, repeating every ~2.4 m along a world-space
+  // diagonal, painted as a touch of opacity + white so it reads over the shop interior seen through the glass. Costs nothing.
+  m.glass.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vSheenW;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSheenW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vSheenW;")
+      .replace("#include <opaque_fragment>", `
+        {
+          float sd = fract((vSheenW.x * .82 + vSheenW.y * .57) * .42);
+          float wide = smoothstep(.085, .0, abs(sd - .32));
+          float thin = smoothstep(.026, .0, abs(sd - .43));
+          float sheen = wide * .8 + thin * .9;
+          diffuseColor.a = min(1., diffuseColor.a + sheen * .17);
+          outgoingLight = mix(outgoingLight, vec3(1.0, .97, .9) * 1.6, sheen * .5);
+        }
+        #include <opaque_fragment>`);
+  };
+  m.glass.customProgramCacheKey = () => "glassSheen";
 
   // ---- Vinyl: ink-black, tight specular, deep clearcoat (+ a very light iridescent sheen on capable tiers)
   m.vinyl = gloss({ color: 0x0b0d18, roughness: .3, metalness: .2, name: "vinyl" }, { clearcoat: 1, clearcoatRoughness: .06 });
