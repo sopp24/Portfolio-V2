@@ -307,3 +307,30 @@ kbd { font-family: var(--font-type); font-size: .68rem; padding: .08rem .35rem; 
 .assistant-log { min-height: 0; }
 .msg { min-width: 0; }
 #dir-title:focus { outline: none; }
+
+/* Projects Store — commandes plus accessibles sans toucher au décor 3D */
+button,input,select{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.btn,.menu-button,.mobile-controls button,.dock-actions button,.radio-controls button{min-height:44px}
+.menu-button{min-width:46px}
+.lang-switch button{min-height:42px;padding-inline:12px}
+.d2-toolbar{flex-wrap:wrap;gap:10px}
+.d2-toolbar select{min-height:44px;font-size:16px}
+.app-card{min-width:0}
+.app-card h3{line-height:1.15}
+.app-card p,.d2-card p,.d2-card li{line-height:1.65}
+.record-dock,.liner-panel{overscroll-behavior:contain;scrollbar-gutter:stable}
+@media(pointer:coarse){
+  .menu-button,.mobile-controls button,.dock-actions button,.radio-controls button{min-width:46px;min-height:46px}
+  .assistant-chips button{min-height:42px;padding:9px 13px}
+}
+@media(max-width:860px){
+  .mobile-controls{padding-bottom:env(safe-area-inset-bottom)}
+  .record-dock{max-height:min(76dvh,720px);padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+  .liner-panel{max-height:min(82dvh,760px);padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+  .d2-toolbar{align-items:stretch}
+  .d2-toolbar select{flex:1 1 180px}
+}
+@media(max-height:520px) and (orientation:landscape){
+  .record-dock,.liner-panel{max-height:86dvh;overflow:auto}
+  .mobile-controls{gap:6px}
+}
